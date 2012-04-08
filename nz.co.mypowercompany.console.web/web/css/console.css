@@ -1,0 +1,606 @@
+
+body {
+    font: 14px Helvetica;
+    background: #EEE;
+    margin: 0px;
+}
+
+p {
+	margin: 0;
+}
+
+.clear {
+	clear: both;
+}
+
+.content {
+	margin: 0px auto;
+    background: url('../images/console/Background.png') no-repeat;
+    width: 1024px;
+    height: 768px;
+}
+
+.header {
+	height: 82px;
+	text-align: center;
+	padding-top:10px;
+}
+
+.menu {
+	height: 45px;
+	padding: 0px 179px;
+	list-style-type: none;
+	margin: 0px;
+}
+
+.menu_item {
+	width: 133px;
+	height: 36px;
+	float: left;
+	color: white;
+	text-align: center;
+	padding-top: 6px;
+	background: url('../images/console/Tab.png') no-repeat;
+}
+
+.menu_item a:link {color: #FFFFFF; text-decoration: none;}
+.menu_item a:active {color: #FFFFFF; text-decoration: none;}
+.menu_item a:visited {color: #FFFFFF; text-decoration: none;}
+.menu_item a:hover {color: #2FC4F6; text-shadow: #2FC4F6 0px -0px 5px; text-decoration: none; }
+
+.selected a:link {color: #2FC4F6; text-shadow: #2FC4F6 0px -0px 5px;}
+.selected a:active {color: #2FC4F6; text-shadow: #2FC4F6 0px -0px 5px;}
+.selected a:visited {color: #2FC4F6; text-shadow: #2FC4F6 0px -0px 5px;}
+
+.dashboard_graph {
+	height: 268px;
+}
+
+.dashboard_dials {
+	position: relative;
+}
+
+.dashboard_weather {
+	position: relative;
+	top: -20px;
+	float: left;
+	left: 20px;
+	width: 210px;
+	height: 100px;
+}
+.weather_icon {
+	width: 100px;
+	height: 100px;
+	float:left;
+}
+.dashboard_weather_details {
+	float: right;
+	width: 110px;
+}
+.dashboard_temp {
+	font-size: x-large;
+	color: #FFF;
+	padding-top: 10px;
+}
+
+.dashboard_label {
+	color: #555555;
+}
+
+#dashboard_savings {
+	position: absolute;
+	top: -86px;
+	left: 284px;
+	width: 456px;
+	height: 174px;
+}
+
+.dashboard_savings_default {
+	background: url('../images/console/House-and-Savings-Bar-Grey.png');
+}
+
+.dashboard_savings_positive {
+	background: url('../images/console/House-and-Savings-Bar-Blue.png');
+}
+
+.dashboard_savings_positive span {
+	color:#125EFF;
+}
+
+.dashboard_savings_negative {
+	background: url('../images/console/House-and-Savings-Bar-Red.png');
+}
+
+.dashboard_savings_negative span {
+	color:#D50003;
+}
+
+#dashboard_savings_money {
+	position: absolute;
+	top: 65px;
+	width: 140px;
+	font-size: x-large;
+	text-align: right;
+}
+
+#dashboard_savings_power {
+	position: absolute;
+	top: 65px;
+	left: 320px;
+	width: 140px;
+	font-size: x-large;
+	text-align: left;
+}
+
+.dashboard_info {
+	font-size: small;
+}
+
+#dashboard_wires {
+	position: absolute;
+	top: 60px;
+	left: 240px;
+	width: 560px;
+	height: 141px;
+	background: url('../images/console/Wires.png') no-repeat;
+}
+
+.dashboard_wires_default {
+	background: url('../images/console/Wires.png') no-repeat;
+}
+/*
+.dashboard_wires_positive {
+	background: url('../images/console/Wires-Blue.png') no-repeat;
+}
+
+.dashboard_wires_negative {
+	background: url('../images/console/Wires-Red.png') no-repeat;
+}*/
+
+/* House wires */
+#dashboard_house_wires {
+	position: absolute;
+	left: 247px;
+	top: -10px;
+	width: 57px;
+	height:139px;
+}
+
+.dashboard_wires_positive #dashboard_house_wires {
+	background: url('../images/console/Wire-Vertical-Blue.png') no-repeat;
+}
+
+.dashboard_wires_negative #dashboard_house_wires {
+	background: url('../images/console/Wire-Vertical-Red.png') no-repeat;
+}
+/* PV wires */
+#dashboard_pv_wires {
+	position: absolute;
+	top: 58px;
+	width: 317px;
+	height:78px;
+}
+
+.dashboard_pv_wires_default {}
+
+.dashboard_pv_wires_positive {
+	background: url('../images/console/Wire-Right-Blue.png') no-repeat;
+}
+
+.dashboard_pv_wires_negative {
+	background: url('../images/console/Wire-Right-Red.png') no-repeat;
+}
+
+/* Grid wires */
+#dashboard_grid_wires {
+	position: absolute;
+	top: 62px;
+	left: 250px;
+	width: 317px;
+	height:78px;
+}
+
+.dashboard_wires_positive #dashboard_grid_wires {
+	background: url('../images/console/Wire-Left-Blue.png') no-repeat;
+}
+
+.dashboard_wires_negative #dashboard_grid_wires {
+	background: url('../images/console/Wire-Left-Red.png') no-repeat;
+}
+
+/* Battery */
+#dashboard_battery {
+	position: absolute;
+	top: 100px;
+	left: 469px;
+	width: 100px;
+	height: 150px;
+}
+
+.battery_default {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -920px -139px;/*0% blue*/
+}
+
+.battery_positive_0 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -920px -139px;/*0% blue*/
+}
+
+.battery_positive_10 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -830px -139px;/*10% blue*/
+}
+
+.battery_positive_20 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -739px -139px;/*20% blue*/
+}
+
+.battery_positive_30 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -648px -139px;/*30% blue*/
+}
+
+.battery_positive_40 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -557px -139px;/*40% blue*/
+}
+
+.battery_positive_50 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -466px -139px;/*50% blue*/
+}
+
+.battery_positive_60 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -376px -139px;/*60% blue*/
+}
+
+.battery_positive_70 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -285px -139px;/*70% blue*/
+}
+
+.battery_positive_80 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -194px -139px;/*80% blue*/
+}
+
+.battery_positive_90 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -103px -139px;/*90% blue*/
+}
+
+.battery_positive_100 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -12px -139px;/*100% blue*/
+}
+
+.battery_negative_0 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -920px 0px;/*0% red*/
+}
+
+.battery_negative_10 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -830px 0px;/*10% red*/
+}
+
+.battery_negative_20 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -739px 0px;/*20% red*/
+}
+
+.battery_negative_30 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -648px 0px;/*30% red*/
+}
+
+.battery_negative_40 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -557px 0px;/*40% red*/
+}
+
+.battery_negative_50 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -466px 0px;/*50% red*/
+}
+
+.battery_negative_60 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -376px 0px;/*60% red*/
+}
+
+.battery_negative_70 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -285px 0px;/*70% red*/
+}
+
+.battery_negative_80 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -194px 0px;/*80% red*/
+}
+
+.battery_negative_90 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -103px 0px;/*90% red*/
+}
+
+.battery_negative_100 {
+	background: url('../images/console/Battery.png') no-repeat;
+	background-position: -12px 0px;/*100% red*/
+}
+
+#dashboard_solar {
+	position: absolute;
+	top: 71px;
+	left: 50px;
+	width: 456px;
+	height: 200px;
+}
+
+.dashboard_solar_off {
+	background: url('../images/console/PV-Bar-Grey.png') no-repeat;
+}
+
+.dashboard_solar_positive {
+	background: url('../images/console/PV-Bar-Blue.png') no-repeat;
+}
+
+.dashboard_solar_positive span {
+	color:#125EFF;
+}
+
+.dashboard_solar_negative {
+	background: url('../images/console/PV-Bar-Red.png') no-repeat;
+}
+
+.dashboard_solar_negative span {
+	color:#D50003;
+}
+
+#dashboard_solar_generated {
+	position: absolute;
+	top: 82px;
+	width: 130px;
+	font-size: x-large;
+	text-align: right;
+}
+
+#dashboard_solar_efficiency {
+	position: absolute;
+	top: 81px;
+	left: 235px;
+	width: 140px;
+	font-size: x-large;
+	text-align: left;
+}
+
+#dashboard_grid {
+	position: absolute;
+	top: 84px;
+	left: 630px;
+	width: 456px;
+	height: 174px;
+}
+
+.dashboard_grid_off {
+	background: url('../images/console/Grid-Bar-Grey.png') no-repeat;
+}
+
+.dashboard_grid_positive {
+	background: url('../images/console/Grid-Bar-Blue.png') no-repeat;
+}
+
+.dashboard_grid_positive span {
+	color:#125EFF;
+}
+
+.dashboard_grid_negative {
+	background: url('../images/console/Grid-Bar-Red.png') no-repeat;
+}
+
+.dashboard_grid_negative span {
+	color:#D50003;
+}
+
+#dashboard_grid_price {
+	position: absolute;
+	top: 70px;
+	width: 120px;
+	font-size: x-large;
+	text-align: right;
+}
+
+#dashboard_grid_drawn {
+	position: absolute;
+	top: 69px;
+	left: 225px;
+	width: 140px;
+	font-size: x-large;
+	text-align: left;
+}
+
+/* ------ Switches page ------ */
+
+.switches {
+	position: relative;
+	background: url('../images/console/Background-White.png') no-repeat;
+	height: 400px;
+}
+
+#switch_aux_1 {
+	position: absolute;
+	left: 80px;
+	width: 345px;
+	height: 170px;
+	padding: 0px;
+	border: 0px none;
+}
+
+#switch_aux_2 {
+	position: absolute;
+	left: 80px;
+	top: 120px;
+	width: 345px;
+	height: 170px;
+}
+
+#switch_aux_3 {
+	position: absolute;
+	left: 80px;
+	top: 240px;
+	width: 345px;
+	height: 170px;
+}
+
+#switch_grid {
+	position: absolute;
+	left: 540px;
+	top: 13px;
+	width: 411px;
+	height: 141px;
+}
+
+#footer {
+	position: absolute;
+	top: 488px;
+	width: 1024px;
+	height: 280px;
+	background-position: bottom; 
+}
+
+.footer_desert {
+	background: url('../images/console/Theme-Desert.png') no-repeat;
+}
+
+.footer_forest {
+	background: url('../images/console/Theme-Forest.png') no-repeat;
+}
+
+#footer_message {
+	position: absolute;
+	bottom: 0px;
+	width: 1024px;
+	height: 57px;
+	background: url('../images/console/Effect-Bar.png') no-repeat;
+	background-position: bottom; 
+	text-align: center;
+}
+
+#footer_message p {
+	margin: 30px;
+}
+
+.footer_message_positive #footer_env_effect {
+	color:#125EFF;
+	font-weight: bold;
+}
+
+.footer_message_negative #footer_env_effect {
+	color:#D50003;
+	font-weight: bold;
+}
+
+/** The "friends" bar. */
+#friends_button {
+	position: absolute;
+	top: 20px;
+	width: 50px;
+	height: 70px;
+	background: url('../images/friends/Friends-Tabs.png') no-repeat;
+	background-position: -1050px -10px;
+}
+
+#friends_bar {
+	position: absolute;
+	top: 20px;
+	width: 1020px;
+	height: 70px;
+	background: url('../images/friends/Friends-Tabs.png') no-repeat;
+	background-position: 0px -10px;
+}
+
+#friends_avatar_1 {
+	background: url('../images/friends/House-A-Small.png') no-repeat;
+	background-position: 10px 0px;
+}
+
+#friends_avatar_2 {
+	background: url('../images/friends/House-B-Small.png') no-repeat;
+	background-position: 10px 0px;
+}
+
+#friends_avatar_3 {
+	background: url('../images/friends/House-C-Small.png') no-repeat;
+	background-position: 10px 0px;
+}
+
+#friends_avatar_4 {
+	background: url('../images/friends/House-D-Small.png') no-repeat;
+	background-position: 10px 0px;
+}
+
+#friends_avatar_5 {
+	background: url('../images/friends/House-E-Small.png') no-repeat;
+	background-position: 10px 0px;
+}
+
+#friends_avatar_6 {
+	background: url('../images/friends/House-F-Small.png') no-repeat;
+	background-position: 10px 0px;
+}
+
+#friends_avatar_7 {
+	background: url('../images/friends/House-G-Small.png') no-repeat;
+	background-position: 10px 0px;
+}
+
+#friends_bar_close {
+	float: left;
+	width: 50px;
+	height: 50px;
+	padding: 10px;
+}
+
+.friends_avatar {
+	float: left;
+	width: 105px;
+	height: 50px;
+	padding: 10px;
+}
+
+#friends_overlay {
+	position: absolute;
+	top: 92px;
+	height: 676px;
+	width: 1024px;
+}
+
+.friends_overlay_avatar {
+	position: absolute;
+	top: 171px;
+	left: 368px;
+	width: 274px;
+	height: 286px;
+	background: url('../images/friends/House-A-Icon.png') no-repeat;
+}
+
+/* Setting tab. */
+
+.settings {
+	position: relative;
+	background: url('../images/console/Background-White.png') no-repeat;
+	height: 400px;
+	opacity:1;
+	filter:alpha(opacity=100); /* For IE8 and earlier */
+}
+
+.settings form {
+	padding: 50px;
+}
+
+.settings input {
+	margin: 10px;
+}
