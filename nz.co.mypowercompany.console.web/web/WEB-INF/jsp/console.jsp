@@ -8,28 +8,28 @@
 	<meta name="apple-mobile-web-app-capable" content="yes"/>
 	
 	<pack:style>
-		<src>/css/jquery.jqplot.css</src>
+		/css/jquery.jqplot.css
 		
-		<src>/css/console.css</src>
+		/css/console.css
 	</pack:style>
 	<pack:script> 
-		<src>/js-lib/jquery-1.6.4.js</src>
-		<src>/js-lib/jquery.form.js</src>
-		<src>/js-lib/jquery-ui-1.8.13.custom.min.js</src>
+		/js-lib/jquery-1.6.4.js
+		/js-lib/jquery.form.js
+		/js-lib/jquery-ui-1.8.13.custom.min.js
 		
-		<src>/js-lib/jquery.jqplot.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.canvasTextRenderer.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.canvasAxisLabelRenderer.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.categoryAxisRenderer.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.dateAxisRenderer.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.barRenderer.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.ohlcRenderer.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.cursor.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.highlighter.js</src>
-		<src>/js-lib/jqplot-plugins/jqplot.pointLabels.js</src>
+		/js-lib/jquery.jqplot.js
+		/js-lib/jqplot-plugins/jqplot.canvasTextRenderer.js
+		/js-lib/jqplot-plugins/jqplot.canvasAxisLabelRenderer.js
+		/js-lib/jqplot-plugins/jqplot.categoryAxisRenderer.js
+		/js-lib/jqplot-plugins/jqplot.dateAxisRenderer.js
+		/js-lib/jqplot-plugins/jqplot.barRenderer.js
+		/js-lib/jqplot-plugins/jqplot.ohlcRenderer.js
+		/js-lib/jqplot-plugins/jqplot.cursor.js
+		/js-lib/jqplot-plugins/jqplot.highlighter.js
+		/js-lib/jqplot-plugins/jqplot.pointLabels.js
 		
-		<src>/js/console.js</src>
-		<src>/js/graph.js</src>
+		/js/console.js
+		/js/graph.js
 	</pack:script>
 	
 	<%-- Doesn't seem to be playing nice with the pack script --%>
