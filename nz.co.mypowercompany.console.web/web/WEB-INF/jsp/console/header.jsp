@@ -1,4 +1,5 @@
-<div class="header"><img src="<c:url value='images/console/MPC-Logo.png'/>" alt="MyPowerCompany"/></div>
+<c:set var="imgUrl"><spring:theme code='app.company.logo'/></c:set>
+<div class="header"><img src="<c:url value='${imgUrl}'/>" alt="<spring:theme code='app.company.name'/>"/></div>
 	<ul class="menu">
 		<li class="menu_item selected"><a href="#overview">Overview</a></li>
 		<li class="menu_item"><a href="#manual">Manual Mode</a></li>
