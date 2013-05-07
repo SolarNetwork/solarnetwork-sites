@@ -64,7 +64,7 @@ function MPCConsole() {
 		
 		// Set up the switches
 		$('.switchForm').ajaxForm({
-			url : '/solarreg/u/instr/add.json',
+			url : '/solaruser/u/instr/add.json',
 			dataType : 'json',
 			traditional : true,
 			success : function(data, status) {
@@ -79,7 +79,7 @@ function MPCConsole() {
 				mpcConsole.debug('Error while submitting switch form, assuming authentication error');
 				
 				if (!$('#solarreg_login').length) {
-					$('body').append('<div id="solarreg_login"><iframe src="/solarreg/login.do" style="border: 0px;" width="400px" height="200px"></iframe></div>');
+					$('body').append('<div id="solarreg_login"><iframe src="/solaruser/login.do" style="border: 0px;" width="400px" height="200px"></iframe></div>');
 					$('#solarreg_login iframe').load(function() {
 						$('#solarreg_login iframe').contents().find('.login-form').ajaxForm({
 							dataType : 'json',
