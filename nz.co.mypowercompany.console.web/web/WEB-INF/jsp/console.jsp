@@ -1,8 +1,6 @@
 <%@ taglib uri="http://packtag.sf.net" prefix="pack" %>
-<%@ page contentType="application/xhtml+xml; charset=UTF-8" pageEncoding="UTF-8" %>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml">
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<html lang="en">
 <head>
 	<title><spring:theme code="app.title"/></title>
 	
@@ -32,9 +30,12 @@
 	/js-lib/jqplot-plugins/jqplot.ohlcRenderer.js
 	/js-lib/jqplot-plugins/jqplot.cursor.js
 	/js-lib/jqplot-plugins/jqplot.highlighter.js
-	/js-lib/jqplot-plugins/jqplot.pointLabels.js		
+	/js-lib/jqplot-plugins/jqplot.pointLabels.js
+	/js-lib/hmac-sha1.js		
+	/js-lib/enc-base64.js
 	/js/console.js
 	/js/graph.js
+	/js/sn.js
 	<spring:theme code="app.javascript"/>
 </c:set>
 	<pack:script>
@@ -71,6 +72,32 @@
 		
 	</div>
 
+<div class="ui-support container">
+	<div id="login-container">
+		<p class="intro">
+			Enter your SolarNetwork security token and password to log in. 
+			If you do not have a security token created for your SolarNetwork account, 
+			<a href="/solaruser/index.do">go to SolarNetwork</a> and create one.
+		</p>
+		<form class="form" id="credentials">
+			<fieldset>
+					<label>
+						Token
+						<input type="text" value="" placeholder="Security Token" maxlength="64" name="token" required="required"/>
+					</label>
+					<br/>
+					<label>
+						Secret
+						<input type="password" placeholder="Secret" maxlength="64" name="secret" required="required"/>
+					</label>
+			</fieldset>
+			<div class="form-actions">
+				<button class="btn btn-primary" type="submit">Login</button>
+			</div>
+		</form>
+	</div>
+</div>
+
 <script type="text/javascript">
 
 $(document).ready(function() {
@@ -83,12 +110,8 @@ $(document).ready(function() {
 	var mpcConsole = new MPCConsole();
 	var nodeId = ${param['nodeId']};
 	mpcConsole.populateConsole(nodeId);
+	mpcConsole.startRefreshTimer(nodeId);
 	//mpcConsole.test(nodeId);// TODO remove test code
-	setInterval(
-		function(){
-			mpcConsole.populateConsole(nodeId);
-		}, 
-		60000);
 	
 	// Select the current tab
 	if (document.location.hash) {

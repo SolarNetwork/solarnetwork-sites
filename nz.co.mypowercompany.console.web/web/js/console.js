@@ -31,6 +31,26 @@ function MPCConsole() {
 	/** The effect that is currently being displayed. */
 	var currentEffect = null;
 
+	var getCredentials = function() {
+		var form = $('#credentials')[0];
+		var params = {
+				token: form.elements['token'].value,
+				secret: form.elements['secret'].value,
+				host: document.location.host,
+				date: new Date().toUTCString()
+			};
+		return params;
+	};
+	
+	this.startRefreshTimer = function(nodeId) {
+		var self = this;
+		setInterval(
+				function() {
+					//FIXME: self.populateConsole(nodeId);
+				}, 
+				60000);
+	};
+
 	/**
 	 * This populates the MPC console with data for the specified node.
 	 * @param nodeId
@@ -63,39 +83,58 @@ function MPCConsole() {
 		mpcConsole.populateWeather(nodeId);
 		
 		// Set up the switches
-		$('.switchForm').ajaxForm({
-			url : '/solaruser/u/instr/add.json',
-			dataType : 'json',
-			traditional : true,
-			success : function(data, status) {
-				mpcConsole.debug('Switch:' +data.result.parameters[0].name +' updated to: ' + data.result.parameters[0].value);
-	
-				mpcConsole.updateSwitch(data.result.parameters[0].name, data.result.parameters[0].value);
-			},
-			error : function(jqXHR, textStatus, errorThrown) {
-				// Not very good but we assume an error means the user isn't logged in, e.g. a parseerror because the login
-				// page directed to isn't json
-				// FIXME this all needs to be readdressed once the authentication is sorted out
-				mpcConsole.debug('Error while submitting switch form, assuming authentication error');
-				
-				if (!$('#solarreg_login').length) {
-					$('body').append('<div id="solarreg_login"><iframe src="/solaruser/login.do" style="border: 0px;" width="400px" height="200px"></iframe></div>');
-					$('#solarreg_login iframe').load(function() {
-						$('#solarreg_login iframe').contents().find('.login-form').ajaxForm({
-							dataType : 'json',
-							traditional : true,
-							success : function(data) {
-								// It seems that as soon as we log in the original post is submitted!
-								mpcConsole.debug('logged in and received json data:');
-								$('#solarreg_login').dialog( "close");
-								
-								mpcConsole.updateSwitch(data.result.parameters[0].name, data.result.parameters[0].value);
-							}
-						});
+		$('.switchForm').submit(function(event) {
+			event.preventDefault();
+			var form = $(this);
+			var login = $('#login-container').dialog({
+				title: 'Please log in', 
+				autoOpen: false,
+				modal: true, 
+				width: 450, 
+				height: 300
+			});
+			var showLogin = function() {
+				if ( login.dialog("isOpen") === false ) {
+					login.dialog('open');
+				}
+			};
+			var hideLogin = function() {
+				if ( login.dialog("isOpen") === true ) {
+					login.dialog('close');
+				}
+			};
+			var submit = function() {
+				if ( SNAPI.ajaxCredentials === undefined ) {
+					showLogin();
+				} else {
+					hideLogin();
+					SNAPI.requestJSON('/solaruser/api/v1/sec/instr/add', 'POST', form.formSerialize()).done(function(data) {
+						if ( data.success !== true ) {
+							mpcConsole.debug('Unexpected error setting swtich: ' +data);
+							alert('Unexpected error setting switch. Please try again later.');
+							return;
+						}
+						mpcConsole.debug('Switch:' +data.data.parameters[0].name +' updated to: ' + data.data.parameters[0].value);
+						mpcConsole.updateSwitch(data.data.parameters[0].name, data.data.parameters[0].value);
+					}).fail(function(xhr, status, reason) {
+						if ( xhr.status === 401 ) {
+							alert("Bad credentials, please try again.");
+							showLogin();
+						} else {
+							mpcConsole.debug('Error setting swtich: ' +status +'; ' +reason);
+							alert("Unknown error setting switch: " +reason);
+						}
 					});
 				}
-				$('#solarreg_login').dialog({title: 'Please log in', modal: true, width: 450, height: 300});
-			}
+			};
+			
+			$('#credentials').submit(function(event) {
+				event.preventDefault();
+				SNAPI.ajaxCredentials = getCredentials();
+				submit();
+			});
+			
+			submit();
 		});
 		
 		// Populate the graph

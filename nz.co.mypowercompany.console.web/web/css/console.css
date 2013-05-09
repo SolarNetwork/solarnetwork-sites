@@ -26,6 +26,10 @@ p {
 	padding-top:10px;
 }
 
+.ui-support {
+	display: none;
+}
+
 .menu {
 	height: 45px;
 	padding: 0px 179px;
