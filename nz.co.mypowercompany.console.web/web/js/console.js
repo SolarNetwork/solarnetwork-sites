@@ -120,7 +120,7 @@ function MPCConsole() {
 						mpcConsole.debug('Switch:' +data.data.parameters[0].name +' updated to: ' + data.data.parameters[0].value);
 						mpcConsole.updateSwitch(data.data.parameters[0].name, data.data.parameters[0].value);
 					}).fail(function(xhr, status, reason) {
-						if ( xhr.status === 401 ) {
+						if ( xhr.status === 401 || xhr.status === 403 ) {
 							alert("Bad credentials, please try again.");
 							showLogin();
 						} else {
