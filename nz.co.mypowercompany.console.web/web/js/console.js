@@ -44,11 +44,9 @@ function MPCConsole() {
 	
 	this.startRefreshTimer = function(nodeId) {
 		var self = this;
-		setInterval(
-				function() {
-					//FIXME: self.populateConsole(nodeId);
-				}, 
-				60000);
+		setInterval(function() {
+					self.populateConsole(nodeId);
+		}, 60000);
 	};
 
 	/**
@@ -110,8 +108,13 @@ function MPCConsole() {
 					hideLogin();
 					SNAPI.requestJSON('/solaruser/api/v1/sec/instr/add', 'POST', form.formSerialize()).done(function(data) {
 						if ( data.success !== true ) {
-							mpcConsole.debug('Unexpected error setting swtich: ' +data);
-							alert('Unexpected error setting switch. Please try again later.');
+							if ( data.message === "ACCESS_DENIED" ) {
+								alert("Bad credentials, please try again.");
+								showLogin();
+							} else {
+								mpcConsole.debug('Unexpected error setting swtich: ' +data);
+								alert('Unexpected error setting switch. Please try again later.');
+							}
 							return;
 						}
 						mpcConsole.debug('Switch:' +data.data.parameters[0].name +' updated to: ' + data.data.parameters[0].value);
