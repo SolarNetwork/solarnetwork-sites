@@ -24,7 +24,7 @@ var SNAPI = {};
 SNAPI.generateAuthorizationHeaderValue = function(params) {
 	var msg = 
 		(params.method === undefined ? 'GET' : params.method.toUpperCase()) + '\n\n'
-		+(params.data === undefined ? '' : 'application/x-www-form-urlencoded; charset=UTF-8') + '\n'
+		+(params.contentType === undefined ? '' : params.contentType) + '\n'
 		+params.date +'\n'
 		+params.path;
 	var hash = CryptoJS.HmacSHA1(msg, params.secret);
@@ -116,13 +116,16 @@ SNAPI.authURLPath = function(url, data) {
  * @param {String} url the web service URL to invoke
  * @param {Function} callback the function to call on success
  */
-SNAPI.requestJSON = function(url, method, data) {
-	method = (method === undefined ? 'GET' : method);
+SNAPI.requestJSON = function(url, method, data, contentType) {
+	method = (method === undefined ? 'GET' : method.toUpperCase());
+	var cType = (method === 'POST' && contentType === undefined 
+			? 'application/x-www-form-urlencoded; charset=UTF-8' : contentType);
 	var ajax = $.ajax({
 		type: method,
 		url: url,
 		dataType: 'json',
 		data: data,
+		contentType: cType,
 		beforeSend: function(xhr) {
 			// get a date, which we must include as a header as well as include in the 
 			// generated authorization hash
@@ -138,7 +141,8 @@ SNAPI.requestJSON = function(url, method, data) {
 				path: path,
 				token: SNAPI.ajaxCredentials.token,
 				secret: SNAPI.ajaxCredentials.secret,
-				data: data
+				data: data,
+				contentType: cType
 			});
 			
 			// set the headers on our request
