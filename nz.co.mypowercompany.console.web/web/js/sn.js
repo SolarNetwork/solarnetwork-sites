@@ -109,12 +109,16 @@ SNAPI.authURLPath = function(url, data) {
  * headers to the request.
  * 
  * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
- * header values needed to invoke the web service, the invoke it and call the provided
- * callback function on success. The callback function is passed to the jQuery 
- * <code>done()</code> function, so accepts the same parameters as that function.</p> 
+ * header values needed to invoke the web service. It returns a jQuery AJAX object,
+ * so you can call <code>.done()</code> or <code>.fail()</code> on that to handle
+ * the response.</p> 
  * 
  * @param {String} url the web service URL to invoke
- * @param {Function} callback the function to call on success
+ * @param {String} method the HTTP method to use; e.g. GET or POST
+ * @param {String} data the HTTP data to send, e.g. for POST
+ * @param {String} contentType the HTTP content type; defaults to 
+                               <code>application/x-www-form-urlencoded; charset=UTF-8</code>
+ * @return {Object} jQuery AJAX object
  */
 SNAPI.requestJSON = function(url, method, data, contentType) {
 	method = (method === undefined ? 'GET' : method.toUpperCase());
@@ -151,9 +155,4 @@ SNAPI.requestJSON = function(url, method, data, contentType) {
 		}
 	});
 	return ajax;
-	/*
-	.done(callback).fail(function(xhr, status, reason) {
-		alert(reason + ': ' +status +' (' +xhr.status +')');
-	});
-	*/
 };
