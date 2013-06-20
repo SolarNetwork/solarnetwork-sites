@@ -240,7 +240,10 @@ function stackWattHourChart(rawData, containerSelector) {
 	
 	function adjustAxisXAggregate() {
 		// Add daily aggregate labels, centered within associated band at noon
-		var aggTicks = ticks.filter(function(d) { return d.getHours() === 12; });
+		var firstDay = (dailyAggregateWh.length > 0 ? dailyAggregateWh[0].date.getTime() : 0);
+		var aggTicks = ticks.filter(function(d) { 
+			return (d.getHours() === 12 && d.getTime() > firstDay); 
+		});
 		var aggLabels = aggGroup.selectAll("text").data(aggTicks);
 		
 		aggLabels.transition().duration(sn.config.defaultTransitionMs)
