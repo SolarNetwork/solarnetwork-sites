@@ -1,56 +1,89 @@
 body {
 	font-family: 'Helvetica Neue',sans-serif;
+	margin: 8px;
+}
+
+h1, h2, h3 {
+    color: inherit;
+    font-family: inherit;
+    font-weight: bold;
+    text-rendering: optimizelegibility;
 }
 
 h1 {
-	font-size: 13pt;
+	font-size: 18px;
+	line-height: 18px;
+	margin-top: 4px;
+	margin-bottom: 4px;
 }
 
 h2 {
-	font-size: 12pt;
+	font-size: 18px;
+	line-height: 18px;
 	text-align: left;
 	font-weight: normal;
 	margin-left: 20px;
 }
 
 h3 {
-	font-size: 10pt;
+	font-size: 12px;
+	line-height: 18px;
 	margin-top: 0;
-	margin-bottom: 4pt;
+	margin-bottom: 4px;
+	margin-right: 8px;
+	float: left;
 }
 
-#logo {
-	position: absolute;
-	top: 0;
-	right: 0;
-	width: 160px;
-	height: 50px;
+a {
+	color: inherit;
+}
+
+h3:after {
+	content: ': ';
+}
+
+.clickable {
+	cursor: pointer;
 }
 
 #right-margin {
 	position: absolute;
-	top: 80px;
+	top: 18px;
 	right: 20px;
-	width: 140px;
+	width: 120px;
 	height: auto;
-	font-size: 10pt;
+	font-size: 12px;
+	line-height: 18px;
+	padding: 8px 0 8px 14px;
+	
+	background-color: #fcfcfc;
+	border-radius: 8px;
+	-moz-box-shadow:    inset 2px 1px 4px #ccc;
+	-webkit-box-shadow: inset 2px 1px 4px #ccc;
+	box-shadow:         inset 2px 1px 4px #ccc;
 }
 
 #right-margin > div:first-child {
 	/*border-top: 1px solid rgb(32,32,32);*/
-	margin-bottom: 12pt;
+	margin-bottom: 8px;
 }
 
 #readings > div {
-	margin-bottom: 2pt;
+	margin-bottom: 2px;
 }
 
 #readings span.unit {
 	color: #666;
 }
 
-#source-labels {
-	padding-top: 2pt;
+#source-labels a:visited {
+	color: inherit;
+}
+
+#source-labels table {
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin-left: -4px;
 }
 
 #source-labels td.swatch {
@@ -61,6 +94,7 @@ h3 {
 
 #source-labels td.desc {
 	font-size: 10px;
+	line-height: 10px;
 	margin: 2px;
 }
 

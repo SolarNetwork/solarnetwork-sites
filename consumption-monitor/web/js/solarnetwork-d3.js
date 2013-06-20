@@ -1,0 +1,500 @@
+/**
+ * @namespace the SolarNetwork namespace
+ */
+var sn = {
+	config : {
+		debug : false,
+		host : 'data.solarnetwork.net',
+		path : '/solarquery'
+	},
+	
+	colors : {
+		steelblue: ['#356287', '#4682b4', '#6B9BC3', '#89AFCF', '#A1BFD9', '#B5CDE1', '#DAE6F0'],
+		triplets : [
+			'#3182bd', '#6baed6', '#9ecae1', 
+			'#e6550d', '#fd8d3c', '#fdae6b', 
+			'#31a354', '#74c476', '#a1d99b', 
+			'#756bb1', '#9e9ac8', '#bcbddc', 
+			'#843c39', '#ad494a', '#d6616b', 
+			'#8c6d31', '#bd9e39', '#e7ba52', 
+			'#7b4173', '#a55194', '#ce6dbd'
+			]
+	},
+	
+	// parse URL parameters into sn.env
+	// support passing nodeId and other values as URL parameter, e.g. ?nodeId=11
+	env : (function() {
+			var env = {};
+			if ( window !== undefined && window.location.search !== undefined ) {
+				var match = window.location.search.match(/\w+=[^&]+/g);
+				var i;
+				var keyValue;
+				if ( match !== null ) {
+					for ( i = 0; i < match.length; i++ ) {
+						keyValue = match[i].split('=', 2);
+						env[keyValue[0]] = keyValue[1];
+					}
+				}
+			}
+			return env;
+		})(),
+		
+	setDefaultEnv : function(defaults) {
+		var prop = undefined;
+		for ( prop in defaults ) {
+			if ( sn.env[prop] === undefined ) {
+				sn.env[prop] = defaults[prop];
+			}
+		}
+	},
+
+	runtime : {},
+	
+	dateTimeFormat : d3.time.format("%Y-%m-%d %H:%M"),
+	
+	dateFormat : d3.time.format("%Y-%m-%d"),
+	
+	// fmt(string, args...): helper to be able to use placeholders even on iOS, where console.log doesn't support them
+	fmt : function() {
+		var formatted = arguments[0];
+		for (var i = 1; i < arguments.length; i++) {
+			var regexp = new RegExp('\\{'+(i-1)+'\\}', 'gi');
+			formatted = formatted.replace(regexp, arguments[i]);
+		}
+		return formatted;
+	},
+	
+	log : function() {
+		if ( sn.config.debug === true && console !== undefined ) {
+			console.log(sn.fmt.apply(this, arguments));
+		}
+	},
+	
+	nodeUrlHelper : function(nodeId) {
+		var helper = {
+			nodeId : function() { return nodeId; },
+			
+			reportableInterval : function(types) {
+				var t = (Array.isArray(types) && types.length > 0 ? types : ['Power']);
+				var url = 'http://' +sn.config.host +sn.config.path +'/reportableInterval.json?nodeId=' +nodeId;
+				t.forEach(function(el) {
+					url += '&types=' +encodeURIComponent(el);
+				});
+				return url;
+			},
+			
+			availableSources : function(types, startDate, endDate) {
+				var t = (Array.isArray(types) && types.length > 0 ? types : ['Power']);
+				var url = 'http://' +sn.config.host +sn.config.path +'/availableSources.json?nodeId=' +nodeId;
+				t.forEach(function(el) {
+					url += '&types=' +encodeURIComponent(el);
+				});
+				if ( startDate !== undefined ) {
+					url += '&start=' +encodeURIComponent(sn.dateFormat(startDate));
+				}
+				if ( endDate !== undefined ) {
+					url += '&end=' +encodeURIComponent(sn.dateFormat(endDate));
+				}
+				return url;
+			},
+			
+			dateTimeQuery : function(type, startDate, endDate, agg) {
+				var dataURL = 'http://' +sn.config.host +sn.config.path +'/' +type.toLowerCase() +'Data.json?nodeId=' +nodeId +'&startDate='
+					+encodeURIComponent(sn.dateTimeFormat(startDate))
+					+'&endDate='
+					+encodeURIComponent(sn.dateTimeFormat(endDate));
+				var aggNum = Number(agg);
+				if ( !isNaN(agg) ) {
+					dataURL += '&precision=' +aggNum.toFixed(0);
+				} else if ( typeof agg === 'string' && agg.length > 0 ) {
+					dataURL += '&aggregate=' + encodeURIComponent(agg);
+				}
+				return dataURL;
+			},
+			
+			mostRecentQuery : function(type) {
+				return ('http://' +sn.config.host +sn.config.path +'/' +type.toLowerCase() +'Data.json?nodeId=' +nodeId +'&mostRecent=true');
+			},
+			
+			nodeDashboard : function(source) {
+				return ('http://' +sn.config.host +'/solarviz/node-dashboard.do?nodeId=' +nodeId
+					 +(source === undefined ? '' : '&consumptionSourceId='+source));
+			}
+		};
+		
+		return helper;
+	},
+	
+	counter : function() {
+		var c = 0;
+		var obj = function() {
+			return c;
+		};
+		obj.incrementAndGet = function() {
+			c++;
+			return c;
+		};
+		return obj;
+	},
+	
+	/**
+	 * Return an array of colors for a set of unique keys, where the returned
+	 * array also contains associative properties for all key values to thier
+	 * corresponding color value.
+	 * 
+	 * <p>This is designed so the set of keys always map to the same color, 
+	 * even across charts where not all sources may be present.</p>
+	 */
+	colorMap : function(fillColors, keys) {
+		var colorRange = d3.scale.ordinal().range(fillColors);
+		var colorData = keys.map(function(el, i) { return {source:el, color:colorRange(i)}; });
+		
+		// also provide a mapping of sources to corresponding colors
+		var i, len;
+		for ( i = 0, len = colorData.length; i < len; i++ ) {
+			colorData[colorData[i].source] = colorData[i].color;
+		}
+		
+		return colorData;
+	}
+};
+
+/**
+ Take SolarNetwork raw JSON data result and return a d3-friendly normalized array of data.
+ The 'sources' parameter can be either undefined or an empty Array, which will be populated
+ with the list of found sourceId values from the raw JSON data. 
+ 
+ rawData sample format:
+ [
+	{
+		"localDate" : "2011-12-02",
+		"localTime" : "12:00",
+		"sourceId" : "Main",
+		"wattHours" : 470.0,
+		"watts" : 592
+  	},
+  	{
+		"localDate" : "2011-12-02",
+		"localTime" : "12:00",
+		"sourceId" : "Secondary",
+		"wattHours" : 312.0,
+		"watts" : 123
+  	}
+
+  ]
+  	
+  Returned data sample format:
+  
+  [
+		{
+			date       : Date(2011-12-02 12:00),
+			Main       : { watts: 592, wattHours: 470 },
+			Secondary  : { watts: 123, wattHours: 312 },
+			_aggregate : { wattHoursTotal: 782 }
+		}
+  ]
+
+ */
+sn.powerPerSourceArray = function(rawData, sources) {
+	var filteredData = {};
+	var sourceMap = (sources === undefined ? undefined : {});
+	if ( !Array.isArray(rawData) ) {
+		return filteredData;
+	}
+	var i, len;
+	var el;
+	for ( i = 0, len = rawData.length; i < len; i++ ) {
+		el = rawData[i];
+		var dateStr = el.localDate +' ' +el.localTime;
+		var d = filteredData[dateStr];
+		if ( d === undefined ) {
+			d = {date:sn.dateTimeFormat.parse(dateStr)};
+			filteredData[dateStr] = d;
+		}
+		
+		// if there is no data for the allotted sample, watts === -1, so don't treat
+		// that sample as a valid source ID
+		var sourceName = el.sourceId;
+		if ( sourceName === undefined || sourceName === '' ) {
+			// default to Main if source not provided
+			sourceName = 'Main';
+		}
+		if ( el.watts !== -1 && sourceName !== 'date' && sourceName.charAt(0) !== '_' ) {
+			if ( sourceMap !== undefined && sourceMap[sourceName] === undefined ) {
+				sources.push(sourceName);
+				sourceMap[sourceName] = 1;
+			}
+			d[sourceName] = {watts:el.watts, wattHours:el.wattHours};
+			if ( el.wattHours > 0 ) {
+				if ( d['_aggregate'] === undefined ) {
+					d['_aggregate'] = {wattHoursTotal: el.wattHours};
+				} else {
+					d['_aggregate'].wattHoursTotal += el.wattHours;
+				}
+			}
+		}
+	}
+	
+	if ( sources !== undefined ) {
+		// sort sources
+		sources.sort();
+	}
+	
+	var prop = undefined;
+	var a = [];
+	for ( prop in filteredData ) {
+		a.push(filteredData[prop]);
+	}
+	return a.sort(function(left,right) {
+		var a = left.date.getTime();
+		var b = right.date.getTime(); 
+		return (a < b ? -1 : a > b ? 1 : 0);
+	});
+};
+
+/**
+ * Call the reportableInterval and availableSources web services
+ * and post an snAvailableDataRange event with the associated data.
+ * 
+ * <p>The event will contain a 'data' object property with the following
+ * properties:</p>
+ * 
+ * <dl>
+ *   <dt>data.reportableInterval</dt>
+ *   <dd>The reportable interval for the given dataTypes. This tells you the
+ *   earliest and latest dates data is available for.</dd>
+ * 
+ *   <dt>data.availableSources</dt>
+ *   <dd>A sorted array of available source IDs for the reportable interval. 
+ *   This tells you all the possible sources available in the data set.</dd>
+ * </dl>
+ * 
+ * @param {sn.urlHelper} a URL helper instance
+ * @param {Array} array of string data types, e.g. 'Power' or 'Consumption'
+ */
+sn.availableDataRange = function(urlHelper, dataTypes) {
+	d3.json(urlHelper.reportableInterval(dataTypes), function(repInterval) {
+		if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
+			sn.log('No data available for node {0}', sn.runtime.urlHelper.nodeId());
+		}
+		
+		d3.json(sn.runtime.urlHelper.availableSources([sn.env.dataType], sn.dateTimeFormat.parse(repInterval.data.startDate), sn.dateTimeFormat.parse(repInterval.data.endDate)), function(sourceList) {
+			if ( sourceList === undefined || Array.isArray(sourceList) !== true ) {
+				sn.log('No sources available for node {0}', sn.runtime.urlHelper.nodeId());
+				return;
+			}
+			sourceList.sort();
+			var evt = document.createEvent('Event');
+			evt.initEvent('snAvailableDataRange', true, true);
+			
+			// turn start/end date strings into actual Date objects
+			var intervalObj = repInterval.data;
+			if ( intervalObj.startDate !== undefined ) {
+				intervalObj.sDate = sn.dateTimeFormat.parse(intervalObj.startDate);
+			}
+			if ( intervalObj.endDate !== undefined ) {
+				intervalObj.eDate = sn.dateTimeFormat.parse(intervalObj.endDate);
+			}
+			
+			evt.data = {
+				reportableInterval: intervalObj,
+				availableSources: sourceList
+			};
+			document.dispatchEvent(evt);
+		});
+	});
+};
+
+sn.colorDataLegendTable = function(containerSelector, colorData, clickHandler, labelRenderer) {
+	// add labels based on available sources
+	var labelTableRows = d3.select(containerSelector).append('table').append('tbody')
+			.selectAll('tr').data(colorData).enter().append('tr');
+			
+	if ( clickHandler ) {
+		// attach the event handler for 'click', and add the 'clickable' class
+		// so can be styled appropriately (e.g. cursor: pointer)
+		labelTableRows.on('click', clickHandler).classed('clickable', true);
+	}
+	
+	if ( labelRenderer === undefined ) {
+		// default way to render labels is just a text node
+		labelRenderer = function(s) {
+			s.text(Object);
+		};
+	}	
+	labelTableRows.selectAll('td.swatch')
+			.data(function(d) { return [d.color]; })
+		.enter().append('td')
+				.attr('class', 'swatch')
+				.style('background-color', function(d) { return d; });
+			
+	labelTableRows.selectAll('td.desc')
+			.data(function(d) { return [d.source]; })
+		.enter().append('td')
+			.attr('class', 'desc')
+			.call(labelRenderer);
+};
+
+/**
+ * A configuration utility object.
+ * 
+ * @class
+ * @constructor
+ * @param {Object} initialMap the initial properties to store (optional)
+ * @returns {sn.Configuration}
+ */
+sn.Configuration = function(initialMap) {
+	this.map = {};
+	if ( initialMap !== undefined ) {
+		(function() {
+			var prop = undefined;
+			for ( prop in initialMap ) {
+				map[prop] = initialMap[prop];
+			}
+		})();
+	}
+};
+sn.Configuration.prototype = {
+	/**
+	 * Test if a key is enabled, via the {@link #toggle} function.
+	 * 
+	 * @param {String} key the key to test
+	 * @returns {Boolean} <em>true</em> if the key is enabled
+	 */
+	enabled : function(key) {
+		if ( key === undefined ) {
+			return false;
+		}
+		return (this.map[key] !== undefined);
+	},
+
+	/**
+	 * Set or toggle the enabled status of a given key.
+	 * 
+	 * <p>If the <em>enabled</em> parameter is not passed, then the enabled
+	 * status will be toggled to its opposite value.</p>
+	 * 
+	 * @param {String} key they key to set
+	 * @param {Boolean} enabled the optional enabled value to set
+	 * @returns {sn.Configuration} this object to allow method chaining
+	 */
+	toggle : function(key, enabled) {
+		var value = enabled;
+		if ( key === undefined ) {
+			return this;
+		}
+		if ( value === undefined ) {
+			// in 1-argument mode, toggle current value
+			value = (this.map[key] === undefined);
+		}
+		if ( value === true ) {
+			// enable key
+			this.map[key] = true;
+		} else {
+			// disable key (via delete)
+			delete this.map[key];
+		}
+		return this;
+	}
+};
+
+/**
+ * Utility object for generating "layer" data returned from the
+ * {@link sn.powerPerSourceArray} function, suitable for using with 
+ * stacked charts.
+ * 
+ * <p>The returned object is a function, and calling the function causes 
+ * a new layer data set to be calculated from the associated data array.
+ * The layer data set is a 2D array, the first dimension representing 
+ * individual layers and the second dimension the datum values for the
+ * associated layer. The datum values are objects with <strong>x</strong>,
+ * <strong>y</strong>, and <strong>y0</strong> (the stack offset value).</p>
+ * 
+ * <p>The returned array also has some properties defined on it:</p>
+ * 
+ * <dl>
+ * <dt>domainX</dt><dd>A 2-element array with the minimum and maximum dates of the 
+ * data set. This can be passed to the <code>d3.domain()</code> function for the 
+ * <strong>x</strong> domain.</dd>
+ * <dt>maxY</dt><dd>The maximum overall <strong>y</strong> coordinate value, across
+ * all layers. This can be passed as the maximum value to the <code>d3.domain()</code>
+ * function for the <strong>y</strong> domain.</dd>
+ * </dl>
+ * 
+ * <p>A {@link sn.Configuration} object can be used to toggle different layers on or 
+ * off in the generated data, by rendering all <strong>y</strong> coordinate values as
+ * <strong>0</strong> for disabled layers. This allows the data to transition nicely
+ * when toggling layer visibility.</p>
+ * 
+ * @param keyValueSet {Array}     array of all possible key values, so that a stable
+ *                                set of layer data can be generated
+ * @param valueProperty {String}  the name of the property that contains the values to
+ *                                use for the y-axis domain
+ */
+sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
+	var sources = keyValueSet;
+	var excludeSources = undefined;
+	var stack = d3.layout.stack();
+	var dataArray = undefined;
+	
+	function stackedLayerData() {
+		var layers = stack(sources.map(function(source) {
+				var array = dataArray.map(function(d) {
+						return {
+							x: d.date, 
+							y: (excludeSources.enabled(source) 
+								? 0 : d[source] !== undefined ? +d[source][valueProperty] : 0),
+						};
+					});
+				array.source = source;
+				return array;
+			}));
+		layers.domainX = [layers[0][0].x, layers[0][layers[0].length - 1].x];
+		layers.maxY = d3.max(layers[layers.length - 1], function(d) { return d.y0 + d.y; });
+		return layers;
+	}
+	
+	/**
+	 * Get or set the data associated with this generator.
+	 * 
+	 * @param {Array} data the array of data
+	 * @return when used as a getter, the data array, otherwise this object
+	 *         to allow method chaining
+	 */
+	stackedLayerData.data = function(data) {
+		if ( data === undefined ) {
+			return dataArray;
+		}
+		dataArray = data;
+		return stackedLayerData;
+	};
+	
+	/**
+	 * Set the d3 stack offset method.
+	 * @param value {String} the offset method, e.g. <code>wiggle</code>
+	 * @return this object
+	 */
+	stackedLayerData.offset = function(value) {
+		stack.offset(value);
+		return stackedLayerData;
+	};
+	
+	/**
+	 * Get or set a layer visibility configuration object.
+	 * 
+	 * @param excludeConfiguration {sn.Configuration} a configuration object, where the enabled status
+	 *                                                of key values cause that layer to generate with
+	 *                                                <strong>y</strong> values all set to <strong>0</strong>
+	 * @return when used as a getter, the current configuration object, otherwise this object
+	 *         to allow method chaining
+	 */
+	stackedLayerData.excludeSources = function(excludeConfiguration) {
+		if ( excludeConfiguration === undefined ) {
+			return excludeSources;
+		}
+		excludeSources = excludeConfiguration;
+		return stackedLayerData;
+	};
+	
+	return stackedLayerData;
+};

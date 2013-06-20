@@ -1,248 +1,26 @@
-var sn = {
-	colors : {
-		steelblue: ['#356287', '#4682b4', '#6B9BC3', '#89AFCF', '#A1BFD9', '#B5CDE1', '#DAE6F0'],
-		triplets: (function() {
-			var baseColors = ['#356287', '#007236', '#a3620a', '#9e0b0f', '#603913', '#aba000'];
-			//var baseColors = ['#2e82cc', '#f0d400', '#35b3ac', '#f1264e', '#36d120', '#c42db6'];
-			//var baseColors = ['#00af7b', '#00af7b', '#ffd900', '#009acb', '#000000', '#c98286'];
-			var result = [];
-			var i, j;
-			var color;
-			for ( i = 0; i < baseColors.length; i++ ) {
-				result.push(baseColors[i]);
-				color = d3.rgb(baseColors[i]);
-				for ( j = 0; j < 2; j++ ) {
-					color = color.brighter();
-					result.push(color.toString());
-				}
-			}
-			return result;
-		})()
-	},
-	env : {
-		host : 'data.solarnetwork.net',
-		path : '/solarquery',
-		nodeId : 37,
-		dataType : 'Consumption',
-		dayPrecision : 10,
-		numHours : 24,
-		numDays : 7,
-		wiggle : 'true'
-	},
-	runtime : {},
-	
-	dateTimeFormat : d3.time.format("%Y-%m-%d %H:%M"),
-	
-	dateFormat : d3.time.format("%Y-%m-%d"),
-	
-	// fmt(string, args...): helper to be able to use placeholders even on iOS, where console.log doesn't support them
-	fmt : function() {
-		var formatted = arguments[0];
-		for (var i = 1; i < arguments.length; i++) {
-			var regexp = new RegExp('\\{'+(i-1)+'\\}', 'gi');
-			formatted = formatted.replace(regexp, arguments[i]);
-		}
-		return formatted;
-	},
-	
-	log : function() {
-		if ( console !== undefined ) {
-			console.log(sn.fmt.apply(this, arguments));
-		}
-	},
-	
-	urlHelper : function(nodeId) {
-		var helper = {
-			nodeId : function() { return nodeId; },
-			
-			reportableInterval : function(types) {
-				var t = (Array.isArray(types) && types.length > 0 ? types : ['Power']);
-				var url = 'http://' +sn.env.host +sn.env.path +'/reportableInterval.json?nodeId=' +nodeId;
-				t.forEach(function(el) {
-					url += '&types=' +encodeURIComponent(el);
-				});
-				return url;
-			},
-			
-			availableSources : function(types, startDate, endDate) {
-				var t = (Array.isArray(types) && types.length > 0 ? types : ['Power']);
-				var url = 'http://' +sn.env.host +sn.env.path +'/availableSources.json?nodeId=' +nodeId;
-				t.forEach(function(el) {
-					url += '&types=' +encodeURIComponent(el);
-				});
-				if ( startDate !== undefined ) {
-					url += '&start=' +encodeURIComponent(sn.dateFormat(startDate));
-				}
-				if ( endDate !== undefined ) {
-					url += '&end=' +encodeURIComponent(sn.dateFormat(endDate));
-				}
-				return url;
-			},
-			
-			dateTimeQuery : function(type, startDate, endDate, agg) {
-				var dataURL = 'http://' +sn.env.host +sn.env.path +'/' +type.toLowerCase() +'Data.json?nodeId=' +nodeId +'&startDate='
-					+encodeURIComponent(sn.dateTimeFormat(startDate))
-					+'&endDate='
-					+encodeURIComponent(sn.dateTimeFormat(endDate));
-				var aggNum = Number(agg);
-				if ( !isNaN(agg) ) {
-					dataURL += '&precision=' +aggNum.toFixed(0);
-				} else if ( typeof agg === 'string' && agg.length > 0 ) {
-					dataURL += '&aggregate=' + encodeURIComponent(agg);
-				}
-				return dataURL;
-			},
-			
-			mostRecentQuery : function(type) {
-				return ('http://' +sn.env.host +sn.env.path +'/' +type.toLowerCase() +'Data.json?nodeId=' +nodeId +'&mostRecent=true');
-			}
-		};
-		
-		return helper;
-	},
-	
-	counter : function() {
-		var c = 0;
-		var obj = function() {
-			return c;
-		};
-		obj.incrementAndGet = function() {
-			c++;
-			return c;
-		};
-		return obj;
-	},
-	
-	colorData : function(fillColors, sources) {
-		var colorRange = d3.scale.ordinal().range(fillColors);
-		var colorData = sources.map(function(el, i) { return {source:el, color:colorRange(i)}; })
-		
-		// also provide a mapping of sources to corresponding colors
-		var i, len;
-		for ( i = 0, len = colorData.length; i < len; i++ ) {
-			colorData[colorData[i].source] = colorData[i].color;
-		}
-		
-		return colorData;
-	}
-	
-};
-
-sn.globalCounter = sn.counter();
-
-/**
- Take SolarNetwork raw JSON data result and return a d3-friendly normalized array of data.
- The 'sources' parameter should be an empty Array, which will be populated with the list
- of found sourceId values from the raw JSON data. 
- 
- rawData sample format:
- [
-	{
-		"batteryVolts" : -1.0,
-		"cost" : -1.0,
-		"currency" : "",
-		"localDate" : "2011-12-02",
-		"localTime" : "12:00",
-		"sourceId" : "Main",
-		"wattHours" : 470.0,
-		"watts" : 592
-  	}
-  ]
-  	
-  Returned data sample format:
-  
-  [
-		{
-			date       : Date(2011-12-02 12:00),
-			Main       : { watts: 592, wattHours: 470 },
-			Secondary  : { watts: 123, wattHours: 312 },
-			_aggregate : { wattHoursTotal: 782 }
-		}
-  ]
-
- */
-sn.powerDataArray = function(rawData, sources) {
-	var filteredData = {};
-	rawData.forEach(function(el, i) {
-		var dateStr = el.localDate +' ' +el.localTime;
-		var d = filteredData[dateStr];
-		if ( d === undefined ) {
-			d = {date:sn.dateTimeFormat.parse(dateStr)};
-			filteredData[dateStr] = d;
-		}
-		
-		// if there is no data for the allotted sample, watts === -1, so don't treat
-		// that sample as a valid source ID
-		var sourceName = el.sourceId;
-		if ( sourceName === undefined || sourceName === '' ) {
-			// default to Main if 
-			sourceName = 'Main';
-		}
-		if ( el.watts !== -1 && sourceName !== 'date' && sourceName.charAt(0) !== '_' ) {
-			if ( sources.indexOf(sourceName) < 0 ) {
-				sources.push(sourceName);
-			}
-			d[sourceName] = {watts:el.watts, wattHours:el.wattHours};
-			if ( el.wattHours > 0 ) {
-				if ( d['_aggregate'] === undefined ) {
-					d['_aggregate'] = { wattHoursTotal: el.wattHours };
-				} else {
-					d['_aggregate'].wattHoursTotal += el.wattHours;
-				}
-			}
-		}
-	});
-	
-	// sort sources
-	sources.sort();
-	
-	var prop = undefined;
-	var a = [];
-	for ( prop in filteredData ) {
-		a.push(filteredData[prop]);
-	}
-	return a.sort(function(left,right) {
-		var a = left.date.getTime();
-		var b = right.date.getTime(); 
-		return (a < b ? -1 : a > b ? 1 : 0);
-	});
-};
+sn.setDefaultEnv({
+	nodeId : 11,
+	dataType : 'Consumption',
+	minutePrecision : 15,
+	numHours : 24,
+	numDays : 7,
+	wiggle : 'true',
+	linkOld : 'false'
+});
+sn.config.debug = true;
+sn.config.defaultTransitionMs = 600;
+sn.config.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
+sn.runtime.globalCounter = sn.counter();
+sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
+sn.runtime.excludeSources = new sn.Configuration();
 
 function stackWattHourChart(rawData, containerSelector) {
 
 	var sources = [];
 	
 	// turn filteredData object into proper array, sorted by date
-	var dataArray = sn.powerDataArray(rawData, sources);
-	sn.log('Available sources: {0}', sources);
-	
-	/* create daily aggregated data, in form
-	   [
-	     { 
-	       date: Date(2011-12-02 12:00),
-	       wattHoursTotal: 12312
-	     },
-	     ...
-	   ]
-	*/
-	  
-	var dailyData = [];
-	var currDayData = undefined;
-	dataArray.forEach(function(e) {
-		if ( (currDayData === undefined // at the start of data, only start tallying if before noon, as labels on noon
-				&& e.date.getHours() < 13) 
-			|| (currDayData !== undefined && 
-				(e.date.getDate() !== currDayData.date.getDate()
-				|| e.date.getMonth() !== currDayData.date.getMonth() 
-				|| e.date.getYear() !== currDayData.date.getYear())) ) {
-			currDayData = {date:new Date(e.date.getTime()), wattHoursTotal:0};
-			currDayData.date.setHours(0,0,0,0);
-			dailyData.push(currDayData);
-		}
-		if ( currDayData !== undefined && e['_aggregate'] !== undefined ) {
-			currDayData.wattHoursTotal += e['_aggregate'].wattHoursTotal;
-		}
-	});
+	var dataArray = sn.powerPerSourceArray(rawData, sources);
+	sn.log('Available bar sources: {0}', sources);
 	
 	var p = [20, 0, 30, 50],
 		w = 890 - p[1] - p[3],
@@ -262,31 +40,79 @@ function stackWattHourChart(rawData, containerSelector) {
 	}
 
 	var rule = svgRoot.append("g")
-		.attr('class', 'rule')
+		.attr("class", "rule")
 		.attr("transform", "translate(0," + (h + p[0]) + ")");
 		
-	// Transpose the data into wattHour layers by source.
-	var layers = d3.layout.stack()(sources.map(function(source) {
-		return dataArray.map(function(d) {
-		  return {
-		  	x: d.date, 
-		  	y: (d[source] !== undefined ? +d[source].wattHours : 0),
-		  	source: source // add this so can consistently map color later
-		  };
-		});
-	}));
+	// Transpose the data into 2D array of watt layers by source, e.g.
+	// [ [{x:0,y:0},{x:1,y:1}...], ... ]
+	var layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'wattHours')
+		.excludeSources(sn.runtime.excludeSources)
+		.data(dataArray);
+	var layers = layerGenerator();
 	
-	var barWidth = (layers[0].length == 0 ? 0 : (w / (layers[0].length)));
+	// Create daily aggregated data, in form [ { date: Date(2011-12-02 12:00), wattHoursTotal: 12312 }, ... ]
+	function calculateDailyAggregateWh() {
+		var results = [];
+		var i, j, len;
+		var startIndex = undefined;
+		var endIndex = undefined;
+		var currDayData = undefined;
+		var obj = undefined;
+
+		// calculate first x index for midnight
+		for ( i = 0, len = layers[0].length; i < len; i++ ) {
+			if ( layers[0][i].x.getHours() === 0 ) {
+				startIndex = i;
+				break;
+			}
+		}
+		
+		endIndex = layers[0].length;
+		
+		// sum up values for each day
+		if ( startIndex !== undefined && endIndex !== undefined && startIndex < endIndex) {
+			len = layers.length;
+			for ( i = startIndex; i < endIndex; i++ ) {
+				for ( j = 0; j < len; j++ ) {
+					if ( sn.runtime.excludeSources[layers[j].source] !== undefined ) {
+						continue;
+					}
+					obj = layers[j][i];
+					if ( currDayData === undefined || obj.x.getDate() !== currDayData.date.getDate()
+							|| obj.x.getMonth() !== currDayData.date.getMonth() 
+							|| obj.x.getYear() !== currDayData.date.getYear() ) {
+						currDayData = {date:new Date(obj.x.getTime()), wattHoursTotal:0};
+						currDayData.date.setHours(0,0,0,0);
+						results.push(currDayData);
+					}
+					currDayData.wattHoursTotal += obj.y;
+				}
+			}
+		}
+		return results;
+	}
 	
-	// Compute the x-domain (by date) and y-domain (by top).
-	// Add extra x domain to accommodate bar width, otherwise last bar is cut off right edge of chart
-	var xMax = layers[0][layers[0].length - 1].x;
-	xMax = new Date(xMax.getTime() + (xMax.getTime() - layers[0][layers[0].length - 2].x.getTime()));
-	x.domain([layers[0][0].x, xMax]);
-	y.domain([0, d3.max(layers[layers.length - 1], function(d) { return d.y0 + d.y; })]);
+	var dailyAggregateWh = calculateDailyAggregateWh();
+
+	function computeDomainX() {
+		// Add extra x domain to accommodate bar width, otherwise last bar is cut off right edge of chart
+		var xMax = layers.domainX[1];
+		xMax = new Date(xMax.getTime() + (xMax.getTime() - layers[0][layers[0].length - 2].x.getTime()));
+		x.domain([layers.domainX[0], xMax]);
+	}
+
+	function computeDomainY() {
+		y.domain([0, layers.maxY]).nice();
+		sn.log("Wh max set to {0}", layers.maxY);
+	}
+	
+	var barWidth = (layers[0].length === 0 ? 0 : (w / (layers[0].length)));
+	
+	computeDomainX();
+	computeDomainY();
 
 	// setup clip path, so axis is crisp
-	var clipId = 'Clip' +sn.globalCounter.incrementAndGet();
+	var clipId = 'Clip' +sn.runtime.globalCounter.incrementAndGet();
 	svgRoot.append('clipPath')
 			.attr('id', clipId)
 		.append('rect')
@@ -335,54 +161,6 @@ function stackWattHourChart(rawData, containerSelector) {
 	  .attr("dy", ".71em")
 	  .text(x.tickFormat(ticks.length));
 
-	// Add daily aggregate labels, centered within associated band at noon
-	var aggTicks = ticks.filter(function(d) { return d.getHours() === 12; });
-	aggGroup.selectAll("text")
-	  .data(aggTicks)
-	.enter().append("text")
-	  .attr("x", function(d) { return x(d) + (barWidth / 2); })
-	  .attr("y", 22)
-	  .attr("dy", ".71em")
-	  .text(function(d, i) { return Number(dailyData[i].wattHoursTotal / displayFactor).toFixed(2) });
-	
-	// Add y-axis rules groups, translated to y tick positions
-	rule = rule.selectAll("g")
-	  .data(y.ticks(5))
-	.enter().append("g")
-	  .attr("transform", function(d) { return "translate(0," + -y(d) + ")"; });
-	
-	// Add y-axis rules
-	rule.append("line")
-	  .attr("x2", w + p[3])
-	  .attr('x1', p[3]);
-	
-	// Add y-axis labels
-	rule.append("text")
-	  .attr("x", p[3])
-	  .attr('dx', -5)
-	  .attr("text-anchor", "end")
-	  .attr("dy", ".35em")
-	  .text(displayFormat);
-
-	// Add a group for each source.
-	var source = svg.selectAll("g.source")
-			.data(layers)
-		.enter().append("g")
-			.attr("class", "source")
-			.attr('clip-path', 'url(#' +clipId +')') // clip makes bottom nice and crisp
-			.style("fill", function(d, i) { 
-				return sn.runtime.colorData[d[i].source]; 
-			});
-	
-	// Add a rect for each date.
-	source.selectAll("rect")
-			.data(Object)
-		.enter().append("rect")
-			.attr("x", function(d) { return x(d.x); })
-			.attr("y", function(d) { return -y(d.y0) - y(d.y); })
-			.attr("height", function(d) { return y(d.y); })
-			.attr("width", barWidth);
-	
 	// x axis line, on top of chart
 	svgRoot.append("g")
 		.attr('class', 'crisp axis')
@@ -395,7 +173,94 @@ function stackWattHourChart(rawData, containerSelector) {
 		.attr('x2', w + p[3])
 		.attr('y1', function(d) { return y(d); })
 		.attr('y2', function(d) { return y(d); });
+	
+	// Add a group for each source.
+	var source = svg.selectAll("g.source")
+			.data(layers)
+		.enter().append("g")
+			.attr("class", "source")
+			.attr('clip-path', 'url(#' +clipId +')') // clip makes bottom nice and crisp
+			.style("fill", function(d) { return sn.runtime.colorData[d.source]; });
+	
+	// Add a rect for each date.
+	source.selectAll("rect")
+			.data(Object)
+		.enter().append("rect")
+			.attr("x", function(d) { return x(d.x); })
+			.attr("y", 1e-6)
+			.attr("height", 1e-6)
+			.attr("width", barWidth);
+	
+	var axisXAggPosFn = function(d) { return x(d) + (barWidth / 2); };
+	var axisXAggTextFn = function(d, i) { 
+		return (i < dailyAggregateWh.length 
+			? Number(dailyAggregateWh[i].wattHoursTotal / displayFactor).toFixed(2)
+			: 0);
+	};
+	
+	adjustAxisY();
+	adjustAxisXAggregate();
+	redraw();
+	
+	function redraw() {
+		source.selectAll("rect")
+				.data(Object)
+			.transition().duration(sn.config.defaultTransitionMs)
+				.attr("y", function(d) { return -y(d.y0) - y(d.y); })
+				.attr("height", function(d) { return y(d.y); });
+	}
+	
+	function adjustAxisY() {
+		var axisLines = svgRoot.select("g.rule").selectAll("g").data(y.ticks(5));
+		axisLines.transition().duration(sn.config.defaultTransitionMs)
+				.attr("transform", function(d) { return "translate(0," + -y(d) + ")"; })
+			.select("text")
+				.text(displayFormat);
 		
+	  	axisLines.exit().transition().duration(sn.config.defaultTransitionMs)
+	  			.style("opacity", 1e-6)
+	  			.remove();
+	  			
+		var entered = axisLines.enter()
+				.append("g")
+				.style("opacity", 1e-6)
+	  			.attr("transform", function(d) { return "translate(0," + -y(d) + ")"; });
+	  	entered.append("line")
+				.attr("x2", w + p[3])
+				.attr('x1', p[3]);
+		entered.append("text")
+				.attr("x", p[3])
+				.attr('dx', -5)
+				.attr("text-anchor", "end")
+				.attr("dy", ".35em")
+				.text(displayFormat);
+		entered.transition().duration(sn.config.defaultTransitionMs)
+				.style("opacity", 1);
+	}
+	
+	function adjustAxisXAggregate() {
+		// Add daily aggregate labels, centered within associated band at noon
+		var aggTicks = ticks.filter(function(d) { return d.getHours() === 12; });
+		var aggLabels = aggGroup.selectAll("text").data(aggTicks);
+		
+		aggLabels.transition().duration(sn.config.defaultTransitionMs)
+				.attr("x", axisXAggPosFn)
+				.text(axisXAggTextFn);
+			
+		aggLabels.exit().transition().duration(sn.config.defaultTransitionMs)
+	  			.style("opacity", 1e-6)
+	  			.remove();
+
+		aggLabels.enter().append("text")
+				.attr("x", axisXAggPosFn)
+				.attr("y", 22)
+				.attr("dy", ".71em")
+				.style("opacity", 1e-6)
+				.text(axisXAggTextFn)
+			.transition().duration(sn.config.defaultTransitionMs)
+				.style("opacity", 1);
+	}
+	
 	return {
 		sources: sources,
 		
@@ -403,197 +268,67 @@ function stackWattHourChart(rawData, containerSelector) {
 			return x.domain();
 		},
 		
-		update : function(updateData) {
-			var updatedDataArray = sn.powerDataArray(updateData, []);
-			var updatedLayers = d3.layout.stack()(sources.map(function(source) {
-				return updatedDataArray.map(function(d) {
-				  return {x: d.date, y: (d[source] !== undefined ? +d[source].wattHours : 0)};
-				});
-			}));
-			
-			// recompute layers
-			layers.forEach(function(el, i) {
-				el.shift();
-				updatedLayers[i].forEach(function(n) { el.push(n); });
-			});
-			
-			// Compute the x-domain (by date) and y-domain (by top).
-			x.domain(layers[0].map(function(d) { return d.x; }));
-
-			var source = svg.selectAll("g.source")
-					.data(layers);
-			var rect = source.selectAll('rect')
-					.data(Object, function(d) { return d.x; });
-			rect.enter().insert('rect')
-				  .attr("x", function(d) { return x(d.x); })
-				  .attr("y", function(d) { return -y(d.y0) - y(d.y); })
-				  .attr("height", function(d) { return y(d.y); })
-				  .attr("width", x.rangeBand())
-				.transition()
-					.duration(1000)
-					.attr("x", function(d, i) { return x(d.x); });
-					
-			rect.transition()
-				.duration(1000)
-				.attr("x", function(d, i) { return x(d.x); });
-				
-			rect.exit().transition()
-				.duration(1000)
-				.attr("x", function(d, i) { return x(d.x, i-1); })
-				.remove();
-
+		regenerate: function() {
+			layers = layerGenerator();
+			dailyAggregateWh = calculateDailyAggregateWh();
+			computeDomainY();
+			svg.selectAll("g.source").data(layers);
+			redraw();
+			adjustAxisY();
+			adjustAxisXAggregate();
 		}
 	};
 }
 
 function areaWattChart(rawData, containerSelector) {
 	var sources = [];
-	
-	// turn filteredData object into proper array, sorted by date
-	var dataArray = sn.powerDataArray(rawData, sources);
-	sn.log('Available sources: {0}', sources);
-	
 	var p = [20, 0, 30, 50], // top, right, bottom, left padding
 		w = 818 - p[1] - p[3],
 		h = 300 - p[0] - p[2],
     	x = d3.time.scale().range([0, w]),
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
-
-	//var tx = function(d) { return "translate(" + x(d) + ",0)"; };
-		
 	var svgRoot = undefined,
-		svg = undefined,
-		layers = undefined,
-		rule = undefined;
-		
-	var strokeFn = function(d, i) { return d3.rgb(sn.runtime.colorData[d[i].source]).darker(); };
+		svg = undefined;
 
-	var redrawData = function() {
-		// Add an area for each date.
-		var area = svg.selectAll("path.area")
-			.data(layers);
-			
-		area.enter().append("path")
-			.attr("class", "area")
-			.attr('clip-path', 'url(#' +clipId +')')
-			.style("fill", function(d, i) { return sn.runtime.colorData[d[i].source]; })
-			.attr("d", d3.svg.area()
-				.interpolate("monotone")
-				.x(function(d) { return x(d.x); })
-				.y0(function(d) { return y(d.y0); })
-				.y1(function(d) { return y(d.y0 + d.y); }));
-		
-		area.style("fill", function(d, i) { return sn.runtime.colorData[d[i].source]; })
-			.attr("d", d3.svg.area()
-				.interpolate("monotone")
-				.x(function(d) { return x(d.x); })
-				.y0(function(d) { return y(d.y0); })
-				.y1(function(d) { return y(d.y0 + d.y); }));
-	
-		area.exit().remove();
-		
-		// Add a line for each date.
-		var outline = svg.selectAll("path.line")
-			.data(layers);
-		
-		outline.enter().append("path")
-				.attr("class", "line")
-				.attr('clip-path', 'url(#' +clipId +')')
-				.style("stroke", strokeFn)
-				.style("stroke-width", "0.66px")
-				.attr("d", d3.svg.line()
-					.interpolate("monotone")
-					.x(function(d) { return x(d.x); })
-					.y(function(d) { return y(d.y0 + d.y); }));
-					
-		outline
-			.style("stroke", strokeFn)
-			.style("stroke-width", "0.66px")
-			.attr("d", d3.svg.line()
-				.interpolate("monotone")
-				.x(function(d) { return x(d.x); })
-				.y(function(d) { return y(d.y0 + d.y); }))
-				
-		outline.exit().remove();
-	};
+	// turn filteredData object into proper array, sorted by date
+	var dataArray = sn.powerPerSourceArray(rawData, sources);
+	sn.log('Available area sources: {0}', sources);
 
-	var redraw = function() {
-		if ( d3.event && d3.event.transform ) {
-			d3.event.transform(x);
-		}
-		var numTicks = 12;
-		var fx = x.tickFormat(numTicks);
-		var ticks = x.ticks(numTicks);
+	// Transpose the data into watt layers by source, e.g.
+	// [ [{x:0,y:0},{x:1,y:1}...], ... ]
+	var layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'watts')
+		.excludeSources(sn.runtime.excludeSources)
+		.offset(sn.env.wiggle === 'true' ? 'wiggle' : 'zero')
+		.data(dataArray);
+	var layers = layerGenerator();
+		
+	function fillColorFn(d) { return sn.runtime.colorData[d.source]; }
+	function strokeColorFn(d) { return d3.rgb(sn.runtime.colorData[d.source]).darker(); }
 
-		// Generate x-ticks
-		var gx = svg.selectAll("g.data text")
-				.data(ticks)
-				.attr("x", x)
-				.text(fx);
-		var gxe = gx.enter()
-			.append("text")
-				.attr("x", x)
-				.attr("y", h + 6)
-				.attr("dy", ".71em")
-				.text(fx);
-		gx.exit().remove();
+	var areaPathGenerator = d3.svg.area()
+		.interpolate("monotone")
+		.x(function(d) { return x(d.x); })
+		.y0(function(d) { return y(d.y0); })
+		.y1(function(d) { return y(d.y0 + d.y); });
 		
-		// only draw y-axis if not in wiggle mode
-		if ( sn.env.wiggle !== 'true' ) {	
-			// setup display units in kW if domain range > 1000
-			var displayUnits = 'W';
-			var displayFactor = 1;
-			var displayFormat = (function() {
-				var fmt = ',d';
-				var domain = y.domain();
-				if ( domain[domain.length - 1] >= 1000 ) {
-					displayUnits = 'kW';
-					displayFactor = 1000;
-					fmt = ',g';
-				}
-				var fn = d3.format(fmt);
-				return function(d) { return fn(d / displayFactor); };
-			})();
-	
-			// Set y-axis  unit label
-			svgRoot.selectAll('text.unit')
-				.data([1])
-					.text(displayUnits)
-				.enter().append('text')
-					.attr('class', 'unit label')
-					.attr('transform', 'rotate(-90) translate(' +(Math.round(-h/2)-p[0]) +',12)')
-					.text(displayUnits);
-					
-	
-			// Regenerate y-ticks…
-			var gy = rule.selectAll("g.y")
-				.data(y.ticks(5))
-				.attr("transform", function(d) { return "translate(0," + y(d) + ")"; });
-		
-			gy.select("text")
-				.text(displayFormat);
-		
-			var gye = gy.enter().insert("svg:g")
-				.attr("class", "y")
-				.attr("transform", function(d) { return "translate(0," + y(d) + ")"; });
-		
-			gye.append("svg:line")
-				  .attr("x2", w + p[3])
-				  .attr('x1', p[3]);
-		
-			gye.append("svg:text")
-				  .attr("x", p[3])
-				  .attr('dx', -5)
-				  .attr("text-anchor", "end")
-				  .attr("dy", ".35em")
-				  .text(displayFormat);
-			  
-			gy.exit().remove();
-		}
-		
-		redrawData();
-	};
+	var linePathGenerator = d3.svg.line()
+		.interpolate("monotone")
+		.x(function(d) { return x(d.x); })
+		.y(function(d) { return y(d.y0 + d.y); });
+
+	function computeDomainX() {
+		x.domain(layers.domainX);
+	}
+
+	function computeDomainY() {
+		y.domain([0, layers.maxY]).nice();
+		sn.log("W max set to {0}", layers.maxY);
+	}
+
+	// Compute the x-domain (by date) and y-domain (by top).
+	computeDomainX();
+	computeDomainY();
 
 	svgRoot = d3.select(containerSelector).select('svg');
 	if ( svgRoot.empty() ) {
@@ -607,12 +342,12 @@ function areaWattChart(rawData, containerSelector) {
 		svgRoot.selectAll('*').remove();
 	}
 
-	rule = svgRoot.append("g")
-		.attr('class', 'crisp rule')
+	svgRoot.append("g")
+		.attr("class", "crisp rule")
 		.attr("transform", "translate(0," + p[0] + ")");
 	
 	// setup clip path, so axis is crisp
-	var clipId = 'Clip' +sn.globalCounter.incrementAndGet();
+	var clipId = 'Clip' +sn.runtime.globalCounter.incrementAndGet();
 	svgRoot.append('svg:clipPath')
 			.attr('id', clipId)
 		.append('svg:rect')
@@ -625,27 +360,105 @@ function areaWattChart(rawData, containerSelector) {
 		.attr('class', 'data')
 		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 	
-	// Transpose the data into wattHour layers by source.
-	var stackLayoutFn = d3.layout.stack();
-	if ( sn.env.wiggle === 'true' ) {
-		stackLayoutFn = stackLayoutFn.offset('wiggle');
+	// Set y-axis  unit label
+	// setup display units in kW if domain range > 1000
+	var displayUnits = 'W';
+	var displayFactor = 1;
+	var displayFormat = (function() {
+		var fmt = ',d';
+		var domain = y.domain();
+		if ( domain[domain.length - 1] >= 1000 ) {
+			displayUnits = 'kW';
+			displayFactor = 1000;
+			fmt = ',g';
+		}
+		var fn = d3.format(fmt);
+		return function(d) { return fn(d / displayFactor); };
+	})();
+
+	svgRoot.selectAll('text.unit')
+		.data([1])
+			.text(displayUnits)
+		.enter().append('text')
+			.attr('class', 'unit label')
+			.attr('transform', 'rotate(-90) translate(' +(Math.round(-h/2)-p[0]) +',12)')
+			.text(displayUnits);
+
+	function redraw() {	
+		// draw data areas
+		var area = svg.selectAll("path.area").data(layers);
+		
+		area.transition().duration(sn.config.defaultTransitionMs).delay(200)
+				.attr("d", areaPathGenerator);
+		
+		area.enter().append("path")
+				.attr("class", "area")
+				.attr('clip-path', 'url(#' +clipId +')')
+				.style("fill", fillColorFn)
+				.attr("d", areaPathGenerator);
+		
+		area.exit().remove();
 	}
-	layers = stackLayoutFn(sources.map(function(source) {
-		return dataArray.map(function(d) {
-		  return {
-		  	x: d.date, 
-		  	y: (d[source] !== undefined ? +d[source].watts : 0),
-		  	source: source
-		  };
-		});
-	}));
-	
-	// Compute the x-domain (by date) and y-domain (by top).
-	x.domain([layers[0][0].x, layers[0][layers[0].length - 1].x]);
-	y.domain([0, d3.max(layers[layers.length - 1], function(d) { return d.y0 + d.y; })]);
+
+	function axisYTransform(d) { return "translate(0," + y(d) + ")"; };
+
+	function adjustAxisX() {
+		if ( d3.event && d3.event.transform ) {
+			d3.event.transform(x);
+		}
+		var numTicks = 12;
+		var fx = x.tickFormat(numTicks);
+		var ticks = x.ticks(numTicks);
+
+		// Generate x-ticks
+		var gx = svg.selectAll("g.data text")
+			.data(ticks)
+				.attr("x", x)
+				.text(fx);
+		gx.enter().append("text")
+				.attr("x", x)
+				.attr("y", h + 6)
+				.attr("dy", ".71em")
+				.text(fx);
+		gx.exit().remove();
+	}
+
+	function adjustAxisY() {
+		if ( sn.env.wiggle === 'true' ) {
+			return;
+		}
+
+		var axisLines = svgRoot.select("g.rule").selectAll("g").data(y.ticks(5));
+		axisLines.transition().duration(sn.config.defaultTransitionMs)
+				.attr("transform", axisYTransform)
+			.select("text")
+				.text(displayFormat);
+		
+	  	axisLines.exit().transition().duration(sn.config.defaultTransitionMs)
+	  			.style("opacity", 1e-6)
+	  			.remove();
+	  			
+		var entered = axisLines.enter()
+				.append("g")
+				.style("opacity", 1e-6)
+	  			.attr("transform", axisYTransform);
+	  	entered.append("line")
+				.attr("x2", w + p[3])
+				.attr('x1', p[3]);
+		entered.append("text")
+				.attr("x", p[3])
+				.attr('dx', -5)
+				.attr("text-anchor", "end")
+				.attr("dy", ".35em")
+				.text(displayFormat);
+		entered.transition().duration(sn.config.defaultTransitionMs)
+				.style("opacity", 1);
+	}
 
 	redraw();
-	
+	adjustAxisX();
+	adjustAxisY();
+		
 	return {
 		sources: sources,
 		
@@ -653,188 +466,103 @@ function areaWattChart(rawData, containerSelector) {
 			return x.domain();
 		},
 		
-		update : function(updateData) {
-			// TODO: transition by translation + append / remove data, so appears to slide
-			var updatedDataArray = sn.powerDataArray(updateData, []);
-			
-			var updatedLayers = d3.layout.stack()(sources.map(function(source) {
-				return updatedDataArray.map(function(d) {
-				  return {x: d.date, y: (d[source] !== undefined ? +d[source].watts : 0)};
-				});
-			}));
-			
-			layers.forEach(function(el, i) {
-				el.shift();
-				updatedLayers[i].forEach(function(n) { el.push(n); });
-			});
-			
-			x.domain([layers[0][0].x, layers[0][layers[0].length - 1].x]);
-			
-			var area = d3.select(containerSelector).selectAll('path.area')
-					.data(layers);
-			area.transition()
-				.duration(1000)
-				.attr("d", d3.svg.area()
-					.interpolate("monotone")
-					.x(function(d) { return x(d.x); })
-					.y0(function(d) { return y(d.y0); })
-					.y1(function(d) { return y(d.y0 + d.y); }));
-
-			var line = d3.select(containerSelector).selectAll('path.line')
-					.data(layers);
-			line.transition()
-				.duration(1000)
-				.attr("d", d3.svg.line()
-					.interpolate("monotone")
-					.x(function(d) { return x(d.x); })
-					.y(function(d) { return y(d.y0 + d.y); }));
-					
-					
-			var label = svg.selectAll("text")
-			  .data(x.ticks(12));
-			  
-			label.enter().insert("text")
-			  .attr("x", x)
-			  .attr("y", h + 6)
-			  .attr("dy", ".71em")
-			  .text(x.tickFormat(12))
-			  .transition()
-			  	.duration(1000)
-			  	.attr('x', x);
-			  	
-			label.transition()
-				.duration(1000)
-				.attr('x', x);
-				
-			label.exit().transition()
-				.duration(1000)
-				.attr('x', function(d, i) { return x(d, i - 1); });
-
+		regenerate: function() {
+			layers = layerGenerator();
+			computeDomainY();
+			svg.selectAll("g.source").data(layers);
+			redraw();
+			adjustAxisY();
 		}
 	};
 }
 
-// parse URL parameters into sn.env
-// support passing nodeId and other values as URL parameter, e.g. ?nodeId=11
-(function() {
-	if ( window.location.search !== undefined ) {
-		var match = window.location.search.match(/\w+=[^&]+/g);
-		var i;
-		var keyValue;
-		if ( match !== null ) {
-			for ( i = 0; i < match.length; i++ ) {
-				keyValue = match[i].split('=', 2);
-				sn.env[keyValue[0]] = keyValue[1];
-			}
+function setup(repInterval, sourceList) {
+	var endDate = repInterval.eDate;
+	var whChart = undefined;
+
+	// create static mapping of source -> color, so consistent across charts
+	sn.runtime.colorData = sn.colorMap(sn.colors.triplets, sourceList);
+	
+	// create copy of color data for reverse ordering so labels vertically match chart layers
+	sn.colorDataLegendTable('#source-labels', sn.runtime.colorData.slice().reverse(), legendClickHandler, function(s) {
+		if ( sn.env.linkOld === 'true' ) {
+			s.html(function(d) {
+				return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
+			});
+		} else {
+			s.text(Object);
 		}
-	}
-})();
+	});
 
-var urlHelper = sn.urlHelper(sn.env.nodeId);
+	var e = new Date(endDate.getTime());
+	e.setMinutes(0,0,0); // truncate to nearest hour
 
-sn.env.fillColors = sn.colors.triplets;
+	// Wh chart, agg by hour
+	var whRange = [
+			new Date(e.getTime() - ((sn.env.numDays * 24 - 1) * 60 * 60 * 1000)),
+			new Date(e.getTime())
+		];
+	d3.json(sn.runtime.urlHelper.dateTimeQuery(sn.env.dataType, whRange[0], whRange[1], 'Hour'), function(json) {
+		whChart = stackWattHourChart(json.data, '#week-watthour');
+	});
 
-function setup(json, sourceList) {
-	sn.runtime.colorData = sn.colorData(sn.env.fillColors, sourceList);
-	
-	var endDate = sn.dateTimeFormat.parse(json.data.endDate);
-	var weekChart = undefined;
-	(function() {
-		var e = new Date(endDate.getTime());
-		e.setMinutes(0,0,0); // truncate to nearest hour
-		//e = new Date(endDate.getTime() + (60 * 60 * 1000)); // add 1 hour to include current hour
-
-		// for testing updates, force time back a bit
-		//e = new Date(e.getTime() - (4 * 60 * 60 * 1000));
-		
-		// daily Wh chart, agg by hour
-		var weekRange = [
-				new Date(e.getTime() - ((sn.env.numDays * 24 - 1) * 60 * 60 * 1000)),
-				new Date(e.getTime())
-			];
-		d3.json(urlHelper.dateTimeQuery(sn.env.dataType, weekRange[0], weekRange[1], 'Hour'), function(json) {
-			weekChart = stackWattHourChart(json.data, '#week-watthour');
-			
-			var colorData = sn.runtime.colorData.slice().reverse();
-			
-			// add labels based on sources
-			var labelTableRows = d3.select('#source-labels').append('table').append('tbody')
-					.selectAll('tr').data(colorData).enter().append('tr');
-				
-			labelTableRows.selectAll('td.swatch')
-					.data(function(d) { return [d.color]; })
-				.enter().append('td')
-						.attr('class', 'swatch')
-						.style('background-color', function(d) { return d; });
-					
-			labelTableRows.selectAll('td.desc')
-					.data(function(d) { return [d.source]; })
-				.enter().append('td')
-						.attr('class', 'desc')
-						.text(function(d) { return d; });
-		});
-	})();
-
-	// 1 day W chart agg by 10 minute intervals
-	
-	var daySetup = function(endDate) {
+	// Watt stacked area chart
+	function wattChartSetup(endDate) {
 		var e = new Date(endDate.getTime());
 		// truncate end date to nearest day precision minutes
-		e.setMinutes((endDate.getMinutes() - (endDate.getMinutes() % sn.env.dayPrecision)), 0, 0);
+		e.setMinutes((endDate.getMinutes() - (endDate.getMinutes() % sn.env.minutePrecision)), 0, 0);
 		
-		var dayRange = [
+		var wRange = [
 			new Date(e.getTime() - (sn.env.numHours * 60 * 60 * 1000)), 
 			new Date(e.getTime())
 			];
-		d3.json(urlHelper.dateTimeQuery(sn.env.dataType, dayRange[0], dayRange[1], sn.env.dayPrecision), function(json) {
-			areaWattChart(json.data, '#day-watt');
-			
-			/* Needs work: incremental update
-			dayRange[0] = new Date(dayRange[1].getTime() - (sn.env.dayPrecision * 60 * 1000));
-			setInterval(function() {
-				dayRange[0] = new Date(dayRange[0].getTime() + (sn.env.dayPrecision * 60 * 1000));
-				dayRange[1] = new Date(dayRange[1].getTime() + (sn.env.dayPrecision * 60 * 1000));
-				d3.json(urlHelper.dateTimeQuery('power', dayRange[0], dayRange[1], sn.env.dayPrecision), function(json) {
-					chart.update(json.data);
-				});
-			}, 2000);
-			*/
+		d3.json(sn.runtime.urlHelper.dateTimeQuery(sn.env.dataType, wRange[0], wRange[1], sn.env.minutePrecision), function(json) {
+			wChart = areaWattChart(json.data, '#day-watt');
 		});
-	};
+	}
 	
-	
-	// for testing updates, force time back a bit
-	//daySetup(new Date(endDate.getTime() - (4 * 60 * 60 * 1000)));
-	daySetup(endDate);
+	wattChartSetup(endDate);
 	setInterval(function() {
-		d3.json(urlHelper.reportableInterval([sn.env.dataType]), function(json) {
+		d3.json(sn.runtime.urlHelper.reportableInterval([sn.env.dataType]), function(json) {
 			if ( json.data === undefined || json.data.endDate === undefined ) {
-				sn.log('No data available for node {0}', urlHelper.nodeId());
+				sn.log('No data available for node {0}', sn.runtime.urlHelper.nodeId());
 				return;
 			}
 			
 			var endDate = sn.dateTimeFormat.parse(json.data.endDate);
-			daySetup(endDate);
-			if ( weekChart !== undefined ) {
-				var xDomain = weekChart.xDomain();
+			wChart = wattChartSetup(endDate);
+			if ( whChart !== undefined ) {
+				var xDomain = whChart.xDomain();
 				var currEndDate = xDomain[xDomain.length - 1];
 				var newEndDate = new Date(endDate.getTime());
 				currEndDate.setMinutes(0,0,0); // truncate to nearest hour
 				newEndDate.setMinutes(0,0,0);
 				if ( newEndDate.getTime() > currEndDate.getTime() ) {
-					d3.json(urlHelper.dateTimeQuery(sn.env.dataType, new Date(newEndDate.getTime() - ((sn.env.numDays * 24 - 1) * 60 * 60 * 1000)), newEndDate, 'Hour'), function(json) {
-						weekChart = stackWattHourChart(json.data, '#week-watthour');
+					d3.json(sn.runtime.urlHelper.dateTimeQuery(sn.env.dataType, new Date(newEndDate.getTime() - ((sn.env.numDays * 24 - 1) * 60 * 60 * 1000)), newEndDate, 'Hour'), function(json) {
+						whChart = stackWattHourChart(json.data, '#week-watthour');
 					});
 				}
 			}
 		});
-	}, sn.env.dayPrecision * 60 * 1000);
+	}, sn.config.wChartRefreshMs);
 	
-	/*
+	function legendClickHandler(d, i) {
+		sn.runtime.excludeSources.toggle(d.source);
+		if ( whChart !== undefined ) {
+			whChart.regenerate();
+		}
+		if ( wChart !== undefined ) {
+			// use a slight delay, otherwise transitions can be jittery
+			setTimeout(function() {
+				wChart.regenerate();
+			}, sn.config.defaultTransitionMs * .8);
+		}
+	}
+
 	function updateReadings() {
-		d3.json(urlHelper.mostRecentQuery(sn.env.dataType), function(json) {
+		d3.json(sn.runtime.urlHelper.mostRecentQuery(sn.env.dataType), function(json) {
 			if ( json.data === undefined ) {
-				sn.log('No data available for node {0}', urlHelper.nodeId());
+				sn.log('No data available for node {0}', sn.runtime.urlHelper.nodeId());
 				return;
 			}
 			var totalPower = d3.sum(json.data, function(d) { return d.watts; });
@@ -846,15 +574,6 @@ function setup(json, sourceList) {
 			var fmt = d3.format(',g');
 			d3.select('#readings div.power')
 				.html(fmt(totalPower) + ' <span class="unit">' +unit +'</span>');
-				
-			var dailyEnergy = d3.sum(json.data, function(d) { return d.wattHourReading; });
-			unit = 'Wh';
-			if ( dailyEnergy >= 1000 ) {
-				unit = 'kWh';
-				dailyEnergy /= 1000;
-			}
-			d3.select('#readings div.energy')
-				.html(fmt(dailyEnergy) + ' <span class="unit">' +unit +'</span>');
 		});
 	}
 	
@@ -863,28 +582,17 @@ function setup(json, sourceList) {
 	setInterval(function() {
 		updateReadings();
 	}, 60 * 1000);
-	*/
 }
 
 function onDocumentReady() {
 	d3.select('#num-days').text(sn.env.numDays);
 	d3.select('#num-hours').text(sn.env.numHours);
-	
-	d3.json(urlHelper.reportableInterval([sn.env.dataType]), function(repInterval) {
-		if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
-			sn.log('No data available for node {0}', urlHelper.nodeId());
-			return;
-		}
-		
-		d3.json(urlHelper.availableSources([sn.env.dataType], sn.dateTimeFormat.parse(repInterval.data.startDate), sn.dateTimeFormat.parse(repInterval.data.endDate)), function(sourceList) {
-			if ( sourceList === undefined || Array.isArray(sourceList) !== true ) {
-				sn.log('No sources available for node {0}', urlHelper.nodeId());
-				return;
-			}
-			sourceList.sort();
-			setup(repInterval, sourceList);
-		});
-	});
+	function handleAvailableDataRange(event) {
+		setup(event.data.reportableInterval, event.data.availableSources);
+		document.removeEventListener('snAvailableDataRange', handleAvailableDataRange, false);
+	}
+	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
+	sn.availableDataRange(sn.runtime.urlHelper, [sn.env.dataType]);
 }
 
 if ( !window.isLoaded ) {
