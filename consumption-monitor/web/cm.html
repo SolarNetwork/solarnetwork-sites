@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=1024" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<!--meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /-->
+	<title>Consumption Monitor</title>
+	<link type="text/css" rel="stylesheet" href="cm.css" />
+	<script type="text/javascript" src="js-lib/d3.min.js"></script>
+	<script type="text/javascript" src="js-lib/d3.layout.min.js"></script>
+	<script type="text/javascript" src="js-lib/d3.time.min.js"></script>
+	<!--script type="text/javascript" src="js-lib/d3.v2.js"></script-->
+	<script type="text/javascript" src="js/cm.js"></script>
+</head>
+<body>
+	<h1>Consumption Monitor</h1>
+	<div>
+		<h2><span id="num-hours"></span> hour power use</h2>
+		<div id="day-watt" class="chart-container"></div>
+	</div>
+	<div>
+		<h2><span id="num-days"></span> day energy consumption</h2>
+		<div id="week-watthour" class="chart-container"></div>
+	</div>
+	<div id="right-margin">
+		<!--div id="readings">
+			<h3>Current readings</h3>
+			<div class="power"></div>
+			<div class="energy"></div>
+		</div-->
+		<div id="source-labels"></div>
+	</div>
+</body>
+</html>
