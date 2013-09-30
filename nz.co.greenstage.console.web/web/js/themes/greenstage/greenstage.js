@@ -1,0 +1,1 @@
+/* Greenstage JavaScript */
