@@ -4,26 +4,38 @@
 	<meta name="viewport" content="width=1024" />
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<!--meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /-->
-	<title>Consumption Monitor</title>
+	<title>Energy Monitor</title>
 	<link type="text/css" rel="stylesheet" href="cm.css" />
-	<script type="text/javascript" src="js-lib/d3.v2.js"></script>
+	<script type="text/javascript" src="js-lib/d3.v3.min.js"></script>
 	<script type="text/javascript" src="js/solarnetwork-d3.js"></script>
 	<script type="text/javascript" src="js/cm.js"></script>
+	<script type="text/javascript">
+		function startApp() {
+			onDocumentReady();
+		}
+		if ( !window.isLoaded ) {
+			window.addEventListener("load", function() {
+				startApp();
+			}, false);
+		} else {
+			startApp();
+		}
+	</script>
 </head>
 <body>
-	<h1>Consumption Monitor</h1>
-	<div>
-		<h2><span id="num-hours"></span> hour power use</h2>
+	<h1>Energy Monitor</h1>
+	<div class="watt-chart">
+		<h2><span id="num-hours"></span> hour power <span class="dataType">use</span> &#x2014; <span class="unit">kW</span></h2>
 		<div id="day-watt" class="chart-container"></div>
 	</div>
-	<div>
-		<h2><span id="num-days"></span> day energy consumption</h2>
+	<div class="watthour-chart">
+		<h2><span id="num-days"></span> day energy <span class="dataType">consumption</span> &#x2014; <span class="unit">kWh</span></h2>
 		<div id="week-watthour" class="chart-container"></div>
 	</div>
 	<div id="right-margin">
-		<div id="readings">
-			<h3>Status</h3>
-			<div class="power"></div>
+		<div class="total-power">
+			<h3 class="dataType">Use</h3>
+			<div><span id="total-power-value">0</span> <span class="unit">kW</span></div>
 		</div>
 		<div id="source-labels"></div>
 	</div>

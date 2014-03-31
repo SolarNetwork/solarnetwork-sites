@@ -2,10 +2,19 @@
  * @namespace the SolarNetwork namespace
  */
 var sn = {
+	version : '1.0.0',
+	
 	config : {
 		debug : false,
 		host : 'data.solarnetwork.net',
-		path : '/solarquery'
+		tls : (function() {
+			return (window !== undefined 
+				&& window.location.protocol !== undefined 
+				&& window.location.protocol.toLowerCase().indexOf('https') === 0 ? true : false);
+		})(),
+		path : '/solarquery',
+		solarUserPath : '/solaruser',
+		secureQuery : false
 	},
 	
 	colors : {
@@ -47,10 +56,19 @@ var sn = {
 			}
 		}
 	},
+	
+	setEnv : function(env) {
+		var prop = undefined;
+		for ( prop in env ) {
+			sn.env[prop] = env[prop];
+		}
+	},
 
 	runtime : {},
 	
 	dateTimeFormat : d3.time.format("%Y-%m-%d %H:%M"),
+
+	dateTimeFormatURL : d3.time.format("%Y-%m-%dT%H:%M"),
 	
 	dateFormat : d3.time.format("%Y-%m-%d"),
 	
@@ -59,7 +77,12 @@ var sn = {
 		var formatted = arguments[0];
 		for (var i = 1; i < arguments.length; i++) {
 			var regexp = new RegExp('\\{'+(i-1)+'\\}', 'gi');
-			formatted = formatted.replace(regexp, arguments[i]);
+			var replaceValue = arguments[i];
+			if ( replaceValue instanceof Date ) {
+				replaceValue = (replaceValue.getHours() === 0 && replaceValue.getMinutes() === 0 
+					? sn.dateFormat(replaceValue) : sn.dateTimeFormat(replaceValue));
+			}
+			formatted = formatted.replace(regexp, replaceValue);
 		}
 		return formatted;
 	},
@@ -71,24 +94,32 @@ var sn = {
 	},
 	
 	nodeUrlHelper : function(nodeId) {
-		var helper = {
+		var hostURL = function() {
+			return ('http' +(sn.config.tls === true ? 's' : '') +'://' +sn.config.host);
+		};
+		var baseURL = function() {
+			return (hostURL() +sn.config.path +'/api/v1/' +(sn.config.secureQuery === true ? 'sec' : 'pub'));
+		};
+		var helper = { 
+			
 			nodeId : function() { return nodeId; },
+			
+			hostURL : hostURL,
+			
+			baseURL : baseURL,
 			
 			reportableInterval : function(types) {
 				var t = (Array.isArray(types) && types.length > 0 ? types : ['Power']);
-				var url = 'http://' +sn.config.host +sn.config.path +'/reportableInterval.json?nodeId=' +nodeId;
+				var url = (baseURL() +'/range/interval?nodeId=' +nodeId);
 				t.forEach(function(el) {
 					url += '&types=' +encodeURIComponent(el);
 				});
 				return url;
 			},
 			
-			availableSources : function(types, startDate, endDate) {
-				var t = (Array.isArray(types) && types.length > 0 ? types : ['Power']);
-				var url = 'http://' +sn.config.host +sn.config.path +'/availableSources.json?nodeId=' +nodeId;
-				t.forEach(function(el) {
-					url += '&types=' +encodeURIComponent(el);
-				});
+			availableSources : function(type, startDate, endDate) {
+				var url = (baseURL() +'/range/sources?nodeId=' +nodeId
+							+ '&type=' +encodeURIComponent(type !== undefined ? type : 'Power'));
 				if ( startDate !== undefined ) {
 					url += '&start=' +encodeURIComponent(sn.dateFormat(startDate));
 				}
@@ -98,11 +129,12 @@ var sn = {
 				return url;
 			},
 			
-			dateTimeQuery : function(type, startDate, endDate, agg) {
-				var dataURL = 'http://' +sn.config.host +sn.config.path +'/' +type.toLowerCase() +'Data.json?nodeId=' +nodeId +'&startDate='
-					+encodeURIComponent(sn.dateTimeFormat(startDate))
-					+'&endDate='
-					+encodeURIComponent(sn.dateTimeFormat(endDate));
+			dateTimeQuery : function(type, startDate, endDate, agg, opts) {
+				var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.offset(endDate, -1) : endDate);
+				var dataURL = (baseURL() +'/datum/query?nodeId=' +nodeId 
+								+'&type=' +encodeURIComponent(type.toLowerCase())
+								+'&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate))
+								+'&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate)));
 				var aggNum = Number(agg);
 				if ( !isNaN(agg) ) {
 					dataURL += '&precision=' +aggNum.toFixed(0);
@@ -113,7 +145,18 @@ var sn = {
 			},
 			
 			mostRecentQuery : function(type) {
-				return ('http://' +sn.config.host +sn.config.path +'/' +type.toLowerCase() +'Data.json?nodeId=' +nodeId +'&mostRecent=true');
+				type = (type === undefined ? 'power' : type.toLowerCase());
+				var url;
+				if ( type === 'weather' ) {
+					url = (baseURL() + '/weather/recent?nodeId=');
+				} else {
+					url = (baseURL() + '/datum/mostRecent?nodeId=');
+				}
+				url += nodeId;
+				if ( type !== 'weather' ) {
+					url += '&type=' + encodeURIComponent(type);
+				}
+				return url;
 			},
 			
 			nodeDashboard : function(source) {
@@ -122,7 +165,35 @@ var sn = {
 			}
 		};
 		
+		// this is a stand-alone function so we correctly capture the 'prop' name in the loop below
+		function setupProxy(prop) {
+			helper[prop] = function() {
+				return sn.env.nodeUrlHelpers[prop].apply(helper, arguments);
+			};
+		}
+		
+		// allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
+		if ( sn.env.nodeUrlHelpers !== undefined ) {
+			var prop = undefined;
+			for ( prop in sn.env.nodeUrlHelpers ) {
+				if ( helper[prop] !== undefined || typeof sn.env.nodeUrlHelpers[prop] !== 'function' ) {
+					continue;
+				}
+				setupProxy(prop);
+			}
+		}
+		
 		return helper;
+	},
+	
+	/**
+	 * Register a node URL helper function for the given name.
+	 */
+	registerNodeUrlHelper : function(name, helper) {
+		if ( sn.env.nodeUrlHelpers === undefined ) {
+			sn.env.nodeUrlHelpers = {};
+		}
+		sn.env.nodeUrlHelpers[name] = helper;
 	},
 	
 	counter : function() {
@@ -152,10 +223,29 @@ var sn = {
 		// also provide a mapping of sources to corresponding colors
 		var i, len;
 		for ( i = 0, len = colorData.length; i < len; i++ ) {
-			colorData[colorData[i].source] = colorData[i].color;
+			// a source value might actually be a number string, which JavaScript will treat 
+			// as an array index so only set non-numbers here
+			var sourceName = colorData[i].source;
+			if ( sourceName === '' ) {
+				// default to Main if source not provided
+				sourceName = 'Main';
+			}
+			if ( isNaN(Number(sourceName)) ) {
+				colorData[sourceName] = colorData[i].color;
+			}
 		}
 		
 		return colorData;
+	},
+	
+	colorFn : function(d, i) {
+		var s = Number(d.source);
+		if ( isNaN(s) ) {
+			return sn.runtime.colorData[d.source];
+		}
+		return sn.runtime.colorData.reduce(function(c, obj) {
+			return (obj.source === d.source ? obj.color : c);
+		}, sn.runtime.colorData[0].color);
 	}
 };
 
@@ -275,30 +365,35 @@ sn.powerPerSourceArray = function(rawData, sources) {
 sn.availableDataRange = function(urlHelper, dataTypes) {
 	d3.json(urlHelper.reportableInterval(dataTypes), function(repInterval) {
 		if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
-			sn.log('No data available for node {0}', sn.runtime.urlHelper.nodeId());
+			sn.log('No data available for node {0}: {1}', sn.runtime.urlHelper.nodeId(), (error ? error : 'unknown reason'));
+			return;
+		}
+
+		// turn start/end date strings into actual Date objects;
+		// NOTE: we use the date strings here, rather than the available *DateMillis values, because the date strings
+		//       are formatted in the node's local time zone, which allows the chart to display the data in OTHER
+		//       time zones as if it were also in the node's local time zone.
+		var intervalObj = repInterval.data;
+		if ( intervalObj.startDate !== undefined ) {
+			intervalObj.sDate = sn.dateTimeFormat.parse(intervalObj.startDate);
+		}
+		if ( intervalObj.endDate !== undefined ) {
+			intervalObj.eDate = sn.dateTimeFormat.parse(intervalObj.endDate);
 		}
 		
-		d3.json(sn.runtime.urlHelper.availableSources([sn.env.dataType], sn.dateTimeFormat.parse(repInterval.data.startDate), sn.dateTimeFormat.parse(repInterval.data.endDate)), function(sourceList) {
-			if ( sourceList === undefined || Array.isArray(sourceList) !== true ) {
+		d3.json(sn.runtime.urlHelper.availableSources(sn.env.dataType, intervalObj.sDate, intervalObj.eDate), function(response) {
+			if ( response.success !== true || Array.isArray(response.data) !== true ) {
 				sn.log('No sources available for node {0}', sn.runtime.urlHelper.nodeId());
 				return;
 			}
-			sourceList.sort();
+			response.data.sort();
 			var evt = document.createEvent('Event');
 			evt.initEvent('snAvailableDataRange', true, true);
 			
-			// turn start/end date strings into actual Date objects
-			var intervalObj = repInterval.data;
-			if ( intervalObj.startDate !== undefined ) {
-				intervalObj.sDate = sn.dateTimeFormat.parse(intervalObj.startDate);
-			}
-			if ( intervalObj.endDate !== undefined ) {
-				intervalObj.eDate = sn.dateTimeFormat.parse(intervalObj.endDate);
-			}
 			
 			evt.data = {
 				reportableInterval: intervalObj,
-				availableSources: sourceList
+				availableSources: response.data
 			};
 			document.dispatchEvent(evt);
 		});
@@ -329,7 +424,7 @@ sn.colorDataLegendTable = function(containerSelector, colorData, clickHandler, l
 				.style('background-color', function(d) { return d; });
 			
 	labelTableRows.selectAll('td.desc')
-			.data(function(d) { return [d.source]; })
+			.data(function(d) { return [(d.source === '' ? 'Main' : d.source)]; })
 		.enter().append('td')
 			.attr('class', 'desc')
 			.call(labelRenderer);
@@ -498,3 +593,12 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	
 	return stackedLayerData;
 };
+
+sn.deg2rad = function(deg) {
+	return deg * Math.PI / 180;
+};
+
+/**
+ * @namespace the SolarNetwork chart namespace.
+ */
+sn.chart = {};
