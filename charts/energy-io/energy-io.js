@@ -2,8 +2,6 @@
  * @require d3 3.0
  * @require queue 1.0
  * @require solarnetwork-d3 0.0.2
- * @require solarnetwork-util-aggcounter 0.0.2
- * @require solarnetwork-chart-gauge 0.0.2
  */
 
 sn.config.debug = true;
