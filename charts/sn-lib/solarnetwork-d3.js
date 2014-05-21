@@ -264,17 +264,32 @@ sn.powerPerSourceArray = function(rawData, sources) {
  *   earliest and latest dates data is available for.</dd>
  * 
  *   <dt>data.availableSources</dt>
- *   <dd>A sorted array of available source IDs for the reportable interval. 
- *   This tells you all the possible sources available in the data set.</dd>
+ *   <dd>A sorted array of available source IDs for the first data type with 
+ *   any sources available for the reportable interval. This tells you all the possible 
+ *   sources available in the data set.</dd>
  *   
- *   <dt>
+ *   <dt>data.availableSourcesMap</dt>
+ *   <dd>An object whose properties are the data types passed on the {@code dataTypes}
+ *   argument, and their associated value the sorted array of available sources for
+ *   that data type over the reportable interval. This tells you all the possible sources
+ *   for every data type, rather than just the first data type.</dd>
  * </dl>
  * 
  * @param {sn.NodeUrlHelper} urlHelper a URL helper instance
  * @param {string[]} dataTypes array of string data types, e.g. 'Power' or 'Consumption'
  */
 sn.availableDataRange = function(urlHelper, dataTypes) {
-	d3.json(urlHelper.reportableInterval(dataTypes), function(repInterval) {
+	var q = queue();
+	q.defer(d3.json, urlHelper.reportableInterval(dataTypes));
+	dataTypes.forEach(function(e) {
+		q.defer(d3.json, urlHelper.availableSources(e));
+	});
+	q.awaitAll(function(error, results) {
+		if ( error ) {
+			sn.log('Error requesting available data range: ' +error);
+			return;
+		}
+		var repInterval = results[0];
 		if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
 			sn.log('No data available for node {0}: {1}', sn.runtime.urlHelper.nodeId(), (error ? error : 'unknown reason'));
 			return;
@@ -291,23 +306,31 @@ sn.availableDataRange = function(urlHelper, dataTypes) {
 		if ( intervalObj.endDate !== undefined ) {
 			intervalObj.eDate = sn.dateTimeFormat.parse(intervalObj.endDate);
 		}
-		
-		d3.json(sn.runtime.urlHelper.availableSources(sn.env.dataType, intervalObj.sDate, intervalObj.eDate), function(response) {
-			if ( response.success !== true || Array.isArray(response.data) !== true ) {
-				sn.log('No sources available for node {0}', sn.runtime.urlHelper.nodeId());
-				return;
+
+		var evt = document.createEvent('Event');
+		evt.initEvent('snAvailableDataRange', true, true);
+		evt.data = {
+				reportableInterval : intervalObj,
+				availableSourcesMap : {} // mapping of data type -> sources
+		};
+
+		// now extract sources, which start at index 1
+		var i = 1, len = results.length;
+		var response;
+		for ( ; i < len; i++ ) {
+			response = results[i];
+			if ( response.success !== true || Array.isArray(response.data) !== true || response.data.length < 1 ) {
+				sn.log('No sources available for node {0} data type {1}', urlHelper.nodeId(), dataTypes[i-1]);
+				continue;
 			}
 			response.data.sort();
-			var evt = document.createEvent('Event');
-			evt.initEvent('snAvailableDataRange', true, true);
-			
-			
-			evt.data = {
-				reportableInterval: intervalObj,
-				availableSources: response.data
-			};
-			document.dispatchEvent(evt);
-		});
+			if ( evt.data.availableSources === undefined ) {
+				// add as "default" set of sources, for the first data type
+				evt.data.availableSources = response.data;
+			}
+			evt.data.availableSourcesMap[dataTypes[i-1]] = response.data;
+		}
+		document.dispatchEvent(evt);
 	});
 };
 
