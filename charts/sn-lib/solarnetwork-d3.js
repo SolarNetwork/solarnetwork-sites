@@ -275,14 +275,27 @@ sn.powerPerSourceArray = function(rawData, sources) {
  *   for every data type, rather than just the first data type.</dd>
  * </dl>
  * 
- * @param {sn.NodeUrlHelper} urlHelper a URL helper instance
+ * A function can be passed for the {@code helper} argument, if different helpers are
+ * needed for different data sets. This might be useful if you'd like to pull Power data
+ * from one node but Consumption from another, for example. It will be called first
+ * without any arguments and should return a {@code sn.nodeUrlHelper} instance to use
+ * for the {@link sn.nodeUrlHelper#reportableInterval()} method. Then, for each data
+ * type passed in {@code dataTypes} the function will be called again with the <em>data
+ * type value</em> and <em>array index</em> as parameters.
+ * 
+ * @param {sn.nodeUrlHelper|function} helper a URL helper instance, or a function that returns one
  * @param {string[]} dataTypes array of string data types, e.g. 'Power' or 'Consumption'
  */
-sn.availableDataRange = function(urlHelper, dataTypes) {
+sn.availableDataRange = function(helper, dataTypes) {
+	var urlHelperFn = helper;
+	if ( urlHelperFn.reportableInterval !== undefined ) {
+		// just turn into a function that returns helper
+		urlHelperFn = function() { return helper; };
+	}
 	var q = queue();
-	q.defer(d3.json, urlHelper.reportableInterval(dataTypes));
-	dataTypes.forEach(function(e) {
-		q.defer(d3.json, urlHelper.availableSources(e));
+	q.defer(d3.json, urlHelperFn().reportableInterval(dataTypes));
+	dataTypes.forEach(function(e, i) {
+		q.defer(d3.json, urlHelperFn(e, i).availableSources(e));
 	});
 	q.awaitAll(function(error, results) {
 		if ( error ) {
@@ -370,9 +383,9 @@ sn.colorDataLegendTable = function(containerSelector, colorData, clickHandler, l
  * @class
  * @constructor
  * @param nodeId {Number} the node ID to use
- * @returns {sn.NodeUrlHelper}
+ * @returns {sn.nodeUrlHelper}
  */
-sn.NodeUrlHelper = function(nodeId) {
+sn.nodeUrlHelper = function(nodeId) {
 	var hostURL = function() {
 		return ('http' +(sn.config.tls === true ? 's' : '') +'://' +sn.config.host);
 	};
@@ -596,14 +609,12 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	/**
 	 * Get or set the data associated with this generator.
 	 * 
-	 * @param {Array} data the array of data
+	 * @param {array} data the array of data
 	 * @return when used as a getter, the data array, otherwise this object
 	 *         to allow method chaining
 	 */
 	stackedLayerData.data = function(data) {
-		if ( data === undefined ) {
-			return dataArray;
-		}
+		if ( !arguments.length ) return dataArray;
 		dataArray = data;
 		return stackedLayerData;
 	};
