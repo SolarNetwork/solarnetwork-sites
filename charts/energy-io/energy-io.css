@@ -144,25 +144,6 @@ a {
 	margin: 2px;
 }
 
-#pcm-progress {
-	width: 80px;
-	margin-top: 16px;
-	margin-right: 12px;
-	margin-bottom: 0;
-	display: none;
-}
-
-#pcm-progress .status {
-	margin: 3px 0;
-	line-height: 20px;
-	color: #333;
-}
-
-#pcm-toggle {
-	margin-top: 6px;
-	width: 320px;
-}
-
 svg {
 	/*background-color: rgb(242,242,242);*/
 }
@@ -213,19 +194,6 @@ svg {
 	stroke: black;
 }
 
-.chart g.rule g:first-child line {
+.chart g.rule line.origin {
 	stroke: black !important;
-}
-
-#total-power-gauge g.pointer {
-	fill: #e85116;
-	stroke: #b64011;
-	stroke-width: 1px;
-}
-
-#total-power-gauge g.label text {
-	text-anchor: middle;
-	font-size: 14px;
-	font-weight: bold;
-	fill: #666;
 }
