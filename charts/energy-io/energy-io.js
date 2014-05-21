@@ -127,12 +127,6 @@ function setup(repInterval, sourceMap) {
 			energyAreaChart.load(combinedData);
 			adjustChartDisplayUnits('.watt-chart', 'W', energyAreaChart.yScale());
 		});
-		/*
-		d3.json(sn.runtime.urlHelper.dateTimeQuery(sn.env.dataType, wRange[0], wRange[1], sn.env.minutePrecision), function(json) {
-			energyAreaChart.load(json.data);
-			adjustChartDisplayUnits('.watt-chart', 'W', energyAreaChart.yScale());
-		});
-		*/
 	}
 	
 	wattChartSetup(endDate);
