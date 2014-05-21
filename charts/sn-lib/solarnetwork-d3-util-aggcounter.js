@@ -126,7 +126,7 @@ sn.util.aggregateCounter = function(configuration) {
 					}
 				}
 			} else {
-				error = true;
+				sn.log('Error requesting aggregate count data: ' +reqError);
 			}
 			
 			// if timer was defined, keep going as if interval set
