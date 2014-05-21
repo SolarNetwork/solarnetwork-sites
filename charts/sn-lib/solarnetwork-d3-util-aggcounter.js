@@ -72,7 +72,6 @@ sn.util.aggregateCounter = function(configuration) {
 			? clock : new Date(config.startingInterval.endDate.getTime() + tDiff));
 		var aggValueBase = aggBase;
 		var aggValueLatest = 0;
-		var error = false;
 
 		sn.log('Calculating total {0} between {1} and {2}', config.aggProperty, sDate, eDate);
 		
@@ -137,7 +136,7 @@ sn.util.aggregateCounter = function(configuration) {
 		}
 
 		var q = queue();
-		var noop = function(callback) { callback(null); }
+		var noop = function(callback) { callback(null); };
 
 		// pull in up to previous month
 		if ( startOfMonth.getTime() > sDate.getTime() && startOfMonth.getTime() < startOfDay.getTime() ) {
