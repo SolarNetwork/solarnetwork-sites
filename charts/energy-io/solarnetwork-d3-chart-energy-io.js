@@ -50,6 +50,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	// our layer data, and generator function
 	var layerGenerator = undefined;
 	var layers = undefined;
+	var minY = 0;
 	
 	var negativeLayerCount = 0;
 	
@@ -66,8 +67,8 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	}
 
 	function computeDomainY() {
-		y.domain([0, layers.maxY]).nice();
-		sn.log("W max set to {0}", layers.maxY);
+		y.domain([minY, layers.maxY]).nice();
+		sn.log("W range set to {0} - {1}", minY, layers.maxY);
 		computeUnitsY();
 	}
 	
@@ -106,6 +107,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'watts')
 			.excludeSources(sn.runtime.excludeSources)
 			.offset(function(data) {
+				minY = 0;
 				var i, j = -1,
 					m = data[0].length,
 					offset,
@@ -117,6 +119,9 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 						offset -= data[i][j][1];
 					}
 					y0[j] = offset;
+					if ( offset < minY ) {
+						minY = offset;
+					}
 				}
 				return y0;
 			}).data(dataArray);
@@ -143,6 +148,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 			.attr("transform", "translate(0," + p[0] + ")");
 	
 		// setup clip path, so axis is crisp
+		/*
 		clipId = 'Clip' +sn.runtime.globalCounter.incrementAndGet();
 		svgRoot.append('svg:clipPath')
 				.attr('id', clipId)
@@ -151,6 +157,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 				.attr('y', -p[0])
 				.attr('width', w)
 				.attr('height', h + p[0]);
+		*/
 
 		svg = svgRoot.append("g")
 			.attr('class', 'data')
@@ -214,9 +221,12 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 				.append("g")
 				.style("opacity", 1e-6)
 	  			.attr("transform", axisYTransform);
-	  	entered.append("line")
+		entered.append("line")
 				.attr("x2", w + p[3])
-				.attr('x1', p[3]);
+				.attr('x1', p[3])
+				.attr('class', function(d) { 
+					return (d === 0 ? 'origin' : 'm');
+					});
 		entered.append("text")
 				.attr("x", p[3] - 10)
 				.text(displayFormat);
