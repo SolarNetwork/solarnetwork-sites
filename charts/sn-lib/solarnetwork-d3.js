@@ -70,7 +70,7 @@ var sn = {
 	
 	dateTimeFormat : d3.time.format("%Y-%m-%d %H:%M"),
 
-	dateTimeFormatURL : d3.time.format("%Y-%m-%dT%H:%M"),
+	dateTimeFormatURL : d3.time.format.utc("%Y-%m-%dT%H:%M"),
 	
 	dateFormat : d3.time.format("%Y-%m-%d"),
 	
