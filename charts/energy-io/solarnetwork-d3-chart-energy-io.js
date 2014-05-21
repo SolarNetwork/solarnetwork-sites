@@ -51,6 +51,8 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	var layerGenerator = undefined;
 	var layers = undefined;
 	
+	var negativeLayerCount = 0;
+	
 	function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
 
 	var areaPathGenerator = d3.svg.area()
@@ -103,8 +105,21 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		// [ [{x:0,y:0},{x:1,y:1}...], ... ]
 		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'watts')
 			.excludeSources(sn.runtime.excludeSources)
-			.offset(sn.env.wiggle === 'true' ? 'wiggle' : 'zero')
-			.data(dataArray);
+			.offset(function(data) {
+				var i, j = -1,
+					m = data[0].length,
+					offset,
+					y0 = [];
+				while (++j < m) {
+					i = -1;
+					offset = 0;
+					while ( ++i < negativeLayerCount ) {
+						offset -= data[i][j][1];
+					}
+					y0[j] = offset;
+				}
+				return y0;
+			}).data(dataArray);
 		layers = layerGenerator();
 
 		// Compute the x-domain (by date) and y-domain (by top).
@@ -218,17 +233,24 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		redraw();
 		adjustAxisX();
 		adjustAxisY();
+		return that;
 	};
 	that.regenerate = function() {
 		if ( layerGenerator === undefined ) {
 			// did you call load() first?
-			return;
+			return that;
 		}
 		layers = layerGenerator();
 		computeDomainY();
 		svg.selectAll("g.source").data(layers);
 		redraw();
 		adjustAxisY();
+		return that;
+	};
+	
+	that.negativeSourceCount = function(value) {
+		if ( !arguments.length ) return negativeLayerCount;
+		negativeLayerCount = +value;
 	};
 
 	return that;

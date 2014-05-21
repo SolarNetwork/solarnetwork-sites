@@ -94,8 +94,9 @@ function setup(repInterval, sourceMap) {
 			padding: [10, 0, 20, 30] // gives room to axis
 		});
 		var q = queue();
-		sn.env.dataTypes.forEach(function(e) {
-			q.defer(d3.json, sn.runtime.urlHelper.dateTimeQuery(e, wRange[0], wRange[1], sn.env.minutePrecision));
+		sn.env.dataTypes.forEach(function(e, i) {
+			var urlHelper = (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper); // FIXME: remove
+			q.defer(d3.json, urlHelper.dateTimeQuery(e, wRange[0], wRange[1], sn.env.minutePrecision));
 		});
 		q.awaitAll(function(error, results) {
 			if ( error ) {
@@ -103,20 +104,15 @@ function setup(repInterval, sourceMap) {
 				return;
 			}
 			var combinedData = [];
-			var i, iMax, j, jMax, json, datum, invert, mappedSourceId;
+			var i, iMax, j, jMax, json, datum, mappedSourceId;
 			for ( i = 0, iMax = results.length; i < iMax; i++ ) {
 				json = results[i];
 				if ( json.success !== true || Array.isArray(json.data) !== true ) {
 					sn.log('No data available for node {0} data type {1}', sn.runtime.urlHelper.nodeId(), sn.env.dataTypes[i]);
 					return;
 				}
-				invert = (i > 0 && sn.env.wiggle !== 'true');
 				for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
 					datum = json.data[j];
-					if ( invert && datum.watts !== undefined ) {
-						datum.watts *= -100; // FIXME: this should be -1
-						//datum.watts = -datum.watts;
-					}
 					mappedSourceId = sn.runtime.chartSourceMap[sn.env.dataTypes[i]][datum.sourceId];
 					if ( mappedSourceId !== undefined ) {
 						datum.sourceId = mappedSourceId;
@@ -124,6 +120,7 @@ function setup(repInterval, sourceMap) {
 				}
 				combinedData = combinedData.concat(json.data);
 			}
+			energyAreaChart.negativeSourceCount(sourceMap[sn.env.dataTypes[0]].length);
 			energyAreaChart.load(combinedData);
 			adjustChartDisplayUnits('.watt-chart', 'W', energyAreaChart.yScale());
 		});
@@ -163,7 +160,7 @@ function onDocumentReady() {
 		wiggle : 'false',
 		linkOld : 'false',
 		maxPowerKW : 3,
-		dataTypes: ['Power', 'Consumption'] // first is positive, second is negative
+		dataTypes: ['Consumption', 'Power']
 	});
 	sn.config.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
 	
@@ -179,5 +176,6 @@ function onDocumentReady() {
 	}
 	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
 	sn.runtime.urlHelper = sn.NodeUrlHelper(sn.env.nodeId);
+	sn.runtime.devUrlHelper = sn.NodeUrlHelper(11);
 	sn.availableDataRange(sn.runtime.urlHelper, sn.env.dataTypes);
 }
