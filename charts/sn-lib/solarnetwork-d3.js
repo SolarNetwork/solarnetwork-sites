@@ -1,8 +1,10 @@
 /**
  * @namespace the SolarNetwork namespace
+ * @require d3 3.0
+ * @require queue 1.0
  */
 var sn = {
-	version : '1.0.0',
+	version : '0.0.3',
 	
 	config : {
 		debug : false,
@@ -91,99 +93,6 @@ var sn = {
 		if ( sn.config.debug === true && console !== undefined ) {
 			console.log(sn.fmt.apply(this, arguments));
 		}
-	},
-	
-	nodeUrlHelper : function(nodeId) {
-		var hostURL = function() {
-			return ('http' +(sn.config.tls === true ? 's' : '') +'://' +sn.config.host);
-		};
-		var baseURL = function() {
-			return (hostURL() +sn.config.path +'/api/v1/' +(sn.config.secureQuery === true ? 'sec' : 'pub'));
-		};
-		var helper = { 
-			
-			nodeId : function() { return nodeId; },
-			
-			hostURL : hostURL,
-			
-			baseURL : baseURL,
-			
-			reportableInterval : function(types) {
-				var t = (Array.isArray(types) && types.length > 0 ? types : ['Power']);
-				var url = (baseURL() +'/range/interval?nodeId=' +nodeId);
-				t.forEach(function(el) {
-					url += '&types=' +encodeURIComponent(el);
-				});
-				return url;
-			},
-			
-			availableSources : function(type, startDate, endDate) {
-				var url = (baseURL() +'/range/sources?nodeId=' +nodeId
-							+ '&type=' +encodeURIComponent(type !== undefined ? type : 'Power'));
-				if ( startDate !== undefined ) {
-					url += '&start=' +encodeURIComponent(sn.dateFormat(startDate));
-				}
-				if ( endDate !== undefined ) {
-					url += '&end=' +encodeURIComponent(sn.dateFormat(endDate));
-				}
-				return url;
-			},
-			
-			dateTimeQuery : function(type, startDate, endDate, agg, opts) {
-				var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.offset(endDate, -1) : endDate);
-				var dataURL = (baseURL() +'/datum/query?nodeId=' +nodeId 
-								+'&type=' +encodeURIComponent(type.toLowerCase())
-								+'&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate))
-								+'&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate)));
-				var aggNum = Number(agg);
-				if ( !isNaN(agg) ) {
-					dataURL += '&precision=' +aggNum.toFixed(0);
-				} else if ( typeof agg === 'string' && agg.length > 0 ) {
-					dataURL += '&aggregate=' + encodeURIComponent(agg);
-				}
-				return dataURL;
-			},
-			
-			mostRecentQuery : function(type) {
-				type = (type === undefined ? 'power' : type.toLowerCase());
-				var url;
-				if ( type === 'weather' ) {
-					url = (baseURL() + '/weather/recent?nodeId=');
-				} else {
-					url = (baseURL() + '/datum/mostRecent?nodeId=');
-				}
-				url += nodeId;
-				if ( type !== 'weather' ) {
-					url += '&type=' + encodeURIComponent(type);
-				}
-				return url;
-			},
-			
-			nodeDashboard : function(source) {
-				return ('http://' +sn.config.host +'/solarviz/node-dashboard.do?nodeId=' +nodeId
-					 +(source === undefined ? '' : '&consumptionSourceId='+source));
-			}
-		};
-		
-		// this is a stand-alone function so we correctly capture the 'prop' name in the loop below
-		function setupProxy(prop) {
-			helper[prop] = function() {
-				return sn.env.nodeUrlHelpers[prop].apply(helper, arguments);
-			};
-		}
-		
-		// allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
-		if ( sn.env.nodeUrlHelpers !== undefined ) {
-			var prop = undefined;
-			for ( prop in sn.env.nodeUrlHelpers ) {
-				if ( helper[prop] !== undefined || typeof sn.env.nodeUrlHelpers[prop] !== 'function' ) {
-					continue;
-				}
-				setupProxy(prop);
-			}
-		}
-		
-		return helper;
 	},
 	
 	/**
@@ -343,8 +252,8 @@ sn.powerPerSourceArray = function(rawData, sources) {
 };
 
 /**
- * Call the reportableInterval and availableSources web services
- * and post an snAvailableDataRange event with the associated data.
+ * Call the {@code reportableInterval} and {@code availableSources} web services
+ * and post a {@code snAvailableDataRange} event with the associated data.
  * 
  * <p>The event will contain a 'data' object property with the following
  * properties:</p>
@@ -357,10 +266,12 @@ sn.powerPerSourceArray = function(rawData, sources) {
  *   <dt>data.availableSources</dt>
  *   <dd>A sorted array of available source IDs for the reportable interval. 
  *   This tells you all the possible sources available in the data set.</dd>
+ *   
+ *   <dt>
  * </dl>
  * 
- * @param {sn.urlHelper} a URL helper instance
- * @param {Array} array of string data types, e.g. 'Power' or 'Consumption'
+ * @param {sn.NodeUrlHelper} urlHelper a URL helper instance
+ * @param {string[]} dataTypes array of string data types, e.g. 'Power' or 'Consumption'
  */
 sn.availableDataRange = function(urlHelper, dataTypes) {
 	d3.json(urlHelper.reportableInterval(dataTypes), function(repInterval) {
@@ -428,6 +339,116 @@ sn.colorDataLegendTable = function(containerSelector, colorData, clickHandler, l
 		.enter().append('td')
 			.attr('class', 'desc')
 			.call(labelRenderer);
+};
+
+/**
+ * A node-specific URL utility object.
+ * 
+ * @class
+ * @constructor
+ * @param nodeId {Number} the node ID to use
+ * @returns {sn.NodeUrlHelper}
+ */
+sn.NodeUrlHelper = function(nodeId) {
+	var hostURL = function() {
+		return ('http' +(sn.config.tls === true ? 's' : '') +'://' +sn.config.host);
+	};
+	var baseURL = function() {
+		return (hostURL() +sn.config.path +'/api/v1/' +(sn.config.secureQuery === true ? 'sec' : 'pub'));
+	};
+	var helper = { 
+		
+		nodeId : function() { return nodeId; },
+		
+		hostURL : hostURL,
+		
+		baseURL : baseURL,
+		
+		reportableInterval : function(types) {
+			var t = (Array.isArray(types) && types.length > 0 ? types : ['Power']);
+			var url = (baseURL() +'/range/interval?nodeId=' +nodeId
+					+ '&' +t.map(function(e) { return 'types='+encodeURIComponent(e); }).join('&'));
+			return url;
+		},
+		
+		availableSources : function(type, startDate, endDate) {
+			var url = (baseURL() +'/range/sources?nodeId=' +nodeId
+						+ '&type=' +encodeURIComponent(type !== undefined ? type : 'Power'));
+			if ( startDate !== undefined ) {
+				url += '&start=' +encodeURIComponent(sn.dateFormat(startDate));
+			}
+			if ( endDate !== undefined ) {
+				url += '&end=' +encodeURIComponent(sn.dateFormat(endDate));
+			}
+			return url;
+		},
+		
+		/**
+		 * Generate a SolarNet {@code /datum/query} URL.
+		 * 
+		 * @param type {String} a single supported datum type, or an Array of datum types, to query for
+		 * @param startDate {Date} the starting date for the query
+		 * @param endDate {Date} the ending date for the query
+		 * @param agg {String} a supported aggregate type
+		 * @return {String} a URL string
+		 */
+		dateTimeQuery : function(type, startDate, endDate, agg, opts) {
+			var types = (Array.isArray(type) ? type : [type]);
+			types.sort();
+			var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.offset(endDate, -1) : endDate);
+			var dataURL = (baseURL() +'/datum/query?nodeId=' +nodeId 
+                    		+'&type=' +encodeURIComponent(type.toLowerCase())
+                    		+'&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate))
+							+'&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate)));
+			var aggNum = Number(agg);
+			if ( !isNaN(agg) ) {
+				dataURL += '&precision=' +aggNum.toFixed(0);
+			} else if ( typeof agg === 'string' && agg.length > 0 ) {
+				dataURL += '&aggregate=' + encodeURIComponent(agg);
+			}
+			return dataURL;
+		},
+		
+		mostRecentQuery : function(type) {
+			type = (type === undefined ? 'power' : type.toLowerCase());
+			var url;
+			if ( type === 'weather' ) {
+				url = (baseURL() + '/weather/recent?nodeId=');
+			} else {
+				url = (baseURL() + '/datum/mostRecent?nodeId=');
+			}
+			url += nodeId;
+			if ( type !== 'weather' ) {
+				url += '&type=' + encodeURIComponent(type);
+			}
+			return url;
+		},
+		
+		nodeDashboard : function(source) {
+			return ('http://' +sn.config.host +'/solarviz/node-dashboard.do?nodeId=' +nodeId
+				 +(source === undefined ? '' : '&consumptionSourceId='+source));
+		}
+	};
+	
+	// this is a stand-alone function so we correctly capture the 'prop' name in the loop below
+	function setupProxy(prop) {
+		helper[prop] = function() {
+			return sn.env.nodeUrlHelpers[prop].apply(helper, arguments);
+		};
+	}
+	
+	// allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
+	if ( sn.env.nodeUrlHelpers !== undefined ) {
+		var prop = undefined;
+		for ( prop in sn.env.nodeUrlHelpers ) {
+			if ( helper[prop] !== undefined || typeof sn.env.nodeUrlHelpers[prop] !== 'function' ) {
+				continue;
+			}
+			setupProxy(prop);
+		}
+	}
+	
+	return helper;
 };
 
 /**
@@ -594,9 +615,43 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	return stackedLayerData;
 };
 
+/**
+ * Convert degrees to radians.
+ * 
+ * @param {number} deg - the degrees value to convert to radians
+ * @returns {number} the radians
+ */
 sn.deg2rad = function(deg) {
 	return deg * Math.PI / 180;
 };
+
+/**
+ * Get the width of an element based on a selector, in pixels.
+ * 
+ * @param {string} selector - a selector to an element to get the width of
+ * @returns {number} the width, or {@code undefined} if {@code selector} is undefined, 
+ *                   or {@code null} if the width cannot be computed in pixels
+ */
+sn.pixelWidth = function(selector) {
+	if ( selector === undefined ) {
+		return undefined;
+	}
+	var styleWidth = d3.select(selector).style('width');
+	if ( !styleWidth ) {
+		return null;
+	}
+	var pixels = styleWidth.match(/(\d+)px/);
+	if ( pixels === null ) {
+		return null;
+	}
+	var result = Number(pixels[1]);
+	if ( isNaN(result) ) {
+		return null;
+	}
+	return result;
+};
+
+
 
 /**
  * @namespace the SolarNetwork chart namespace.
