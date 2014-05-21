@@ -26,25 +26,27 @@ function setup(repInterval, sourceMap) {
 	var sourceColors = [];
 	var typeSourceList = undefined;
 	var colorGroupIndex;
+	function displayDataType(dataType) {
+		return (dataType === 'Power' ? 'Generation' : 'Consumption');
+	}
 	for ( dataType in sourceMap ) {
 		chartSourceMap[dataType] = {};
 		typeSourceList = [];
 		sourceMap[dataType].forEach(function(el) {
 			var mappedSource;
 			if ( el === '' || el === 'Main' ) {
-				mappedSource = dataType;
+				mappedSource = displayDataType(dataType);
 			} else {
-				mappedSource = dataType +'/' +el;
+				mappedSource = displayDataType(dataType) +'/' +el;
 			}
 			chartSourceMap[dataType][el] = mappedSource;
 			typeSourceList.push(mappedSource);
 			sourceList.push(mappedSource);
 		});
 		if ( dataType === sn.env.dataTypes[0] ) {
-			// positive, make green
-			colorGroup = colorbrewer.Greens;
-		} else {
 			colorGroup = colorbrewer.Blues;
+		} else {
+			colorGroup = colorbrewer.Greens;
 		}
 		if ( typeSourceList.length < 3 ) {
 			colorGroupIndex = 3;
@@ -175,7 +177,10 @@ function onDocumentReady() {
 		document.removeEventListener('snAvailableDataRange', handleAvailableDataRange, false);
 	}
 	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
-	sn.runtime.urlHelper = sn.NodeUrlHelper(sn.env.nodeId);
-	sn.runtime.devUrlHelper = sn.NodeUrlHelper(11);
-	sn.availableDataRange(sn.runtime.urlHelper, sn.env.dataTypes);
+	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.devUrlHelper = sn.nodeUrlHelper(11);
+	sn.availableDataRange(function(e, i) {
+		if ( !arguments.length ) return sn.runtime.urlHelper;
+		return (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper);
+	}, sn.env.dataTypes);
 }
