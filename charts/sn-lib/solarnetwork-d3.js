@@ -565,9 +565,9 @@ sn.Configuration.prototype = {
  * <strong>0</strong> for disabled layers. This allows the data to transition nicely
  * when toggling layer visibility.</p>
  * 
- * @param keyValueSet {Array}     array of all possible key values, so that a stable
+ * @param {string[]} keyValueSet  array of all possible key values, so that a stable
  *                                set of layer data can be generated
- * @param valueProperty {String}  the name of the property that contains the values to
+ * @param {string} valueProperty  the name of the property that contains the values to
  *                                use for the y-axis domain
  */
 sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
@@ -609,12 +609,26 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	};
 	
 	/**
-	 * Set the d3 stack offset method.
-	 * @param value {String} the offset method, e.g. <code>wiggle</code>
-	 * @return this object
+	 * Get or set the d3 stack offset method.
+	 * 
+	 * @param {string|function} [value] the offset method, e.g. <code>wiggle</code>
+	 * @return the offset value when called as a getter, or this object when called as a setter
 	 */
 	stackedLayerData.offset = function(value) {
+		if ( !arguments.length ) return stack.offset();
 		stack.offset(value);
+		return stackedLayerData;
+	};
+	
+	/**
+	 * Get or set the d3 stack order method.
+	 * 
+	 * @param {string|function} [value] the order method, e.g. <code>inside-out</code>
+	 * @return the order value when called as a getter, or this object when called as a setter
+	 */
+	stackedLayerData.order = function(value) {
+		if ( !arguments.length ) return stack.order();
+		stack.order(value);
 		return stackedLayerData;
 	};
 	
@@ -628,9 +642,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 *         to allow method chaining
 	 */
 	stackedLayerData.excludeSources = function(excludeConfiguration) {
-		if ( excludeConfiguration === undefined ) {
-			return excludeSources;
-		}
+		if ( !arguments.length ) return excludeSources;
 		excludeSources = excludeConfiguration;
 		return stackedLayerData;
 	};
