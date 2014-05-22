@@ -37,7 +37,7 @@ function setup(repInterval, sourceMap) {
 			if ( el === '' || el === 'Main' ) {
 				mappedSource = displayDataType(dataType);
 			} else {
-				mappedSource = displayDataType(dataType) +'/' +el;
+				mappedSource = displayDataType(dataType) +' / ' +el;
 			}
 			chartSourceMap[dataType][el] = mappedSource;
 			typeSourceList.push(mappedSource);
