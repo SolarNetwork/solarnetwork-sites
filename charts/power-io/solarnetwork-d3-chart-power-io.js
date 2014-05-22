@@ -11,7 +11,7 @@ if ( sn === undefined ) {
 }
 
 /**
- * @typedef sn.chart.energyIOAreaChartParameters
+ * @typedef sn.chart.powerIOAreaChartParameters
  * @type {object}
  * @property {number} [width=812] - desired width, in pixels, of the chart
  * @property {number} [height=300] - desired height, in pixels, of the chart
@@ -20,18 +20,18 @@ if ( sn === undefined ) {
  */
 
 /**
- * An energy input and output chart designed to show consumption and generation data simultaneously.
+ * An power input and output chart designed to show consumption and generation data simultaneously.
  * 
  * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
- * in the chart. After changing the configuration call {@link sn.chart.energyIOAreaChart#regenerate()}
+ * in the chart. After changing the configuration call {@link sn.chart.powerIOAreaChart#regenerate()}
  * to re-draw the chart.
  * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
- * @param {sn.chart.energyIOAreaChartParameters} [chartParams] - the chart parameters
- * @returns {sn.chart.energyIOAreaChart}
+ * @param {sn.chart.powerIOAreaChartParameters} [chartParams] - the chart parameters
+ * @returns {sn.chart.powerIOAreaChart}
  */
-sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
+sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	var that = {
 		version : "1.0.0"
 	};
@@ -231,7 +231,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	 * Get the x-axis domain (minimum and maximum dates).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
-	 * @memberOf sn.chart.energyIOAreaChart
+	 * @memberOf sn.chart.powerIOAreaChart
 	 */
 	that.xDomain = function() { return x.domain(); };
 
@@ -239,7 +239,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	 * Get the y-axis domain (minimum and maximum values).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
-	 * @memberOf sn.chart.energyIOAreaChart
+	 * @memberOf sn.chart.powerIOAreaChart
 	 */
 	that.yDomain = function() { return y.domain(); };
 	
@@ -250,7 +250,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	 * chart ended up using.
 	 *  
 	 * @return the y-axis scale factor
-	 * @memberOf sn.chart.energyIOAreaChart
+	 * @memberOf sn.chart.powerIOAreaChart
 	 */
 	that.yScale = function() { return displayFactor; };
 
@@ -259,7 +259,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	 * passing to {@link sn.powerPerSourceArray}.
 	 * 
 	 * @return this object
-	 * @memberOf sn.chart.energyIOAreaChart
+	 * @memberOf sn.chart.powerIOAreaChart
 	 */
 	that.load = function(rawData) {
 		setup(rawData);
@@ -274,7 +274,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	 * source 
 	 * 
 	 * @return this object
-	 * @memberOf sn.chart.energyIOAreaChart
+	 * @memberOf sn.chart.powerIOAreaChart
 	 */
 	that.regenerate = function() {
 		if ( layerGenerator === undefined ) {
@@ -296,7 +296,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	 * 
 	 * @param {number} [value] the number of consumption sources to use
 	 * @return when used as a getter, the count number, otherwise this object
-	 * @memberOf sn.chart.energyIOAreaChart
+	 * @memberOf sn.chart.powerIOAreaChart
 	 */
 	that.consumptionSourceCount = function(value) {
 		if ( !arguments.length ) return consumptionLayerCount;

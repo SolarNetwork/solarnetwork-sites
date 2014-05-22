@@ -5,8 +5,8 @@
 	<meta name="viewport" content="width=1024" />
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-	<title>SolarNetwork Chart - Energy I/O</title>
-	<link type="text/css" rel="stylesheet" href="energy-io.css" />
+	<title>SolarNetwork Chart - Power I/O</title>
+	<link type="text/css" rel="stylesheet" href="power-io.css" />
 	<script type="text/javascript" src="../js-lib/d3-3.min.js"></script>
 	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
 	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
@@ -14,12 +14,12 @@
 	<script type="text/javascript" src="../js-lib/enc-base64-3.min.js"></script>
 	<script type="text/javascript" src="../sn-lib/solarnetwork-d3.js"></script>
 	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-sec.js"></script>
-	<script type="text/javascript" src="solarnetwork-d3-chart-energy-io.js"></script>
-	<script type="text/javascript" src="energy-io.js"></script>
+	<script type="text/javascript" src="solarnetwork-d3-chart-power-io.js"></script>
+	<script type="text/javascript" src="power-io.js"></script>
 	<script type="text/javascript">
 		function startApp() {
 			sn.setDefaultEnv({
-				nodeId : 30,
+				nodeId : 111,
 			});
 			onDocumentReady();
 		}
@@ -33,7 +33,7 @@
 	</script>
 </head>
 <body>
-	<h1>SolarNetwork Chart - Energy I/O</h1>
+	<h1>SolarNetwork Chart - Power I/O</h1>
 	<div class="hbox">
 		<div class="vbox main">
 			<div class="pane watt-chart">

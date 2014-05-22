@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>ui-web-charts-energy-io</name>
+	<name>ui-web-charts-power-io</name>
 	<comment></comment>
 	<projects>
 		<project>ui-web-charts</project>
@@ -23,7 +23,7 @@
 	</natures>
 	<filteredResources>
 		<filter>
-			<id>1400628279034</id>
+			<id>0</id>
 			<name></name>
 			<type>26</type>
 			<matcher>

@@ -2,7 +2,7 @@
  * @require d3 3.0
  * @require queue 1.0
  * @require solarnetwork-d3 0.0.3
- * @require solarnetwork-d3-chart-energy-io 1.0.0
+ * @require solarnetwork-d3-chart-power-io 1.0.0
  */
 
 sn.config.debug = true;
@@ -13,7 +13,7 @@ sn.runtime.excludeSources = new sn.Configuration();
 
 function setup(repInterval, sourceMap) {
 	var endDate = repInterval.eDate;
-	var energyAreaChart = undefined;
+	var powerAreaChart = undefined;
 	
 	// create static mapping of raw sources to potentially alternate names, to avoid name collisions;
 	// sourceMap is like {Consumption : [Main], Power : [Main]}, turn into
@@ -91,7 +91,7 @@ function setup(repInterval, sourceMap) {
 			new Date(e.getTime() - (sn.env.numHours * 60 * 60 * 1000)), 
 			new Date(e.getTime())
 			];
-		energyAreaChart = sn.chart.energyIOAreaChart('#day-watt', {
+		powerAreaChart = sn.chart.powerIOAreaChart('#day-watt', {
 			height: 400,
 			excludeSources: sn.runtime.excludeSources
 		});
@@ -122,11 +122,11 @@ function setup(repInterval, sourceMap) {
 				}
 				combinedData = combinedData.concat(json.data);
 			}
-			energyAreaChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
-			energyAreaChart.load(combinedData);
-			sn.log("Energy IO chart watt range: {0}", energyAreaChart.yDomain());
-			sn.log("Energy IO chart time range: {0}", energyAreaChart.xDomain());
-			adjustChartDisplayUnits('.watt-chart', 'W', energyAreaChart.yScale());
+			powerAreaChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
+			powerAreaChart.load(combinedData);
+			sn.log("Power IO chart watt range: {0}", powerAreaChart.yDomain());
+			sn.log("Power IO chart time range: {0}", powerAreaChart.xDomain());
+			adjustChartDisplayUnits('.watt-chart', 'W', powerAreaChart.yScale());
 		});
 	}
 	
@@ -145,11 +145,11 @@ function setup(repInterval, sourceMap) {
 	
 	function legendClickHandler(d, i) {
 		sn.runtime.excludeSources.toggle(d.source);
-		if ( energyAreaChart !== undefined ) {
+		if ( powerAreaChart !== undefined ) {
 			// use a slight delay, otherwise transitions can be jittery
 			setTimeout(function() {
-				energyAreaChart.regenerate();
-				adjustChartDisplayUnits('.watt-chart', 'W', energyAreaChart.yScale());
+				powerAreaChart.regenerate();
+				adjustChartDisplayUnits('.watt-chart', 'W', powerAreaChart.yScale());
 			}, sn.config.defaultTransitionMs * .8);
 		}
 	}
