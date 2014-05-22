@@ -44,15 +44,14 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		format = d3.time.format("%H");
 
 	var svgRoot = undefined,
-		svg = undefined,
-		clipId = undefined;
+		svg = undefined;
 	
 	// our layer data, and generator function
 	var layerGenerator = undefined;
 	var layers = undefined;
 	var minY = 0;
 	
-	var negativeLayerCount = 0;
+	var consumptionLayerCount = 0;
 	
 	function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
 
@@ -115,7 +114,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 				while (++j < m) {
 					i = -1;
 					offset = 0;
-					while ( ++i < negativeLayerCount ) {
+					while ( ++i < consumptionLayerCount ) {
 						offset -= data[i][j][1];
 					}
 					y0[j] = offset;
@@ -137,8 +136,6 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 				.attr('class', 'chart')
 				.attr("width", w + p[1] + p[3])
 				.attr("height", h + p[0] + p[2]);
-				//.attr("pointer-events", "all")
-				//.call(d3.behavior.zoom().on("zoom", redraw));
 		} else {
 			svgRoot.selectAll('*').remove();
 		}
@@ -150,18 +147,6 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		svgRoot.append("g")
 			.attr("class", "crisp rule")
 			.attr("transform", "translate(0," + p[0] + ")");
-	
-		// setup clip path, so axis is crisp
-		/*
-		clipId = 'Clip' +sn.runtime.globalCounter.incrementAndGet();
-		svgRoot.append('svg:clipPath')
-				.attr('id', clipId)
-			.append('svg:rect')
-				.attr('x', 0)
-				.attr('y', -p[0])
-				.attr('width', w)
-				.attr('height', h + p[0]);
-		*/
 	}
 
 	function redraw() {	
@@ -173,7 +158,6 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		
 		area.enter().append("path")
 				.attr("class", "area")
-				//.attr('clip-path', 'url(#' +clipId +')')
 				.style("fill", sn.colorFn)
 				.attr("d", areaPathGenerator);
 		
@@ -249,6 +233,13 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		adjustAxisY();
 		return that;
 	};
+	
+	/**
+	 * Regenerate the chart, using the current data. This can be called after disabling a
+	 * source 
+	 * 
+	 * @memberOf sn.chart.energyIOAreaChart
+	 */
 	that.regenerate = function() {
 		if ( layerGenerator === undefined ) {
 			// did you call load() first?
@@ -262,9 +253,19 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		return that;
 	};
 	
-	that.negativeSourceCount = function(value) {
-		if ( !arguments.length ) return negativeLayerCount;
-		negativeLayerCount = +value;
+	/**
+	 * Get or set the consumption source count. Set this to the number of sources that 
+	 * are considered "consumption" and should show up <em>under</em> the y-axis origin.
+	 * The sources are assumed to already be ordered with consumption before generation.
+	 * 
+	 * @param {number} [value] the number of consumption sources to use
+	 * @return when used as a getter, the count number, otherwise this object
+	 * @memberOf sn.chart.energyIOAreaChart
+	 */
+	that.consumptionSourceCount = function(value) {
+		if ( !arguments.length ) return consumptionLayerCount;
+		consumptionLayerCount = +value; // the + used to make sure we have a Number
+		return that;
 	};
 
 	return that;

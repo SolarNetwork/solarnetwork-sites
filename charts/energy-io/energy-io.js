@@ -122,7 +122,7 @@ function setup(repInterval, sourceMap) {
 				}
 				combinedData = combinedData.concat(json.data);
 			}
-			energyAreaChart.negativeSourceCount(sourceMap[sn.env.dataTypes[0]].length);
+			energyAreaChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
 			energyAreaChart.load(combinedData);
 			adjustChartDisplayUnits('.watt-chart', 'W', energyAreaChart.yScale());
 		});

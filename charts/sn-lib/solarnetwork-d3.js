@@ -159,40 +159,47 @@ var sn = {
 };
 
 /**
- Take SolarNetwork raw JSON data result and return a d3-friendly normalized array of data.
- The 'sources' parameter can be either undefined or an empty Array, which will be populated
- with the list of found sourceId values from the raw JSON data. 
- 
- rawData sample format:
- [
-	{
-		"localDate" : "2011-12-02",
-		"localTime" : "12:00",
-		"sourceId" : "Main",
-		"wattHours" : 470.0,
-		"watts" : 592
-  	},
-  	{
-		"localDate" : "2011-12-02",
-		"localTime" : "12:00",
-		"sourceId" : "Secondary",
-		"wattHours" : 312.0,
-		"watts" : 123
-  	}
-
-  ]
-  	
-  Returned data sample format:
-  
-  [
-		{
-			date       : Date(2011-12-02 12:00),
-			Main       : { watts: 592, wattHours: 470 },
-			Secondary  : { watts: 123, wattHours: 312 },
-			_aggregate : { wattHoursTotal: 782 }
-		}
-  ]
-
+ * Take SolarNetwork raw JSON data result and return a d3-friendly normalized array of data.
+ * The 'sources' parameter can be either undefined or an empty Array, which will be populated
+ * with the list of found {@code sourceId} values from the raw JSON data. 
+ * 
+ * The {@code rawData} is organized like this:
+ * 
+ * <pre>
+ * [
+ * 	{
+ * 		"localDate" : "2011-12-02",
+ * 		"localTime" : "12:00",
+ * 		"sourceId" : "Main",
+ * 		"wattHours" : 470.0,
+ * 		"watts" : 592
+ * 	},
+ * 	{
+ * 		"localDate" : "2011-12-02",
+ * 		"localTime" : "12:00",
+ * 		"sourceId" : "Secondary",
+ * 		"wattHours" : 312.0,
+ * 		"watts" : 123
+ * 	}
+ * 
+ * ]
+ * </pre>
+ * 
+ * Returned data sample format:
+ * <pre>
+ * [
+ * 		{
+ * 			date       : Date(2011-12-02 12:00),
+ * 			Main       : { watts: 592, wattHours: 470 },
+ * 			Secondary  : { watts: 123, wattHours: 312 },
+ * 			_aggregate : { wattHoursTotal: 782 }
+ * 		}
+ * ]
+ * </pre>
+ * 
+ * @param {object[]} rawData the raw source data
+ * @param {string[]} [sources] if defined, then this array will be populated with the unique
+ *                             set of {@code sourceId} values found in the data
  */
 sn.powerPerSourceArray = function(rawData, sources) {
 	var filteredData = {};
@@ -582,6 +589,9 @@ sn.Configuration.prototype = {
  *                                set of layer data can be generated
  * @param {string} valueProperty  the name of the property that contains the values to
  *                                use for the y-axis domain
+ * @class
+ * @constructor
+ * @returns {sn.powerPerSourceStackedLayerGenerator}
  */
 sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	var sources = keyValueSet;
@@ -589,12 +599,13 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	var stack = d3.layout.stack();
 	var dataArray = undefined;
 	
-	function stackedLayerData() {
+	var stackedLayerData = function() {
+		if ( dataArray === undefined ) return;
 		var layers = stack(sources.map(function(source) {
 				var array = dataArray.map(function(d) {
 						return {
 							x: d.date, 
-							y: (excludeSources.enabled(source) 
+							y: (excludeSources !== undefined && excludeSources.enabled(source) 
 								? 0 : d[source] !== undefined ? +d[source][valueProperty] : 0),
 						};
 					});
@@ -604,7 +615,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 		layers.domainX = [layers[0][0].x, layers[0][layers[0].length - 1].x];
 		layers.maxY = d3.max(layers[layers.length - 1], function(d) { return d.y0 + d.y; });
 		return layers;
-	}
+	};
 	
 	/**
 	 * Get or set the data associated with this generator.
@@ -612,6 +623,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 * @param {array} data the array of data
 	 * @return when used as a getter, the data array, otherwise this object
 	 *         to allow method chaining
+	 * @memberOf sn.powerPerSourceStackedLayerGenerator
 	 */
 	stackedLayerData.data = function(data) {
 		if ( !arguments.length ) return dataArray;
@@ -624,6 +636,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 * 
 	 * @param {string|function} [value] the offset method, e.g. <code>wiggle</code>
 	 * @return the offset value when called as a getter, or this object when called as a setter
+	 * @memberOf sn.powerPerSourceStackedLayerGenerator
 	 */
 	stackedLayerData.offset = function(value) {
 		if ( !arguments.length ) return stack.offset();
@@ -636,6 +649,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 * 
 	 * @param {string|function} [value] the order method, e.g. <code>inside-out</code>
 	 * @return the order value when called as a getter, or this object when called as a setter
+	 * @memberOf sn.powerPerSourceStackedLayerGenerator
 	 */
 	stackedLayerData.order = function(value) {
 		if ( !arguments.length ) return stack.order();
@@ -651,6 +665,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 *                                                <strong>y</strong> values all set to <strong>0</strong>
 	 * @return when used as a getter, the current configuration object, otherwise this object
 	 *         to allow method chaining
+	 * @memberOf sn.powerPerSourceStackedLayerGenerator
 	 */
 	stackedLayerData.excludeSources = function(excludeConfiguration) {
 		if ( !arguments.length ) return excludeSources;
