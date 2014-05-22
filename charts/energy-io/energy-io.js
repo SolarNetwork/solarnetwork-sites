@@ -156,6 +156,7 @@ function setup(repInterval, sourceMap) {
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
+		consumptionNodeId : 108,
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
@@ -178,7 +179,7 @@ function onDocumentReady() {
 	}
 	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
 	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.devUrlHelper = sn.nodeUrlHelper(11);
+	sn.runtime.devUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
 	sn.availableDataRange(function(e, i) {
 		if ( !arguments.length ) return sn.runtime.urlHelper;
 		return (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper);
