@@ -93,7 +93,7 @@ function setup(repInterval, sourceMap) {
 			];
 		energyAreaChart = sn.chart.energyIOAreaChart('#day-watt', {
 			height: 400,
-			padding: [10, 0, 20, 30] // gives room to axis
+			excludeSources: sn.runtime.excludeSources
 		});
 		var q = queue();
 		sn.env.dataTypes.forEach(function(e, i) {

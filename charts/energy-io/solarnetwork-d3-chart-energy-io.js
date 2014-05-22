@@ -16,10 +16,15 @@ if ( sn === undefined ) {
  * @property {number} [width=812] - desired width, in pixels, of the chart
  * @property {number} [height=300] - desired height, in pixels, of the chart
  * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
+ * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
  */
 
 /**
  * An energy input and output chart designed to show consumption and generation data simultaneously.
+ * 
+ * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
+ * in the chart. After changing the configuration call {@link sn.chart.energyIOAreaChart#regenerate()}
+ * to re-draw the chart.
  * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
@@ -104,7 +109,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		// Transpose the data into watt layers by source, e.g.
 		// [ [{x:0,y:0},{x:1,y:1}...], ... ]
 		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'watts')
-			.excludeSources(sn.runtime.excludeSources)
+			.excludeSources(parameters.excludeSources)
 			.offset(function(data) {
 				minY = 0;
 				var i, j = -1,
