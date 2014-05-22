@@ -143,6 +143,10 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 			svgRoot.selectAll('*').remove();
 		}
 
+		svg = svgRoot.append("g")
+			.attr('class', 'data')
+			.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+
 		svgRoot.append("g")
 			.attr("class", "crisp rule")
 			.attr("transform", "translate(0," + p[0] + ")");
@@ -158,10 +162,6 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 				.attr('width', w)
 				.attr('height', h + p[0]);
 		*/
-
-		svg = svgRoot.append("g")
-			.attr('class', 'data')
-			.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 	}
 
 	function redraw() {	
@@ -173,7 +173,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		
 		area.enter().append("path")
 				.attr("class", "area")
-				.attr('clip-path', 'url(#' +clipId +')')
+				//.attr('clip-path', 'url(#' +clipId +')')
 				.style("fill", sn.colorFn)
 				.attr("d", areaPathGenerator);
 		
@@ -206,12 +206,18 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		if ( sn.env.wiggle === 'true' ) {
 			return;
 		}
+		
+		function ruleClass(d) {
+			return (d === 0 ? 'origin' : 'm');
+		}
 
 		var axisLines = svgRoot.select("g.rule").selectAll("g").data(y.ticks(5));
-		axisLines.transition().duration(sn.config.defaultTransitionMs)
-				.attr("transform", axisYTransform)
+		var axisLinesT = axisLines.transition().duration(sn.config.defaultTransitionMs);
+		axisLinesT.attr("transform", axisYTransform)
 			.select("text")
 				.text(displayFormat);
+		axisLinesT.select("line")
+				.attr('class', ruleClass);
 		
 	  	axisLines.exit().transition().duration(sn.config.defaultTransitionMs)
 	  			.style("opacity", 1e-6)
@@ -224,14 +230,12 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 		entered.append("line")
 				.attr("x2", w + p[3])
 				.attr('x1', p[3])
-				.attr('class', function(d) { 
-					return (d === 0 ? 'origin' : 'm');
-					});
+				.attr('class', ruleClass);
 		entered.append("text")
 				.attr("x", p[3] - 10)
 				.text(displayFormat);
 		entered.transition().duration(sn.config.defaultTransitionMs)
-				.style("opacity", 1);
+				.style("opacity", null);
 	}
 	
 	that.sources = sources;
