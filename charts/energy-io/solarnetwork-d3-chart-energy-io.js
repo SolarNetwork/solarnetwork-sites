@@ -72,7 +72,6 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 
 	function computeDomainY() {
 		y.domain([minY, layers.maxY]).nice();
-		sn.log("W range set to {0} - {1}", minY, layers.maxY);
 		computeUnitsY();
 	}
 	
@@ -227,9 +226,41 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	}
 	
 	that.sources = sources;
+	
+	/**
+	 * Get the x-axis domain (minimum and maximum dates).
+	 * 
+	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
+	 * @memberOf sn.chart.energyIOAreaChart
+	 */
 	that.xDomain = function() { return x.domain(); };
+
+	/**
+	 * Get the y-axis domain (minimum and maximum values).
+	 * 
+	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
+	 * @memberOf sn.chart.energyIOAreaChart
+	 */
 	that.yDomain = function() { return y.domain(); };
+	
+	/**
+	 * Get the scaling factor the y-axis is using. By default this will return {@code 1}.
+	 * After calling the {@link #load()} method, however, the chart may decide to scale
+	 * the y-axis for clarity. You can call this method to find out the scaling factor the
+	 * chart ended up using.
+	 *  
+	 * @return the y-axis scale factor
+	 * @memberOf sn.chart.energyIOAreaChart
+	 */
 	that.yScale = function() { return displayFactor; };
+
+	/**
+	 * Load data for the chart. The data is expected to be in a form suitable for
+	 * passing to {@link sn.powerPerSourceArray}.
+	 * 
+	 * @return this object
+	 * @memberOf sn.chart.energyIOAreaChart
+	 */
 	that.load = function(rawData) {
 		setup(rawData);
 		redraw();
@@ -242,6 +273,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	 * Regenerate the chart, using the current data. This can be called after disabling a
 	 * source 
 	 * 
+	 * @return this object
 	 * @memberOf sn.chart.energyIOAreaChart
 	 */
 	that.regenerate = function() {
