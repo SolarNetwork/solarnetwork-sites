@@ -82,8 +82,7 @@ sn.chart.energyIOAreaChart = function(containerSelector, chartParams) {
 	var displayFormatter = d3.format(',d');
 	function computeUnitsY() {
 		var fmt;
-		var domain = y.domain();
-		var maxY = domain[domain.length - 1];
+		var maxY = d3.max(y.domain() ,function(v) { return Math.abs(v); });
 		if ( maxY >= 100000 ) {
 			displayFactor = 1000000;
 			fmt = ',g';
