@@ -10,7 +10,7 @@ html {
 
 body {
 	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
-	margin: 10px 20px;
+	margin: 10px;
 	background: none;
 }
 
@@ -91,15 +91,15 @@ div.vbox {
 }
 
 div.hbox > .main {
-	width: 852px;
+	width: 864px;
 }
 
 div.hbox > .sub {
-	width: 120px;
+	width: 130px;
 }
 
 div.vbox + div.vbox {
-	margin-left: 12px;
+	margin-left: 10px;
 }
 
 div.vbox > div + div {
