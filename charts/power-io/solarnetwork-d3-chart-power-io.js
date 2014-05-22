@@ -283,7 +283,6 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		}
 		layers = layerGenerator();
 		computeDomainY();
-		svg.selectAll("g.source").data(layers);
 		redraw();
 		adjustAxisY();
 		return that;
