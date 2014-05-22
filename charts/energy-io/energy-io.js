@@ -124,6 +124,8 @@ function setup(repInterval, sourceMap) {
 			}
 			energyAreaChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
 			energyAreaChart.load(combinedData);
+			sn.log("Energy IO chart watt range: {0}", energyAreaChart.yDomain());
+			sn.log("Energy IO chart time range: {0}", energyAreaChart.xDomain());
 			adjustChartDisplayUnits('.watt-chart', 'W', energyAreaChart.yScale());
 		});
 	}
