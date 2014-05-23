@@ -27,6 +27,9 @@ if ( sn === undefined ) {
  * in the chart. After changing the configuration call {@link sn.chart.energyIOBarChart#regenerate()}
  * to re-draw the chart.
  * 
+ * Note that the global {@link sn.colorFn} function is used to map sources to colors, so that
+ * must be set up previously.
+ * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.energyIOBarChartParameters} [chartParams] - the chart parameters

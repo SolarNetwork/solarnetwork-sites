@@ -13,55 +13,13 @@ sn.runtime.excludeSources = new sn.Configuration();
 function setup(repInterval, sourceMap) {
 	var endDate = repInterval.eDate;
 	var energyBarChart = undefined;
+	var sourceColorMap = sn.sourceColorMapping(sourceMap);
 	
-	// create static mapping of raw sources to potentially alternate names, to avoid name collisions;
-	// sourceMap is like {Consumption : [Main], Power : [Main]}, turn into
-	// {Consumption : { Main : 'Consumption/Main' }, Power : { Main : 'Power/Main' } }
-	// Also, create static mapping of source -> color, so consistent across charts.
-	var chartSourceMap = {};
-	var dataType = undefined;
-	var sourceList = [];
-	var colorGroup = undefined;
-	var sourceColors = [];
-	var typeSourceList = undefined;
-	var colorGroupIndex;
-	function displayDataType(dataType) {
-		return (dataType === 'Power' ? 'Generation' : 'Consumption');
-	}
-	for ( dataType in sourceMap ) {
-		chartSourceMap[dataType] = {};
-		typeSourceList = [];
-		sourceMap[dataType].forEach(function(el) {
-			var mappedSource;
-			if ( el === '' || el === 'Main' ) {
-				mappedSource = displayDataType(dataType);
-			} else {
-				mappedSource = displayDataType(dataType) +' / ' +el;
-			}
-			chartSourceMap[dataType][el] = mappedSource;
-			typeSourceList.push(mappedSource);
-			sourceList.push(mappedSource);
-		});
-		if ( dataType === sn.env.dataTypes[0] ) {
-			colorGroup = colorbrewer.Blues;
-		} else {
-			colorGroup = colorbrewer.Greens;
-		}
-		if ( typeSourceList.length < 3 ) {
-			colorGroupIndex = 3;
-		} else if ( colorGroup[typeSourceList.length] === undefined ) {
-			colorGroupIndex = 9;
-		} else {
-			colorGroupIndex = typeSourceList.length;
-		}
-		sourceColors = sourceColors.concat(colorGroup[colorGroupIndex].slice(-typeSourceList.length).reverse());
-	}
-	sn.runtime.chartSourceMap = chartSourceMap;
-
-	sn.runtime.colorData = sn.colorMap(sourceColors, sourceList);
-
+	// we make use of sn.colorFn, so stash the required color map where expected
+	sn.runtime.colorData = sourceColorMap.colorMap;
+	
 	// create copy of color data for reverse ordering so labels vertically match chart layers
-	sn.colorDataLegendTable('#source-labels', sn.runtime.colorData.slice().reverse(), legendClickHandler, function(s) {
+	sn.colorDataLegendTable('#source-labels', sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
 		if ( sn.env.linkOld === 'true' ) {
 			s.html(function(d) {
 				return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -110,7 +68,7 @@ function setup(repInterval, sourceMap) {
 				}
 				for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
 					datum = json.data[j];
-					mappedSourceId = sn.runtime.chartSourceMap[sn.env.dataTypes[i]][datum.sourceId];
+					mappedSourceId = sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
 					if ( mappedSourceId !== undefined ) {
 						datum.sourceId = mappedSourceId;
 					}

@@ -147,6 +147,16 @@ var sn = {
 		return colorData;
 	},
 	
+	/**
+	 * Use the configured runtime color map to turn a source into a color.
+	 * 
+	 * The {@code sn.runtime.colorData} property must be set to a color map object
+	 * as returned by {@link sn.colorMap}.
+	 * 
+	 * @param {object} d the data element, expected to contain a {@code source} property
+	 * @param {number} i the data index
+	 * @returns {string} color value
+	 */
 	colorFn : function(d, i) {
 		var s = Number(d.source);
 		if ( isNaN(s) ) {
@@ -674,6 +684,127 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	};
 	
 	return stackedLayerData;
+};
+
+/**
+ * @typedef sn.sourceColorMapping
+ * @type {object}
+ * @property {number} [width=812] - desired width, in pixels, of the chart
+ * @property {number} [height=300] - desired height, in pixels, of the chart
+ * @property {number[]} [padding=[30, 0, 30, 30]] - padding to inset the chart by, in top, right, bottom, left order
+ * @property {number} [transitionMs=600] - transition time
+ * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
+ */
+
+/**
+ * @typedef sn.sourceColorMapParameters
+ * @type {object}
+ * @property {function} [displayDataType] a function that accepts a data type and returns the display
+ *                                        version of that data type
+ * @property {function} [displayColor] a function that accepts a data type and a Colorbrewer color group
+ * @property {boolean} [reverseColors] the Colorbrewer colors are reversed, unless this is set to {@code false}
+ */
+
+/**
+ * Create mapping of raw sources, grouped by data type, to potentially alternate names,
+ * and assign Colorbrewer color values to each source.
+ * 
+ * The input {@code sourceMap} should contain a mapping of data types to associatd arrays
+ * of sources. This is the format returned by {@link sn.availableDataRange}, on the 
+ * {@code availableSourcesMap} property. For example:
+ * 
+ * <pre>
+ * {
+ *     'Consumption' : [ 'Main', 'Shed' ],
+ *     'Power' : [ 'Main' ]
+ * }
+ * </pre>
+ * 
+ * The returned {@link sn.sourceColorMapping} object contains 
+ * 
+ * <pre>
+ * {
+ *     sourceList : [ 'Consumption / Main', 'Consumption / Shed', 'Power / Main' ]
+ *     displaySourceMap : {
+ *         Consumption : {
+ *             Main : 'Consumption / Main',
+ *             Shed : 'Consumption / Shed'
+ *         },
+ *         Power : {
+ *             Main : 'Power / Main'
+ *         }
+ *     },
+ *     colorList : [ 'red', 'light-red', 'green' ]
+ *     colorMap : {
+ *         'Consumption / Main' : 'red',
+ *         'Consumption / Shed' : 'light-red',
+ *         'Power / Main' : 'green'
+ *     }
+ * }
+ * </pre>
+ * 
+ * @params {sn.sourceColorMapParameters} [params] the parameters
+ * @returns {sn.sourceColorMapping}
+ */
+sn.sourceColorMapping = function(sourceMap, params) {
+	var p = (params || {});
+	var chartSourceMap = {};
+	var dataType = undefined;
+	var sourceList = [];
+	var colorGroup = undefined;
+	var sourceColors = [];
+	var typeSourceList = undefined;
+	var colorGroupIndex;
+	var colorSlice = undefined;
+	var result = {};
+	var displayDataTypeFn;
+	if ( typeof p.displayDataType === 'function' ) {
+		displayDataTypeFn = p.displayDataType;
+	} else {
+		displayDataTypeFn = function(dataType) {
+			return (dataType === 'Power' ? 'Generation' : dataType);
+		};
+	}
+	var displayColorFn;
+	if ( typeof p.displayColor === 'function' ) {
+		displayColorFn = p.displayColor;
+	} else {
+		displayColorFn = function(dataType) {
+			return (dataType === 'Power' ? colorbrewer.Greens : colorbrewer.Blues);
+		};
+	}
+	for ( dataType in sourceMap ) {
+		chartSourceMap[dataType] = {};
+		typeSourceList = [];
+		sourceMap[dataType].forEach(function(el) {
+			var mappedSource;
+			if ( el === '' || el === 'Main' ) {
+				mappedSource = displayDataTypeFn(dataType);
+			} else {
+				mappedSource = displayDataTypeFn(dataType) +' / ' +el;
+			}
+			chartSourceMap[dataType][el] = mappedSource;
+			typeSourceList.push(mappedSource);
+			sourceList.push(mappedSource);
+		});
+		colorGroup = displayColorFn(dataType);
+		if ( typeSourceList.length < 3 ) {
+			colorGroupIndex = 3;
+		} else if ( colorGroup[typeSourceList.length] === undefined ) {
+			colorGroupIndex = 9;
+		} else {
+			colorGroupIndex = typeSourceList.length;
+		}
+		colorSlice = colorGroup[colorGroupIndex].slice(-typeSourceList.length);
+		if ( p.reverseColors !== false ) {
+			colorSlice.reverse();
+		}
+		sourceColors = sourceColors.concat(colorSlice);
+	}
+	result.sourceList = sourceList;
+	result.displaySourceMap = chartSourceMap;
+	result.colorMap = sn.colorMap(sourceColors, sourceList);
+	return result;
 };
 
 /**
