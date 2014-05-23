@@ -184,7 +184,7 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 				.text(fx);
 		gx.enter().append("text")
 				.attr("x", x)
-				.attr("y", h + 10)
+				.attr("y", h + p[2])
 				.text(fx);
 		gx.exit().remove();
 	}

@@ -166,7 +166,6 @@ svg {
 
 .chart g.data text {
 	text-anchor: middle;
-	alignment-baseline: text-before-edge;
 }
 
 .chart g.agg text {
