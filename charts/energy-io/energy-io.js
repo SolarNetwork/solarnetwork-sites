@@ -34,7 +34,7 @@ function setup(repInterval, sourceMap) {
 		d3.selectAll(chartKey +' .unit').text(unit);
 	}
 
-	// Watt stacked area chart
+	// Watt hour stacked bar chart
 	function wattHourChartSetup(endDate) {
 		var end = new Date(endDate.getTime());
 		end.setMinutes(0, 0, 0); // truncate end date to nearest hour
