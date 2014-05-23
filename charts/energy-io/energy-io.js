@@ -6,7 +6,6 @@
  */
 
 sn.config.debug = true;
-sn.config.defaultTransitionMs = 600;
 sn.config.host = 'data.solarnetwork.net';
 sn.runtime.globalCounter = sn.counter();
 sn.runtime.excludeSources = new sn.Configuration();
@@ -153,7 +152,7 @@ function setup(repInterval, sourceMap) {
 			setTimeout(function() {
 				energyBarChart.regenerate();
 				adjustChartDisplayUnits('.watthour-chart', 'Wh', energyBarChart.yScale());
-			}, sn.config.defaultTransitionMs * .8);
+			}, energyBarChart.transitionMs() * 0.5);
 		}
 	}
 }

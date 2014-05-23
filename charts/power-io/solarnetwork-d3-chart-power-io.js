@@ -16,6 +16,7 @@ if ( sn === undefined ) {
  * @property {number} [width=812] - desired width, in pixels, of the chart
  * @property {number} [height=300] - desired height, in pixels, of the chart
  * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
+ * @property {number} [transitionMs=600] - transition time
  * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
  */
 
@@ -48,6 +49,8 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
 
+	var transitionMs = (parameters.transitionMs || 600);
+	
 	var svgRoot = undefined,
 		svg = undefined;
 	
@@ -156,7 +159,7 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		// draw data areas
 		var area = svg.selectAll("path.area").data(layers);
 		
-		area.transition().duration(sn.config.defaultTransitionMs).delay(200)
+		area.transition().duration(transitionMs).delay(200)
 				.attr("d", areaPathGenerator);
 		
 		area.enter().append("path")
@@ -202,14 +205,14 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		}
 
 		var axisLines = svgRoot.select("g.rule").selectAll("g").data(y.ticks(5));
-		var axisLinesT = axisLines.transition().duration(sn.config.defaultTransitionMs);
+		var axisLinesT = axisLines.transition().duration(transitionMs);
 		axisLinesT.attr("transform", axisYTransform)
 			.select("text")
 				.text(displayFormat);
 		axisLinesT.select("line")
 				.attr('class', ruleClass);
 		
-	  	axisLines.exit().transition().duration(sn.config.defaultTransitionMs)
+	  	axisLines.exit().transition().duration(transitionMs)
 	  			.style("opacity", 1e-6)
 	  			.remove();
 	  			
@@ -224,7 +227,7 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		entered.append("text")
 				.attr("x", p[3] - 10)
 				.text(displayFormat);
-		entered.transition().duration(sn.config.defaultTransitionMs)
+		entered.transition().duration(transitionMs)
 				.style("opacity", null);
 	}
 	
@@ -303,6 +306,19 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	that.consumptionSourceCount = function(value) {
 		if ( !arguments.length ) return consumptionLayerCount;
 		consumptionLayerCount = +value; // the + used to make sure we have a Number
+		return that;
+	};
+	
+	/**
+	 * Get or set the animation transition time, in milliseconds.
+	 * 
+	 * @param {number} [value] the number of milliseconds to use
+	 * @return when used as a getter, the millisecond value, otherwise this object
+	 * @memberOf sn.chart.powerIOAreaChart
+	 */
+	that.transitionMs = function(value) {
+		if ( !arguments.length ) return transitionMs;
+		transitionMs = +value; // the + used to make sure we have a Number
 		return that;
 	};
 

@@ -15,7 +15,8 @@ if ( sn === undefined ) {
  * @type {object}
  * @property {number} [width=812] - desired width, in pixels, of the chart
  * @property {number} [height=300] - desired height, in pixels, of the chart
- * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
+ * @property {number[]} [padding=[30, 0, 30, 30]] - padding to inset the chart by, in top, right, bottom, left order
+ * @property {number} [transitionMs=600] - transition time
  * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
  */
 
@@ -47,6 +48,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
     	x = d3.time.scale().range([0, w]),
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
+	
+	var transitionMs = (parameters.transitionMs || 600);
 
 	var svgRoot = undefined,
 		svg = undefined,
@@ -232,7 +235,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	function axisXAggTextFn(d, propName) {
 		var t = new Date(d.getTime());
-		t.setHours(0, 0, 0, 0); // trucate to midnight of day
+		t.setHours(0, 0, 0, 0); // truncate to midnight of day
 		var a = dailyAggregateWh[t.getTime()];
 		return (a !== undefined ? a[propName] === null 
 				? '' : Number(a[propName] / displayFactor).toFixed(2)
@@ -253,11 +256,11 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.attr('x', axisXAggPosFn)
 			.text(axisXAggSumTextFn);
 		
-		aggLabels.transition().duration(sn.config.defaultTransitionMs)
+		aggLabels.transition().duration(transitionMs)
 				.attr("x", axisXAggPosFn)
 				.text(axisXAggGenerationTextFn);
 			
-		aggLabels.exit().transition().duration(sn.config.defaultTransitionMs)
+		aggLabels.exit().transition().duration(transitionMs)
 	  			.style("opacity", 1e-6)
 	  			.remove();
 
@@ -265,7 +268,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 				.attr("x", axisXAggPosFn)
 				.style("opacity", 1e-6)
 				.text(axisXAggGenerationTextFn)
-			.transition().duration(sn.config.defaultTransitionMs)
+			.transition().duration(transitionMs)
 				.style("opacity", null);
 	}
 
@@ -322,14 +325,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		}
 		
 		var axisLines = svgRoot.select("g.rule").selectAll("g").data(y.ticks(5));
-		var axisLinesT = axisLines.transition().duration(sn.config.defaultTransitionMs);
+		var axisLinesT = axisLines.transition().duration(transitionMs);
 		axisLinesT.attr("transform", axisYTransform)
 			.select("text")
 				.text(displayFormat);
 		axisLinesT.select("line")
 				.attr('class', ruleClass);
 		
-	  	axisLines.exit().transition().duration(sn.config.defaultTransitionMs)
+	  	axisLines.exit().transition().duration(transitionMs)
 	  			.style("opacity", 1e-6)
 	  			.remove();
 	  			
@@ -344,7 +347,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		entered.append("text")
 				.attr("x", p[3] - 10)
 				.text(displayFormat);
-		entered.transition().duration(sn.config.defaultTransitionMs)
+		entered.transition().duration(transitionMs)
 				.style("opacity", null);
 	}
 	
@@ -367,7 +370,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		}
 		
 		var bars = sourceGroups.selectAll("rect").data(Object);
-		bars.transition().duration(sn.config.defaultTransitionMs)
+		bars.transition().duration(transitionMs)
 			.attr("y", valueY)
 			.attr("height", heightY);
 		
@@ -377,7 +380,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.attr("height", 1e-6)
 			.attr("width", barWidth);
 		
-		entered.transition().duration(sn.config.defaultTransitionMs)
+		entered.transition().duration(transitionMs)
 			.attr("y", valueY)
 			.attr("height", heightY);
 		
@@ -460,6 +463,19 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	that.consumptionSourceCount = function(value) {
 		if ( !arguments.length ) return consumptionLayerCount;
 		consumptionLayerCount = +value; // the + used to make sure we have a Number
+		return that;
+	};
+
+	/**
+	 * Get or set the animation transition time, in milliseconds.
+	 * 
+	 * @param {number} [value] the number of milliseconds to use
+	 * @return when used as a getter, the millisecond value, otherwise this object
+	 * @memberOf sn.chart.powerIOAreaChart
+	 */
+	that.transitionMs = function(value) {
+		if ( !arguments.length ) return transitionMs;
+		transitionMs = +value; // the + used to make sure we have a Number
 		return that;
 	};
 
