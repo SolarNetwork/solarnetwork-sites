@@ -12,12 +12,12 @@ sn.runtime.excludeSources = new sn.Configuration();
 
 function setup(repInterval, sourceMap) {
 	var endDate = repInterval.eDate;
-	var energyBarChart = undefined;
+	var powerAreaChart = undefined;
 	var sourceColorMap = sn.sourceColorMapping(sourceMap);
 	
 	// we make use of sn.colorFn, so stash the required color map where expected
 	sn.runtime.colorData = sourceColorMap.colorMap;
-	
+
 	// create copy of color data for reverse ordering so labels vertically match chart layers
 	sn.colorDataLegendTable('#source-labels', sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
 		if ( sn.env.linkOld === 'true' ) {
@@ -29,6 +29,9 @@ function setup(repInterval, sourceMap) {
 		}
 	});
 
+	var e = new Date(endDate.getTime());
+	e.setMinutes(0,0,0); // truncate to nearest hour
+
 	// adjust display units as needed (between W and kW, etc)
 	function adjustChartDisplayUnits(chartKey, baseUnit, scale) {
 		var unit = (scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
@@ -36,22 +39,23 @@ function setup(repInterval, sourceMap) {
 	}
 
 	// Watt stacked area chart
-	function wattHourChartSetup(endDate) {
-		var end = new Date(endDate.getTime());
-		end.setMinutes(0, 0, 0); // truncate end date to nearest hour
+	function wattChartSetup(endDate) {
+		var e = new Date(endDate.getTime());
+		// truncate end date to nearest day precision minutes
+		e.setMinutes((endDate.getMinutes() - (endDate.getMinutes() % sn.env.minutePrecision)), 0, 0);
 		
-		var whRange = [
-			new Date(end.getTime() - ((sn.env.numDays * 24 - 1) * 60 * 60 * 1000)), 
-			new Date(end.getTime())
+		var wRange = [
+			new Date(e.getTime() - (sn.env.numHours * 60 * 60 * 1000)), 
+			new Date(e.getTime())
 			];
-		energyBarChart = sn.chart.energyIOBarChart('#week-watthour', {
+		powerAreaChart = sn.chart.powerIOAreaChart('#day-watt', {
 			height: 400,
 			excludeSources: sn.runtime.excludeSources
 		});
 		var q = queue();
 		sn.env.dataTypes.forEach(function(e, i) {
 			var urlHelper = (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper); // FIXME: remove
-			q.defer(d3.json, urlHelper.dateTimeQuery(e, whRange[0], whRange[1], 'Hour'));
+			q.defer(d3.json, urlHelper.dateTimeQuery(e, wRange[0], wRange[1], sn.env.minutePrecision));
 		});
 		q.awaitAll(function(error, results) {
 			if ( error ) {
@@ -75,15 +79,15 @@ function setup(repInterval, sourceMap) {
 				}
 				combinedData = combinedData.concat(json.data);
 			}
-			energyBarChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
-			energyBarChart.load(combinedData);
-			sn.log("Energy IO chart watt hour range: {0}", energyBarChart.yDomain());
-			sn.log("Energy IO chart time range: {0}", energyBarChart.xDomain());
-			adjustChartDisplayUnits('.watthour-chart', 'Wh', energyBarChart.yScale());
+			powerAreaChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
+			powerAreaChart.load(combinedData);
+			sn.log("Power IO chart watt range: {0}", powerAreaChart.yDomain());
+			sn.log("Power IO chart time range: {0}", powerAreaChart.xDomain());
+			adjustChartDisplayUnits('.watt-chart', 'W', powerAreaChart.yScale());
 		});
 	}
 	
-	wattHourChartSetup(endDate);
+	wattChartSetup(endDate);
 	setInterval(function() {
 		d3.json(sn.runtime.urlHelper.reportableInterval(sn.env.dataTypes), function(error, json) {
 			if ( json.data === undefined || json.data.endDateMillis === undefined ) {
@@ -92,25 +96,18 @@ function setup(repInterval, sourceMap) {
 			}
 			
 			var endDate = sn.dateTimeFormat.parse(json.data.endDate);
-			var xDomain = energyBarChart.xDomain();
-			var currEndDate = xDomain[xDomain.length - 1];
-			var newEndDate = new Date(endDate.getTime());
-			currEndDate.setMinutes(0,0,0); // truncate to nearest hour
-			newEndDate.setMinutes(0,0,0);
-			if ( newEndDate.getTime() > currEndDate.getTime() ) {
-				wattHourChartSetup(endDate);
-			}
+			wattChartSetup(endDate);
 		});
 	}, sn.config.wChartRefreshMs);
 	
 	function legendClickHandler(d, i) {
 		sn.runtime.excludeSources.toggle(d.source);
-		if ( energyBarChart !== undefined ) {
+		if ( powerAreaChart !== undefined ) {
 			// use a slight delay, otherwise transitions can be jittery
 			setTimeout(function() {
-				energyBarChart.regenerate();
-				adjustChartDisplayUnits('.watthour-chart', 'Wh', energyBarChart.yScale());
-			}, energyBarChart.transitionMs() * 0.5);
+				powerAreaChart.regenerate();
+				adjustChartDisplayUnits('.watt-chart', 'W', powerAreaChart.yScale());
+			}, powerAreaChart.transitionMs() * 0.5);
 		}
 	}
 }
@@ -119,14 +116,19 @@ function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
 		consumptionNodeId : 108,
+		minutePrecision : 10,
+		numHours : 24,
 		numDays : 7,
+		wiggle : 'false',
+		linkOld : 'false',
 		maxPowerKW : 3,
 		dataTypes: ['Consumption', 'Power']
 	});
-	sn.config.wChartRefreshMs = 30 * 60 * 1000;
+	sn.config.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
 	
 	// setup DOM based on environment
 	d3.select('#num-days').text(sn.env.numDays);
+	d3.select('#num-hours').text(sn.env.numHours);
 	d3.selectAll('.node-id').text(sn.env.nodeId);
 	
 	// find our available data range, and then draw our charts!
