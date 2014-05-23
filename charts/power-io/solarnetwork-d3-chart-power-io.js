@@ -167,7 +167,10 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		area.exit().remove();
 	}
 
-	function axisYTransform(d) { return "translate(0," + y(d) + ")"; };
+	function axisYTransform(d) {
+		// align to half-pixels, to 1px line is aligned to pixels and crisp
+		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
+	};
 
 	function adjustAxisX() {
 		if ( d3.event && d3.event.transform ) {
