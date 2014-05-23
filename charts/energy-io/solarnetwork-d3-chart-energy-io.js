@@ -105,20 +105,19 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	}
 
 	// Create daily aggregated data, in form [ { date: Date(2011-12-02 12:00), wattHoursTotal: 12312 }, ... ]
-	function calculateDailyAggregateWh() {
+	function calculateDailyAggregateWh(ticks) {
 		var results = [];
 		var i, j, len;
 		var startIndex = undefined;
 		var endIndex = undefined;
 		var currDayData = undefined;
 		var obj = undefined;
-		var day1 = undefined;
+		var day1 = ticks[0];
 
 		// calculate first x index for midnight
 		for ( i = 0, len = layers[0].length; i < len; i++ ) {
 			if ( layers[0][i].x.getHours() === 0 ) {
 				startIndex = i;
-				day1 = layers[0][i].x;
 				break;
 			}
 		}
