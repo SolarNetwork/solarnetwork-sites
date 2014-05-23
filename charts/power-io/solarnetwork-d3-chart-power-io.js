@@ -199,10 +199,6 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	}
 
 	function adjustAxisY() {
-		if ( sn.env.wiggle === 'true' ) {
-			return;
-		}
-		
 		function ruleClass(d) {
 			return (d === 0 ? 'origin' : 'm');
 		}
