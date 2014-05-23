@@ -177,9 +177,11 @@ svg {
 	fill: #DF3038;
 }
 
-.chart g.agg text {
+.chart g.agg-gen text {
 	text-anchor: middle;
 	font-weight: bold;
+	alignment-baseline: text-before-edge;
+	fill: #1B7D30;
 }
 
 .chart g.rule {
