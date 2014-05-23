@@ -22,19 +22,14 @@ h1, h2, h3 {
 
 h1 {
 	text-align: left;
-	font-size: 42px;
-	line-height: 42px;
-	font-weight: 200;
+	font-size: 28px;
+	line-height: 28px;
+	font-weight: 400;
 	margin: 0;
 	margin-bottom: 12px;
+	margin-top: -2px;
 	color: rgb(247,200,25);
 	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
-}
-
-h1::before {
-	content: url("img/header-logo.png");
-	vertical-align: middle;
-	margin-right: 10px;
 }
 
 h2 {
@@ -63,6 +58,14 @@ h2 sub {
 	top: 0.3em;
 }
 
+img.header-logo {
+	margin-top: -5px;
+	margin-right: 10px;
+	height: 36px;
+	width: auto;
+	float: left;
+}
+
 div.footer {
 	margin: 20px;
 }
@@ -75,11 +78,11 @@ div.pane {
 	background-color: rgba(100%,100%,100%,1);
 	border-radius: 8px;
 	box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
-	padding: 10px 10px;
+	padding: 4px 8px;
 }
 
 div.main div.pane {
-	padding: 20px 20px;
+	padding: 8px 12px;
 }
 
 div.hbox {
