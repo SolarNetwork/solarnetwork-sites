@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1024" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<title>Clyde Quay School Energy Profile</title>
+	<link type="text/css" rel="stylesheet" href="cqs.css" />
+	<script type="text/javascript" src="js-lib/d3-3.4.8.min.js"></script>
+	<script type="text/javascript" src="js-lib/colorbrewer.js"></script>
+	<script type="text/javascript" src="js-lib/queue-1.0.7.min.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-energy-io.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-power-io.js"></script>
+	<script type="text/javascript" src="cqs.js"></script>
+	<script type="text/javascript">
+		function startApp() {
+			sn.setDefaultEnv({
+				nodeId : 111,
+			});
+			onDocumentReady();
+		}
+		if ( !window.isLoaded ) {
+			window.addEventListener("load", function() {
+				startApp();
+			}, false);
+		} else {
+			startApp();
+		}
+	</script>
+</head>
+<body>
+	<h1>Clyde Quay School Energy Profile</h1>
+	<div class="hbox">
+		<div class="vbox main">
+			<div class="pane watt-chart">
+				<h2><span id="num-hours"></span> hour power <span class="alt"><span class="unit">(kW)</span></span></h2>
+				<div id="day-watt" class="chart-container"></div>
+			</div>
+		</div>
+		<div class="vbox sub">
+			<div class="pane">
+				<div id="source-labels"></div>
+			</div>
+		</div>
+	</div>
+	<div class="footer">
+		<img src="img/footer-logo.png"/>
+	</div>
+</body>
+</html>

@@ -1,0 +1,1 @@
+../../../charts/power-io/solarnetwork-d3-chart-power-io.js
