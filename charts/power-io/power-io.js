@@ -7,7 +7,6 @@
 
 sn.config.debug = true;
 sn.config.host = 'data.solarnetwork.net';
-sn.runtime.globalCounter = sn.counter();
 sn.runtime.excludeSources = new sn.Configuration();
 
 function setup(repInterval, sourceMap) {
