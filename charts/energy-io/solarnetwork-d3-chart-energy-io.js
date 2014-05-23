@@ -41,7 +41,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	// default to container's width, if we can
 	var containerWidth = sn.pixelWidth(containerSelector);
 	
-	var p = (parameters.padding || [10, 0, 30, 20]),
+	var p = (parameters.padding || [10, 0, 30, 30]),
 		w = (parameters.width || containerWidth || 812) - p[1] - p[3],
 		h = (parameters.height || 300) - p[0] - p[2],
     	x = d3.time.scale().range([0, w]),
@@ -162,7 +162,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 					m = data[0].length,
 					offset,
 					y0 = [];
-				//var layerCount = data.length;
 				while (++j < m) {
 					i = -1;
 					offset = 0;
@@ -173,17 +172,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 					if ( offset < minY ) {
 						minY = offset;
 					}
-					/*
-					if ( i < layerCount ) {
-						offset = 0;
-						do {
-							offset += data[i][j][1];
-						} while ( ++i < data.length );
-						if ( offset > maxY ) {
-							maxY = offset;
-						}
-					}
-					*/
 				}
 				return y0;
 			}).data(dataArray);
@@ -213,7 +201,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 
 		aggGroup = svgRoot.append("g")
 			.attr('class', 'agg')
-			.attr("transform", "translate(" + p[3] + "," + h + ")");
+			.attr("transform", "translate(" + p[3] + "," + (h + p[0] + p[2]) + ")");
 
 	}
 	
@@ -266,7 +254,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		  	.text(fx);
 		gx.enter().append("text")
 			.attr("x", dx)
-			.attr("y", h + 10)
+			.attr("y", h + p[2])
+			.attr("dy", '-1.2em')
 			.text(fx);
 		gx.exit().remove();
 		
@@ -307,8 +296,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	function redraw() {
 		// Add a group for each source.
-		var source = svg.selectAll("g.source").data(layers)
-			.enter().append("g")
+		var sourceGroups = svg.selectAll("g.source").data(layers);
+		sourceGroups.enter()
+			.append("g")
 				.attr("class", "source")
 				.style("fill", sn.colorFn);
 		
@@ -322,7 +312,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			return y(d.y0) - y(d.y0 + d.y);
 		}
 		
-		var bars = source.selectAll("rect").data(Object);
+		var bars = sourceGroups.selectAll("rect").data(Object);
 		bars.transition().duration(sn.config.defaultTransitionMs)
 			.attr("y", valueY)
 			.attr("height", heightY);
