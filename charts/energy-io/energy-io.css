@@ -161,11 +161,20 @@ svg {
 }
 
 .chart text {
-	fill: black;
+	fill: #333;
 }
 
 .chart g.data text {
 	text-anchor: middle;
+}
+
+.chart g.data text.agg {
+	fill: black;
+	font-weight: bold;
+}
+
+.chart g.data text.agg.neg {
+	fill: #DF3038;
 }
 
 .chart g.agg text {
@@ -173,9 +182,13 @@ svg {
 	font-weight: bold;
 }
 
+.chart g.rule {
+	shape-rendering: crispEdges;
+}
+
 .chart g.rule line {
 	stroke: black;
-	opacity: 0.2;
+	opacity: 0.1;
 }
 
 .chart g.rule line.origin {

@@ -99,19 +99,20 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	}
 
 	// Create daily aggregated data, in form [ { date: Date(2011-12-02 12:00), wattHoursTotal: 12312 }, ... ]
-	function calculateDailyAggregateWh(ticks) {
+	function calculateDailyAggregateWh() {
 		var results = [];
 		var i, j, len;
 		var startIndex = undefined;
 		var endIndex = undefined;
 		var currDayData = undefined;
 		var obj = undefined;
-		var day1 = ticks[0];
+		var day1 = undefined;
 
 		// calculate first x index for midnight
 		for ( i = 0, len = layers[0].length; i < len; i++ ) {
 			if ( layers[0][i].x.getHours() === 0 ) {
 				startIndex = i;
+				day1 = layers[0][i].x;
 				break;
 			}
 		}
@@ -134,16 +135,33 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 					if ( currDayData === undefined || obj.x.getDate() !== currDayData.date.getDate()
 							|| obj.x.getMonth() !== currDayData.date.getMonth() 
 							|| obj.x.getYear() !== currDayData.date.getYear() ) {
-						currDayData = {date:new Date(obj.x.getTime()), wattHoursTotal:(i < startIndex ? null : 0)};
+						currDayData = {
+								date : new Date(obj.x.getTime()), 
+								wattHoursTotal : (i < startIndex ? null : 0),
+								wattHoursConsumed : (i < startIndex ? null : 0),
+								wattHoursGenerated : (i < startIndex ? null : 0)
+							};
 						currDayData.date.setHours(0,0,0,0);
 						results.push(currDayData);
 					}
 					if ( i >= startIndex ) {
-						currDayData.wattHoursTotal += obj.y;
+						if ( j < consumptionLayerCount ) {
+							currDayData.wattHoursConsumed += obj.y;
+							currDayData.wattHoursTotal -= obj.y;
+						} else {
+							currDayData.wattHoursGenerated += obj.y;
+							currDayData.wattHoursTotal += obj.y;
+						}
 					}
 				}
 			}
 		}
+		
+		// add dates as keys to returned array
+		for ( i = 0, len = results.length; i < len; i++ ) {
+			results[results[i].date.getTime()] = results[i];
+		}
+		
 		return results;
 	}
 	
@@ -184,7 +202,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		svgRoot = d3.select(containerSelector).select('svg');
 		if ( svgRoot.empty() ) {
 			svgRoot = d3.select(containerSelector).append('svg:svg')
-				.attr('class', 'crisp chart')
+				.attr('class', 'chart')
 				.attr("width", w + p[1] + p[3])
 				.attr("height", h + p[0] + p[2]);
 		} else {
@@ -196,7 +214,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 		
 		svgRoot.append("g")
-			.attr("class", "crisp rule")
+			.attr("class", "rule")
 			.attr("transform", "translate(0," + p[0] + ")");
 
 		aggGroup = svgRoot.append("g")
@@ -205,21 +223,29 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 
 	}
 	
-	function axisYTransform(d) { return "translate(0," + y(d) + ")"; }
+	function axisYTransform(d) {
+		// align to half-pixels, to 1px line is aligned to pixels and crisp
+		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
+	}
 
 	function axisXAggPosFn(d) { return x(d) + (barWidth / 2); }
 	
-	function axisXAggTextFn(d, i) { 
-		return (i < dailyAggregateWh.length 
-			? dailyAggregateWh[i].wattHoursTotal === null 
-				? '' : Number(dailyAggregateWh[i].wattHoursTotal / displayFactor).toFixed(2)
-			: 0);
+	function axisXAggTextFn(d) {
+		var t = new Date(d.getTime());
+		t.setHours(0, 0, 0, 0); // trucate to midnight of day
+		var a = dailyAggregateWh[t.getTime()];
+		return (a !== undefined ? a.wattHoursTotal === null 
+				? '' : Number(a.wattHoursTotal / displayFactor).toFixed(2)
+						: 0);
 	}
 	
 	function adjustAxisXAggregate(ticks) {
+		return;
 		// Add daily aggregate labels, centered within associated band at noon
 		var aggTicks = ticks.filter(function(d) { return d.getHours() === 12; });
-		var aggLabels = aggGroup.selectAll("text").data(aggTicks);
+		var aggLabels = aggGroup.selectAll("text").data(aggTicks)
+			.attr('x', axisXAggPosFn)
+			.text(axisXAggTextFn);
 		
 		aggLabels.transition().duration(sn.config.defaultTransitionMs)
 				.attr("x", axisXAggPosFn)
@@ -231,7 +257,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 
 		aggLabels.enter().append("text")
 				.attr("x", axisXAggPosFn)
-				//.attr("y", 22)
 				.style("opacity", 1e-6)
 				.text(axisXAggTextFn)
 			.transition().duration(sn.config.defaultTransitionMs)
@@ -247,16 +272,39 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 
 		var dx = function(d) { return x(d) + (barWidth / 2); };
 		var fx = x.tickFormat(ticks.length);
+		
+		function tickText(d) {
+			if ( d.getHours() === 12 ) {
+				return axisXAggTextFn(d);
+			} else {
+				return fx(d);
+			}
+		}
+
+		function tickClassAgg(d) {
+			return (d.getHours() === 12);
+		}
+		
+		function tickClassNeg(d) {
+			return (d.getHours() === 12 && axisXAggTextFn(d) < 0);
+		}
 
 		// Add date labels, centered within associated band
 		var gx = svg.selectAll("text").data(ticks)
 		  	.attr("x", dx)
-		  	.text(fx);
+		  	.text(tickText)
+		  	.classed({
+				agg : tickClassAgg,
+				neg : tickClassNeg
+			});
 		gx.enter().append("text")
 			.attr("x", dx)
 			.attr("y", h + p[2])
-			.attr("dy", '-1.2em')
-			.text(fx);
+			.classed({
+				agg : tickClassAgg,
+				neg : tickClassNeg
+			})
+			.text(tickText);
 		gx.exit().remove();
 		
 		adjustAxisXAggregate(ticks);
@@ -389,6 +437,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		layers = layerGenerator();
 		computeDomainY();
 		redraw();
+		adjustAxisX();
 		adjustAxisY();
 		return that;
 	};
