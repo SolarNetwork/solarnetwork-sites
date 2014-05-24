@@ -225,7 +225,6 @@ svg {
 .chart g.agg-gen text {
 	text-anchor: middle;
 	font-weight: bold;
-	alignment-baseline: text-before-edge;
 	fill: #1B7D30;
 }
 

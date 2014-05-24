@@ -224,7 +224,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 
 		aggGroup = svgRoot.append("g")
 			.attr('class', 'agg-gen')
-			.attr("transform", "translate(" + p[3] + ",0)");
+			.attr("transform", "translate(" + p[3] + ",10)");
 
 	}
 	
