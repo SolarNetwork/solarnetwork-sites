@@ -58,6 +58,33 @@ h2 sub {
 	top: 0.3em;
 }
 
+h3 {
+	font-size: 14px;
+	line-height: 14px;
+	font-weight: 500;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+h3 .alt {
+	color: gray;
+}
+
+h3 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+h3 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
 img.header-logo {
 	margin-top: -5px;
 	margin-right: 10px;
@@ -104,11 +131,11 @@ div.vbox {
 }
 
 div.hbox > .main {
-	width: 864px;
+	width: 804px;
 }
 
 div.hbox > .sub {
-	width: 130px;
+	width: 190px;
 }
 
 div.vbox + div.vbox {
@@ -132,6 +159,10 @@ a {
 .readings .unit {
 	color: #666;
 	font-weight: 200;
+}
+
+.readings .pane div + h3 {
+	margin-top: 1em;
 }
 
 /* Source labels */
@@ -253,3 +284,30 @@ svg {
 .readings .infobar .value {
 	font-weight: 600;
 }
+
+/* Flip counters */
+
+.flipCounter {
+	height: 28px;
+}
+
+.flipCounter .flipper {
+	width: 19px;
+	height: 22px;
+}
+
+.flipper .face {
+	border-radius: 4px;
+	width: 19px;
+	height: 22px;
+}
+
+.readings .flipCounter .flipper .value {
+	font-size: 18px;
+	line-height: 18px;
+	font-weight: normal;
+	text-align: center;
+	width: 19px;
+	height: 22px;
+}
+

@@ -189,13 +189,14 @@ function setup(repInterval, sourceMap) {
 
 	// setup power gauge
 	sn.runtime.totalPowerGauge = sn.chart.gauge('#total-power-gauge', {
-		size: 114,
-		clipWidth: 114,
-		clipHeight: 70,
-		ringWidth: 20,
+		size: 174,
+		clipWidth: 174,
+		clipHeight: 100,
+		ringWidth: 30,
 		maxValue: sn.env.maxPowerKW,
-		majorTicks : sn.env.powerGaugeTicks,
+		majorTicks: sn.env.powerGaugeTicks,
 		transitionMs: 4000,
+		flipCounterAnimate: 'true'
 	});
 	sn.runtime.totalPowerGauge.render();
 
@@ -204,6 +205,63 @@ function setup(repInterval, sourceMap) {
 	setInterval(function() {
 		updateReadings();
 	}, 60 * 1000);
+	
+	// flip counter for Wh generated
+	sn.runtime.flipCounterKWh = sn.ui.flipCounter('#counter-kwh', {
+		animate: (sn.env.flipCounterAnimate === 'true'),
+		format: d3.format(',d'),
+		flipperWidth: 21
+	});
+	sn.runtime.flipCounterKWh.render();
+
+	// flip counter for Wh consumed
+	sn.runtime.flipCounterKWhConsumed = sn.ui.flipCounter('#counter-kwh-consume', {
+		animate: (sn.env.flipCounterAnimate === 'true'),
+		format: d3.format(',d'),
+		flipperWidth: 21
+	});
+	sn.runtime.flipCounterKWhConsumed.render();
+
+	// Wh counter utility (generation)
+	if ( sn.runtime.wattHourPowerCounter !== undefined ) {
+		sn.runtime.wattHourPowerCounter.stop();
+	}
+	sn.runtime.wattHourPowerCounter = sn.util.aggregateCounter({
+		dataType: 'Power',
+		nodeUrlHelper: sn.runtime.urlHelper,
+		startingInterval: {startDate: repInterval.sDate, endDate: repInterval.eDate},
+		callback : function() {
+			var totalKWattHours = this.aggregateValue() / 1000;
+			
+			// using conversion of  0.7685 kg CO2/kWh electricity
+			var totalCO2Kg = Math.round(totalKWattHours * Number(sn.env.CO2Factor));
+			
+			var totalDollars = Math.round(totalKWattHours * Number(sn.env.KWhTarrif));
+			
+			sn.log('{0} total kWh calculated as {1} Kg CO2; ${2}', 
+				totalKWattHours, totalCO2Kg, totalDollars);
+			sn.runtime.flipCounterKWh.update(Math.round(totalKWattHours));
+			//sn.runtime.flipCounterCO2.update(totalCO2Kg);
+			//sn.runtime.flipCounterMoney.update(totalDollars);
+		}
+	});
+	sn.runtime.wattHourPowerCounter.start();
+
+	// Wh counter utility (consumption)
+	if ( sn.runtime.wattHourConsumptionCounter !== undefined ) {
+		sn.runtime.wattHourConsumptionCounter.stop();
+	}
+	sn.runtime.wattHourConsumptionCounter = sn.util.aggregateCounter({
+		dataType: 'Consumption',
+		nodeUrlHelper: sn.runtime.consumptionUrlHelper,
+		startingInterval: {startDate: repInterval.sDate, endDate: repInterval.eDate},
+		callback : function() {
+			var totalKWattHours = this.aggregateValue() / 1000;
+			sn.runtime.flipCounterKWhConsumed.update(Math.round(totalKWattHours));
+		}
+	});
+	sn.runtime.wattHourConsumptionCounter.start();
+
 }
 
 function onDocumentReady() {
