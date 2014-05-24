@@ -6,19 +6,20 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 	<title>Clyde Quay School Energy Profile</title>
+	<link type="text/css" rel="stylesheet" href="solarnetwork-d3-ui-flipcounter.css" />
 	<link type="text/css" rel="stylesheet" href="cqs.css" />
 	<script type="text/javascript" src="js-lib/d3-3.4.8.min.js"></script>
 	<script type="text/javascript" src="js-lib/colorbrewer.js"></script>
 	<script type="text/javascript" src="js-lib/queue-1.0.7.min.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-energy-io.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-gauge.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-power-io.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-ui-flipcounter.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-util-aggcounter.js"></script>
 	<script type="text/javascript" src="cqs.js"></script>
 	<script type="text/javascript">
 		function startApp() {
-			sn.setDefaultEnv({
-				nodeId : 111,
-			});
 			onDocumentReady();
 		}
 		if ( !window.isLoaded ) {
@@ -44,9 +45,19 @@
 				<div id="week-watthour" class="chart-container"></div>
 			</div>
 		</div>
-		<div class="vbox sub">
+		<div class="vbox sub readings">
 			<div class="pane">
 				<div id="source-labels"></div>
+			</div>
+			<div class="pane">
+				<div id="total-power-gauge"></div>
+				<div class="infobar">
+					<span class="total-power"><span class="dataType">Power</span>: <span class="value" id="total-power-value">0</span> <span class="alt unit">kW</span></span>
+				</div>
+			</div>
+			<div class="pane counter agg-kwh">
+				<h3><span class="literal">kWh</span> <span class="alt"><span class="dataType">generated</span></span></h3>
+				<div id="counter-kwh"></div>
 			</div>
 		</div>
 	</div>

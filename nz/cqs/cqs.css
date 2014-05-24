@@ -127,13 +127,14 @@ a {
 	cursor: pointer !important;
 }
 
-#readings > div {
-	margin-bottom: 2px;
+/* Readings column */
+
+.readings .unit {
+	color: #666;
+	font-weight: 200;
 }
 
-#readings span.unit {
-	color: #666;
-}
+/* Source labels */
 
 #source-labels a:visited {
 	color: inherit;
@@ -226,4 +227,29 @@ svg {
 
 .chart line.axis {
 	stroke: black;
+}
+
+/* Total Power Gauge */
+
+#total-power-gauge g.pointer {
+	fill: #e85116;
+	stroke: #b64011;
+	stroke-width: 1px;
+}
+
+#total-power-gauge g.label text {
+	text-anchor: middle;
+	font-size: 10px;
+	font-weight: bold;
+	fill: #666;
+}
+
+.readings .infobar {
+	font-size: 14px;
+	line-height: 16px;
+	text-align: center;
+}
+
+.readings .infobar .value {
+	font-weight: 600;
 }

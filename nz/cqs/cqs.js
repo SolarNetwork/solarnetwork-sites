@@ -173,6 +173,37 @@ function setup(repInterval, sourceMap) {
 			}, energyBarChart.transitionMs() * 0.5);
 		}
 	}
+
+	function updateReadings() {
+		d3.json(sn.runtime.urlHelper.mostRecentQuery('Power'), function(json) {
+			if ( json.data === undefined ) {
+				sn.log('No data available for node {0}', sn.runtime.urlHelper.nodeId());
+				return;
+			}
+			// totalPower, in kW
+			var totalPower = d3.sum(json.data, function(d) { return d.watts; }) / 1000;
+			sn.runtime.totalPowerGauge.update(totalPower);
+			d3.select('#total-power-value').html(Number(totalPower).toFixed(2));
+		});
+	}
+
+	// setup power gauge
+	sn.runtime.totalPowerGauge = sn.chart.gauge('#total-power-gauge', {
+		size: 114,
+		clipWidth: 114,
+		clipHeight: 70,
+		ringWidth: 20,
+		maxValue: sn.env.maxPowerKW,
+		majorTicks : sn.env.powerGaugeTicks,
+		transitionMs: 4000,
+	});
+	sn.runtime.totalPowerGauge.render();
+
+	// every minute update reading values
+	updateReadings();
+	setInterval(function() {
+		updateReadings();
+	}, 60 * 1000);
 }
 
 function onDocumentReady() {
@@ -184,7 +215,8 @@ function onDocumentReady() {
 		numDays : 7,
 		wiggle : 'true',
 		linkOld : 'false',
-		maxPowerKW : 8,
+		maxPowerKW : 16,
+		powerGaugeTicks : 8,
 		dataTypes: ['Consumption', 'Power']
 	});
 	sn.config.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
