@@ -140,7 +140,7 @@ sn.util.aggregateCounter = function(configuration) {
 
 		// pull in up to previous month
 		if ( startOfMonth.getTime() > sDate.getTime() && startOfMonth.getTime() < startOfDay.getTime() ) {
-			q.defer(d3.json, sn.runtime.urlHelper.dateTimeQuery(config.dataType, sDate, startOfMonth, 'Month', {exclusiveEndDate:true}));
+			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, startOfMonth, 'Month', {exclusiveEndDate:true}));
 			sDate = startOfMonth;
 		} else {
 			q.defer(noop);
@@ -148,7 +148,7 @@ sn.util.aggregateCounter = function(configuration) {
 		
 		// pull in up to previous day
 		if ( startOfDay.getTime() > sDate.getTime() && startOfDay.getTime() < startOfHour.getTime() ) {
-			q.defer(d3.json, sn.runtime.urlHelper.dateTimeQuery(config.dataType, sDate, startOfDay, 'Day', {exclusiveEndDate:true}));
+			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, startOfDay, 'Day', {exclusiveEndDate:true}));
 			sDate = startOfDay;
 		} else {
 			q.defer(noop);
@@ -156,7 +156,7 @@ sn.util.aggregateCounter = function(configuration) {
 		
 		// pull in up to previous hour
 		if ( startOfHour.getTime() > sDate.getTime() && startOfHour.getTime() <= eDate.getTime() ) {
-			q.defer(d3.json, sn.runtime.urlHelper.dateTimeQuery(config.dataType, sDate, startOfHour, 'Hour', {exclusiveEndDate:true}));
+			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, startOfHour, 'Hour', {exclusiveEndDate:true}));
 			sDate = startOfHour;
 		} else {
 			q.defer(noop);
@@ -164,7 +164,7 @@ sn.util.aggregateCounter = function(configuration) {
 		
 		// pull in latest hour, to get just a single hour, this query needs the start date === end date
 		if ( sDate.getTime() < eDate.getTime() ) {
-			q.defer(d3.json, sn.runtime.urlHelper.dateTimeQuery(config.dataType, sDate, eDate, 'Hour', {exclusiveEndDate:false}));
+			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, eDate, 'Hour', {exclusiveEndDate:false}));
 		} else {
 			q.defer(noop);
 		}
