@@ -118,75 +118,67 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	}
 
 	// Create daily aggregated data, in form [ { date: Date(2011-12-02 12:00), wattHoursTotal: 12312 }, ... ]
-	function calculateDailyAggregateWh(ticks) {
+	function calculateAggregateWh() {
 		var results = [];
 		var i, j, len;
 		var startIndex = undefined;
-		var endIndex = undefined;
+		var endIndex = layers[0].length;
 		var currDayData = undefined;
 		var obj = undefined;
-		var day1 = ticks[0];
-
-		// calculate first x index for midnight
-		for ( i = 0, len = layers[0].length; i < len; i++ ) {
-			if ( aggregateType === 'Hour' && layers[0][i].x.getHours() === 0 ) {
-				startIndex = i;
-				break;
-			} else if ( aggregateType === 'Day' && layers[0][i].x.getDate() === 1 ) {
-				startIndex = i;
-				break;
-			}
-		}
-		
-		endIndex = layers[0].length;
+		var domain = x.domain();
 		
 		// sum up values for each aggregate range
-		if ( startIndex !== undefined && endIndex !== undefined && startIndex < endIndex) {
-			len = layers.length;
-			for ( i = 0; i < endIndex; i++ ) {
-				for ( j = 0; j < len; j++ ) {
-					if ( sn.runtime.excludeSources[layers[j].source] !== undefined ) {
-						continue;
+		len = layers.length;
+		OUTER: for ( i = 0; i < endIndex; i++ ) {
+			if ( startIndex !== undefined && i < startIndex ) {
+				// skip before first full aggregate range
+				continue;
+			}
+			for ( j = 0; j < len; j++ ) {
+				if ( sn.runtime.excludeSources[layers[j].source] !== undefined ) {
+					continue;
+				}
+				obj = layers[j][i];
+				if ( startIndex === undefined ) {
+					if ( aggregateType === 'Hour' && obj.x.getHours() === 0 ) {
+						startIndex = i;
+					} else if ( aggregateType === 'Day' && obj.x.getDate() === 1 ) {
+						startIndex = i;
+					} else {
+						break OUTER;
 					}
-					obj = layers[j][i];
-					if ( obj.x.getTime() < day1.getTime() ) {
-						// skip before first tick
-						continue;
+				}
+				if ( currDayData === undefined 
+						|| (aggregateType === 'Hour' && obj.x.getDate() !== currDayData.date.getDate())
+						|| obj.x.getMonth() !== currDayData.date.getMonth() 
+						|| obj.x.getYear() !== currDayData.date.getYear() ) {
+					currDayData = {
+							date : new Date(obj.x.getTime()), 
+							wattHoursTotal : (i < startIndex ? null : 0),
+							wattHoursConsumed : (i < startIndex ? null : 0),
+							wattHoursGenerated : (i < startIndex ? null : 0)
+						};
+					if ( aggregateType === 'Day' ) {
+						currDayData.date.setHours(0, 0, 0, 0);
+					} else {
+						// assume Hour aggregateType
+						currDayData.date.setHours(0,0,0,0);
 					}
-					if ( currDayData === undefined 
-							|| (aggregateType === 'Hour' && obj.x.getDate() !== currDayData.date.getDate())
-							|| obj.x.getMonth() !== currDayData.date.getMonth() 
-							|| obj.x.getYear() !== currDayData.date.getYear() ) {
-						currDayData = {
-								date : new Date(obj.x.getTime()), 
-								wattHoursTotal : (i < startIndex ? null : 0),
-								wattHoursConsumed : (i < startIndex ? null : 0),
-								wattHoursGenerated : (i < startIndex ? null : 0)
-							};
-						if ( aggregateType === 'Day' ) {
-							currDayData.date.setHours(0, 0, 0, 0);
-						} else {
-							// assume Hour aggregateType
-							currDayData.date.setHours(0,0,0,0);
-						}
-						results.push(currDayData);
-					}
-					if ( i >= startIndex ) {
-						if ( j < consumptionLayerCount ) {
-							currDayData.wattHoursConsumed += obj.y;
-							currDayData.wattHoursTotal -= obj.y;
-						} else {
-							currDayData.wattHoursGenerated += obj.y;
-							currDayData.wattHoursTotal += obj.y;
-						}
+					results.push(currDayData);
+					
+					// also add key for data's time in returned array, for fast lookup
+					results[currDayData.date.getTime()] = currDayData;
+				}
+				if ( i >= startIndex ) {
+					if ( j < consumptionLayerCount ) {
+						currDayData.wattHoursConsumed += obj.y;
+						currDayData.wattHoursTotal -= obj.y;
+					} else {
+						currDayData.wattHoursGenerated += obj.y;
+						currDayData.wattHoursTotal += obj.y;
 					}
 				}
 			}
-		}
-		
-		// add dates as keys to returned array
-		for ( i = 0, len = results.length; i < len; i++ ) {
-			results[results[i].date.getTime()] = results[i];
 		}
 		
 		return results;
@@ -341,7 +333,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		var aggTicks;
 		if ( aggregateType === 'Day' ) {
 			ticks = firstAndMidMonthDates(x.domain());
-			aggTicks = x.ticks(d3.time.months, 1);
+			// agg ticks shifted by 14 days so centered within the month
+			aggTicks = x.ticks(d3.time.months, 1).map(function(e) {
+				return d3.time.day.offset(e, 14);
+			});
 		} else {
 			// assume aggregateType == Hour
 			ticks = x.ticks(d3.time.hours, 12);
@@ -351,7 +346,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 				return d3.time.hour.offset(e, 12);
 			});
 		}
-		dailyAggregateWh = calculateDailyAggregateWh(aggTicks);
+		dailyAggregateWh = calculateAggregateWh();
 
 		var fx = x.tickFormat(ticks.length);
 		
