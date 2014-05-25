@@ -156,9 +156,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 						|| obj.x.getYear() !== currDayData.date.getYear() ) {
 					currDayData = {
 							date : new Date(obj.x.getTime()), 
-							wattHoursTotal : (i < startIndex ? null : 0),
-							wattHoursConsumed : (i < startIndex ? null : 0),
-							wattHoursGenerated : (i < startIndex ? null : 0)
+							wattHoursTotal : 0,
+							wattHoursConsumed : 0,
+							wattHoursGenerated : 0
 						};
 					if ( aggregateType === 'Day' ) {
 						currDayData.date.setHours(0, 0, 0, 0);
@@ -271,9 +271,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	function axisXAggTextFn(d, propName) {
 		var a = axisXAggObject(d, propName);
-		return (a !== undefined ? a[propName] === null 
-				? '' : aggDisplayFormat(a[propName])
-						: 0);
+		return (a === undefined ? '' : aggDisplayFormat(a[propName]));
 	}
 	
 	function axisXAggSumTextFn(d) {
