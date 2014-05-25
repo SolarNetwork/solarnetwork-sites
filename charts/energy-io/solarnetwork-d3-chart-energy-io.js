@@ -140,6 +140,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 				}
 				obj = layers[j][i];
 				if ( startIndex === undefined ) {
+					// we only want to sum for full ranges; e.g. for Hour aggregation if our domain starts at noon, 
+					// we don't start aggregating values until we find the first midnight value
 					if ( aggregateType === 'Hour' && obj.x.getHours() === 0 ) {
 						startIndex = i;
 					} else if ( aggregateType === 'Day' && obj.x.getDate() === 1 ) {
