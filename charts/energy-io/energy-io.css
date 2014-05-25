@@ -164,16 +164,16 @@ svg {
 	fill: #333;
 }
 
-.chart g.data text {
+.chart g.ticks text {
 	text-anchor: middle;
 }
 
-.chart g.data text.agg {
+.chart g.ticks text.agg {
 	fill: black;
 	font-weight: bold;
 }
 
-.chart g.data text.agg.neg {
+.chart g.ticks text.agg.neg {
 	fill: #DF3038;
 }
 

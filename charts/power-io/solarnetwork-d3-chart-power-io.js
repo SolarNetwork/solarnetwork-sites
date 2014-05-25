@@ -55,7 +55,8 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	var transitionMs = (parameters.transitionMs || 600);
 	
 	var svgRoot = undefined,
-		svg = undefined;
+		svg = undefined,
+		svgTickGroupX = undefined;
 	
 	// our layer data, and generator function
 	var layerGenerator = undefined;
@@ -152,6 +153,10 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		svg = svgRoot.append("g")
 			.attr('class', 'data')
 			.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+		
+		svgTickGroupX = svgRoot.append("g")
+			.attr("class", "ticks")
+			.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
 
 		svgRoot.append("g")
 			.attr("class", "crisp rule")
@@ -187,13 +192,12 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		var ticks = x.ticks(numTicks);
 
 		// Generate x-ticks
-		var gx = svg.selectAll("g.data text")
+		var gx = svgTickGroupX.selectAll("text")
 			.data(ticks)
 				.attr("x", x)
 				.text(fx);
 		gx.enter().append("text")
 				.attr("x", x)
-				.attr("y", h + p[2])
 				.text(fx);
 		gx.exit().remove();
 	}

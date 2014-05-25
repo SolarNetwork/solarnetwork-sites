@@ -164,7 +164,7 @@ svg {
 	fill: black;
 }
 
-.chart g.data text {
+.chart g.ticks text {
 	text-anchor: middle;
 }
 

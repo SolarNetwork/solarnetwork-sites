@@ -59,6 +59,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 
 	var svgRoot = undefined,
 		svg = undefined,
+		svgTickGroupX = undefined,
 		aggGroup = undefined;
 	
 	// our layer data, and generator function
@@ -234,6 +235,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.attr('class', 'data')
 			.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 		
+		svgTickGroupX = svgRoot.append("g")
+			.attr("class", "ticks")
+			.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
+		
 		svgRoot.append("g")
 			.attr("class", "rule")
 			.attr("transform", "translate(0," + p[0] + ")");
@@ -368,7 +373,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		}
 
 		// Add date labels, centered within associated band
-		var gx = svg.selectAll("text").data(ticks)
+		var gx = svgTickGroupX.selectAll("text").data(ticks)
 		  	.attr("x", axisXPosFn)
 		  	.text(tickText)
 		  	.classed({
@@ -377,7 +382,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			});
 		gx.enter().append("text")
 			.attr("x", axisXPosFn)
-			.attr("y", h + p[2])
 			.classed({
 				agg : tickClassAgg,
 				neg : tickClassNeg
