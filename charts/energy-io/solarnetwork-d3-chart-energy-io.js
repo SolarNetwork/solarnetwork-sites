@@ -145,7 +145,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 					} else if ( aggregateType === 'Day' && obj.x.getDate() === 1 ) {
 						startIndex = i;
 					} else {
-						break OUTER;
+						continue OUTER;
 					}
 				}
 				if ( currDayData === undefined 
@@ -260,7 +260,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	function axisXAggValue(d, propName) {
 		var a = axisXAggObject(d, propName);
-		var v = Number(a[propName]);
+		var v = (a !== undefined ? Number(a[propName]) : undefined);
 		if ( isNaN(v) ) {
 			return 0;
 		}
