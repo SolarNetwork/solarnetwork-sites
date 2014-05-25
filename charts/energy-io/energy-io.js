@@ -81,7 +81,7 @@ function setup(repInterval, sourceMap) {
 			adjustChartDisplayUnits('.watthour-chart', 'Wh', energyBarChart.yScale());
 		});
 	}
-	//wattHourChartSetup(endDate);
+	wattHourChartSetup(endDate);
 	
 	// Watt hour stacked bar chart (hours)
 	function wattHourMonthChartSetup(endDate) {
