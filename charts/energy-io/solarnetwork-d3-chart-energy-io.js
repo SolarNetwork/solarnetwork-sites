@@ -40,7 +40,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	var that = {
 		version : "1.0.0"
 	};
-	var sources = [];
+	var sources = undefined;
 	var parameters = (chartParams || {});
 	
 	// default to container's width, if we can
@@ -53,7 +53,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
 	
-	var aggregateType = (parameters.aggregate || 'Hour');
+	var aggregateType = (parameters.aggregate === 'Day' ? 'Day' : 'Hour');
 	
 	var transitionMs = (parameters.transitionMs || 600);
 
@@ -71,7 +71,34 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	var aggDisplayFormatter = d3.format(',d');
 	
 	var consumptionLayerCount = 0;
+
+	// create our SVG container structure now
+	svgRoot = d3.select(containerSelector).select('svg');
+	if ( svgRoot.empty() ) {
+		svgRoot = d3.select(containerSelector).append('svg:svg')
+			.attr('class', 'chart')
+			.attr("width", w + p[1] + p[3])
+			.attr("height", h + p[0] + p[2]);
+	} else {
+		svgRoot.selectAll('*').remove();
+	}
+
+	svg = svgRoot.append("g")
+		.attr('class', 'data')
+		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 	
+	svgTickGroupX = svgRoot.append("g")
+		.attr("class", "ticks")
+		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
+	
+	svgRoot.append("g")
+		.attr("class", "rule")
+		.attr("transform", "translate(0," + p[0] + ")");
+
+	aggGroup = svgRoot.append("g")
+		.attr('class', 'agg-gen')
+		.attr("transform", "translate(" + p[3] + ",10)");
+
 	function computeDomainX() {
 		// Add extra x domain to accommodate bar width, otherwise last bar is cut off right edge of chart
 		var xMax = layers.domainX[1];
@@ -189,6 +216,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	function setup(rawData) {
 		// turn filteredData object into proper array, sorted by date
+		sources = [];
 		var dataArray = sn.powerPerSourceArray(rawData, sources);
 		sn.log('Available area sources: {0}', sources);
 
@@ -220,33 +248,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		// Compute the x-domain (by date) and y-domain (by top).
 		computeDomainX();
 		computeDomainY();
-
-		svgRoot = d3.select(containerSelector).select('svg');
-		if ( svgRoot.empty() ) {
-			svgRoot = d3.select(containerSelector).append('svg:svg')
-				.attr('class', 'chart')
-				.attr("width", w + p[1] + p[3])
-				.attr("height", h + p[0] + p[2]);
-		} else {
-			svgRoot.selectAll('*').remove();
-		}
-
-		svg = svgRoot.append("g")
-			.attr('class', 'data')
-			.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-		
-		svgTickGroupX = svgRoot.append("g")
-			.attr("class", "ticks")
-			.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
-		
-		svgRoot.append("g")
-			.attr("class", "rule")
-			.attr("transform", "translate(0," + p[0] + ")");
-
-		aggGroup = svgRoot.append("g")
-			.attr('class', 'agg-gen')
-			.attr("transform", "translate(" + p[3] + ",10)");
-
 	}
 	
 	function axisYTransform(d) {
@@ -431,6 +432,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.append("g")
 				.attr("class", "source")
 				.style("fill", sn.colorFn);
+		sourceGroups.exit().remove();
 		
 		var centerYLoc = y(0);
 		
@@ -484,19 +486,40 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 * the y-axis for clarity. You can call this method to find out the scaling factor the
 	 * chart ended up using.
 	 *  
-	 * @return the y-axis scale factor
+	 * @returns the y-axis scale factor
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
 	that.yScale = function() { return displayFactor; };
-
+	
+	/**
+	 * Get the current {@code aggregate} value in use.
+	 * 
+	 * @param {number} [value] the number of consumption sources to use
+	 * @returns when used as a getter, the count number, otherwise this object
+	 * @returns the {@code aggregate} value
+	 * @memberOf sn.chart.energyIOBarChart
+	 */
+	that.aggregate = function(value) { 
+		if ( !arguments.length ) return aggregateType;
+		aggregateType = (value === 'Day' ? 'Day' : 'Hour');
+		return that;
+	};
+	
 	/**
 	 * Load data for the chart. The data is expected to be in a form suitable for
 	 * passing to {@link sn.energyPerSourceArray}.
 	 * 
-	 * @return this object
+	 * @param {Array} rawData - the raw chart data to load
+	 * @param {Object} [parameters] - parameters to apply to the chart
+	 * @returns this object
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
-	that.load = function(rawData) {
+	that.load = function(rawData, parameters) {
+		if ( parameters !== undefined ) {
+			if ( parameters.aggregate !== undefined ) {
+				that.aggregate(parameters.aggregate);
+			}
+		}
 		setup(rawData);
 		redraw();
 		adjustAxisX();
@@ -508,7 +531,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 * Regenerate the chart, using the current data. This can be called after disabling a
 	 * source 
 	 * 
-	 * @return this object
+	 * @returns this object
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
 	that.regenerate = function() {
@@ -530,7 +553,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 * The sources are assumed to already be ordered with consumption before generation.
 	 * 
 	 * @param {number} [value] the number of consumption sources to use
-	 * @return when used as a getter, the count number, otherwise this object
+	 * @returns when used as a getter, the count number, otherwise this object
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
 	that.consumptionSourceCount = function(value) {
