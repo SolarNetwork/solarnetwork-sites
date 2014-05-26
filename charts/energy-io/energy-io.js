@@ -55,7 +55,7 @@ function setup(repInterval, sourceMap) {
 		}
 	});
 	
-	var wattHourAggregate = 'Hour';
+	var wattHourAggregate = 'Month';
 
 	// Watt hour stacked bar chart (hours)
 	function wattHourChartSetup(endDate) {
@@ -162,7 +162,7 @@ function onDocumentReady() {
 		consumptionNodeId : 108,
 		numDays : 7,
 		numMonths : 4,
-		numYears : 1,
+		numYears : 2,
 		maxPowerKW : 3,
 		northernHemisphere : 'false',
 		dataTypes: ['Consumption', 'Power']

@@ -49,7 +49,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	// default to container's width, if we can
 	var containerWidth = sn.pixelWidth(containerSelector);
 	
-	var p = (parameters.padding || [30, 0, 30, 30]),
+	var p = (parameters.padding || [20, 0, 40, 30]),
 		w = (parameters.width || containerWidth || 812) - p[1] - p[3],
 		h = (parameters.height || 300) - p[0] - p[2],
     	x = d3.time.scale().range([0, w]),
@@ -65,7 +65,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	var vertRuleOpacity = (parameters.vertRuleOpacity || 0.05);
 	
 	// spring, summer, autumn, winter
-	var seasonColors = (parameters.seasonColors || ['#8cc63f', '#f7c819', '#d6591c', '#9ddcf9']);
+	var seasonColors = (parameters.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);//['#8cc63f', '#f7c819', '#d6591c', '#9ddcf9']);
 	var northernHemisphere = (parameters.northernHemisphere === true ? true : false);
 
 	var svgRoot = undefined,
@@ -94,6 +94,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		svgRoot.selectAll('*').remove();
 	}
 
+	svgRoot.append("g")
+		.attr("class", "agg-band")
+		.attr("transform", "translate(" + p[3] + "," +(h + p[0] + p[2] - 25) + ".5)"); // .5 for odd-width stroke
+
+	svgRoot.append("g")
+		.attr("class", "agg-band-ticks")
+		.attr("transform", "translate(" + p[3] + "," +(h + p[0] + p[2] - 21) + ")");
+
 	svg = svgRoot.append("g")
 		.attr('class', 'data')
 		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
@@ -107,16 +115,12 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 
 	svgRoot.append("g")
-		.attr("class", "agg-band")
-		.attr("transform", "translate(" + p[3] + "," +(h + p[0] + p[2] - 20) + ")");
-
-	svgRoot.append("g")
 		.attr("class", "rule")
 		.attr("transform", "translate(0," + p[0] + ")");
 
 	aggGroup = svgRoot.append("g")
 		.attr('class', 'agg-gen')
-		.attr("transform", "translate(" + p[3] + ",10)");
+		.attr("transform", "translate(" + p[3] + ",15)");
 
 	function computeDomainX() {
 		// Add extra x domain to accommodate bar width, otherwise last bar is cut off right edge of chart
@@ -375,12 +379,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			if ( result.length === 0 ) {
 				month = d3.time.month.offset(month, 3 - (month.getMonth() % 3)); // not month + 1 because here we want Jan
 			}
-			result.push(month); // this is the date we'll display the month label on
-			month = d3.time.month.offset(month, 1);
-			if ( month.getTime() < end ) {
-				result.push(month); // this is date we'll display the agg data on
-			}
-			month = d3.time.month.offset(month, 2);
+			result.push(month);
+			month = d3.time.month.offset(month, 3);
 		}
 		return result;
 	}
@@ -409,6 +409,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		return (northernHemisphere ? seasonColors[2] : seasonColors[0]);
 	}
 	
+	function valueXVertRule(d) {
+			return (Math.round(x(d) + 0.5) - 0.5);
+	}
+	
+	function valueXAggBand(d) {
+			return Math.round(x(d));
+	}
+	
 	function adjustAxisX() {
 		if ( d3.event && d3.event.transform ) {
 			d3.event.transform(x);
@@ -416,21 +424,20 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		var ticks;
 		var aggTicks = [];
 		var aggVertRuleTicks = [];
+		var aggBandTicks = [];
 		var e, i, len, date;
 		if ( aggregateType === 'Month' ) {
 			ticks = solarQuarterDates(x.domain());
-			// ticks are on Jan,Feb, Apr,May, Jul,Aug, Oct,Nov
+			// ticks are on Jan, Apr, Jul, Oct
 			for ( i = 0, len = ticks.length; i < len; i++ ) {
 				e = ticks[i];
-				if ( e.getMonth() % 3 === 1 ) {
-					aggTicks.push(e);
-				} else if ( e.getMonth() % 3 === 0 ) {
-					date = d3.time.month.offset(e, -1);
-					if ( date.getTime() >= x.domain()[0].getTime() ) {
-						aggVertRuleTicks.push(date);
-					}
+				date = d3.time.month.offset(e, -1);
+				if ( date.getTime() < x.domain()[0].getTime() ) {
+					date = x.domain()[0];
 				}
+				aggBandTicks.push(date);
 			}
+			aggTicks = ticks;
 		} else if ( aggregateType === 'Day' ) {
 			ticks = firstAndMidMonthDates(x.domain());
 			// agg ticks shifted by 14 days so centered within the month
@@ -499,11 +506,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.style("opacity", 1e-6)
 			.remove();
 
-		function valueXVertRule(d) {
-  			return (Math.round(x(d) + 0.5) - 0.5);
-		}
-		
-		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggregateType !== 'Month' ? aggVertRuleTicks : []);
+		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggVertRuleTicks);
 		axisLines.transition().duration(transitionMs)
 	  		.attr("x1", valueXVertRule)
 	  		.attr("x2", valueXVertRule);
@@ -525,15 +528,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.style("opacity", 1e-6)
 			.remove();
 		
-		var aggBandTicks = (aggregateType === 'Month' ? aggVertRuleTicks : []);
 		var aggBands = svgRoot.select("g.agg-band").selectAll("line").data(aggBandTicks);
 		var bandPosition = function(s) {
-			s.attr("x1", valueXVertRule)
+			s.attr("x1", valueXAggBand)
 				.attr("x2", function(d, i) {
 					if ( i + 1 < aggBandTicks.length ) {
-						return valueXVertRule(aggBandTicks[i+1]);
+						return valueXAggBand(aggBandTicks[i+1]);
 					}
-					return valueXVertRule(x.domain()[1]);
+					return valueXAggBand(x.domain()[1]);
 				})
 				.style('stroke', seasonColor);
 		};
@@ -551,6 +553,26 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			});
 
 		aggBands.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+		
+		var aggBandLabels = svgRoot.select("g.agg-band-ticks").selectAll("text").data(ticks);
+		aggBandLabels.transition().duration(transitionMs)
+		  	.attr("x", axisXPosFn)
+		  	.text(axisXAggSumTextFn);
+		
+		aggBandLabels.enter().append("text")
+			.style("opacity", 1e-6)
+			.attr("x", axisXPosFn)
+		.transition().duration(transitionMs)
+				.style("opacity", 1)
+				.text(axisXAggSumTextFn)
+				.each('end', function() {
+						// remove the opacity style
+						d3.select(this).style("opacity", null);
+					});
+		
+		aggBandLabels.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
 	

@@ -196,6 +196,7 @@ svg {
 
 .chart g.vertrule line {
 	opacity: 0.05;
+	stroke-dasharray: 2 1;
 }
 
 .chart g.rule line.origin,
@@ -211,7 +212,13 @@ svg {
 
 .chart g.agg-band line {
 	stroke: black;
-	stroke-width: 4px;
+	stroke-width: 15px;
+}
+
+.chart g.agg-band-ticks text {
+	fill: white;
+	text-anchor: middle;
+	font-weight: bold;
 }
 
 .chart path.area {
