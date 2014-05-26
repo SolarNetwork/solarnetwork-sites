@@ -436,6 +436,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		
 		var centerYLoc = y(0);
 		
+		function valueX(d) {
+			return x(d.x);
+		}
+		
 		function valueY(d) {
 			return y(d.y0 + d.y);
 		}
@@ -446,11 +450,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		
 		var bars = sourceGroups.selectAll("rect").data(Object);
 		bars.transition().duration(transitionMs)
+			.attr("x", valueX)
 			.attr("y", valueY)
-			.attr("height", heightY);
+			.attr("height", heightY)
+			.attr("width", barWidth);
 		
 		var entered = bars.enter().append("rect")
-			.attr("x", function(d) { return x(d.x); })
+			.attr("x", valueX)
 			.attr("y", centerYLoc)
 			.attr("height", 1e-6)
 			.attr("width", barWidth);
