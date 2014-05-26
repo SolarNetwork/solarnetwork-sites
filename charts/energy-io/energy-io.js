@@ -31,16 +31,8 @@ function setup(repInterval, sourceMap) {
 			// use a slight delay, otherwise transitions can be jittery
 			setTimeout(function() {
 				energyBarChart.regenerate();
-				adjustChartDisplayUnits('.watthour-chart.days', 'Wh', energyBarChart.yScale());
+				adjustChartDisplayUnits('.watthour-chart', 'Wh', energyBarChart.yScale());
 			}, energyBarChart.transitionMs() * 0.5);
-		}
-		if ( monthEnergyBarChart !== undefined ) {
-			// use a slight delay, otherwise transitions can be jittery
-			setTimeout(function() {
-				if ( monthEnergyBarChart !== undefined ) {
-					adjustChartDisplayUnits('.watthour-chart.months', 'Wh', monthEnergyBarChart.yScale());
-				}
-			}, monthEnergyBarChart.transitionMs() * 0.5);
 		}
 	}
 
