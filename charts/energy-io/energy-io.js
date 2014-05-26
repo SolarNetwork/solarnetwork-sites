@@ -120,9 +120,14 @@ function setup(repInterval, sourceMap) {
 
 	// toggle between supported aggregate levels
 	d3.select('#range-toggle').classed('clickable', true).on('click', function(d, i) {
+		var me = d3.select(this);
+		me.classed('hit', true);
 		var currAgg = energyBarChart.aggregate();
 		wattHourAggregate = (currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Hour');
 		wattHourChartSetup(reportableEndDate);
+		setTimeout(function() {
+			me.classed('hit', false);
+		}, 500);
 	});
 	
 	// toggle sum lines on/off
