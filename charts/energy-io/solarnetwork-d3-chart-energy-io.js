@@ -218,7 +218,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		// turn filteredData object into proper array, sorted by date
 		sources = [];
 		var dataArray = sn.powerPerSourceArray(rawData, sources);
-		sn.log('Available area sources: {0}', sources);
 
 		// Transpose the data into watt layers by source, e.g.
 		// [ [{x:0,y:0,y0:0},{x:1,y:1,y0:0}...], ... ]
@@ -592,7 +591,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 * 
 	 * @param {number} [value] the number of milliseconds to use
 	 * @return when used as a getter, the millisecond value, otherwise this object
-	 * @memberOf sn.chart.powerIOAreaChart
+	 * @memberOf sn.chart.energyIOBarChart
 	 */
 	that.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
