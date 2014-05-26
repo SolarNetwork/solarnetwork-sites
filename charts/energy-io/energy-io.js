@@ -126,10 +126,27 @@ function setup(repInterval, sourceMap) {
 	}
 	wattHourChartSetup(reportableEndDate);
 
+	// toggle between supported aggregate levels
 	d3.select('#range-toggle').classed('clickable', true).on('click', function(d, i) {
 		var currAgg = energyBarChart.aggregate();
 		wattHourAggregate = (currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Hour');
 		wattHourChartSetup(reportableEndDate);
+	});
+	
+	// toggle sum lines on/off
+	d3.select('#sumline-toggle').classed('clickable', true).on('click', function(d) {
+		var me = d3.select(this);
+		var off = me.classed('off');
+		me.classed('off', !off);
+		energyBarChart.showSumLine(off);
+	});
+	
+	// toggle hemispheres
+	d3.select('#hemisphere-toggle').classed('clickable', true).on('click', function(d) {
+		var me = d3.select(this);
+		var south = me.classed('south');
+		me.classed('south', !south);
+		energyBarChart.northernHemisphere(south);
 	});
 	
 	// refresh chart data on interval

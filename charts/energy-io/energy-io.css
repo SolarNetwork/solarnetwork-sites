@@ -144,6 +144,32 @@ a {
 	margin: 2px;
 }
 
+#hemisphere-toggle {
+	-webkit-transition: -webkit-transform 0.5s;
+	   -moz-transition: -moz-transform 0.5s;
+	     -o-transition: -o-transform 0.5s;
+	        transition: transform 0.5s;
+}
+
+#hemisphere-toggle.south {
+  -webkit-transform: rotateZ(180deg);
+     -moz-transform: rotateZ(180deg);
+       -o-transform: rotateZ(180deg);
+          transform: rotateZ(180deg);
+	-webkit-transition: -webkit-transform 0.5s;
+	   -moz-transition: -moz-transform 0.5s;
+	     -o-transition: -o-transform 0.5s;
+	        transition: transform 0.5s;
+}
+
+.button {
+	color: black;
+}
+
+.button.off {
+	color: #ccc;
+}
+
 svg {
 	/*background-color: rgb(242,242,242);*/
 }
@@ -219,6 +245,16 @@ svg {
 	fill: white;
 	text-anchor: middle;
 	font-weight: bold;
+}
+
+.chart g.agg-sum path {
+	stroke-width: 1px;
+	stroke: #C42F2F;
+	fill: none;
+}
+
+.chart .off {
+	display: none;
 }
 
 .chart path.area {

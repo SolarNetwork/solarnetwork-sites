@@ -71,7 +71,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	var svgRoot = undefined,
 		svg = undefined,
 		svgTickGroupX = undefined,
-		aggGroup = undefined;
+		aggGroup = undefined,
+		svgAggBandGroup = undefined,
+		svgSumLineGroup = undefined;
 	
 	// our layer data, and generator function
 	var layerGenerator = undefined;
@@ -94,7 +96,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		svgRoot.selectAll('*').remove();
 	}
 
-	svgRoot.append("g")
+	svgAggBandGroup = svgRoot.append("g")
 		.attr("class", "agg-band")
 		.attr("transform", "translate(" + p[3] + "," +(h + p[0] + p[2] - 25) + ".5)"); // .5 for odd-width stroke
 
@@ -106,6 +108,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		.attr('class', 'data')
 		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 	
+	svgSumLineGroup = svgRoot.append("g")
+		.attr('class', 'agg-sum')
+		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+
 	svgTickGroupX = svgRoot.append("g")
 		.attr("class", "ticks")
 		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
@@ -318,15 +324,15 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		return axisXAggTextFn(d, 'wattHoursGenerated');
 	}
 	
+	function labelSeasonColors(d) {
+		if ( aggregateType === 'Month' ) {
+			return seasonColor(d);
+		}
+		return null;
+	}
+	
 	function adjustAxisXAggregateGeneration(aggTicks) {
 		var aggLabels = aggGroup.selectAll("text").data(aggTicks);
-		
-		function labelSeasonColors(d) {
-			if ( aggregateType === 'Month' ) {
-				return seasonColor(d);
-			}
-			return null;
-		}
 		
 		aggLabels.transition().duration(transitionMs)
 				.attr("x", axisXPosFn)
@@ -631,6 +637,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		return (i * barWidth);
 	}
 	
+	function valueXMidBar(d, i) {
+		return ((i * barWidth) + (barWidth / 2));
+	}
+	
 	function redraw() {
 		// Add a group for each source.
 		var sourceGroups = svg.selectAll("g.source").data(layers);
@@ -670,6 +680,39 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		bars.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
   			.remove();
+		
+		var sumLineData = (function() {
+			var i, iMax;
+			var j, len, e;
+			var sum;
+			var result = [];
+			for ( i = 0, iMax = layers[0].length; i < iMax; i++ ) {
+				sum = 0;
+				for ( j = 0, len = layers.length; j < len; j++ ) {
+					e = layers[j][i];
+					if ( j < consumptionLayerCount ) {
+						sum -= e.y;
+					} else {
+						sum += e.y;
+					}
+				}
+				result.push(y(sum));
+			}
+			return result;
+		})();
+		
+		var svgLine = d3.svg.line()
+			.x(valueXMidBar)
+			.y(Object)
+			.interpolate("monotone");
+		var sumLine = svgSumLineGroup.selectAll("path").data([sumLineData]);
+		sumLine.transition().duration(transitionMs)
+			.attr("d", svgLine);
+		sumLine.enter().append("path")
+				.attr("d", d3.svg.line().x(valueXMidBar).y(function() { return y(0); }).interpolate("monotone"))
+			.transition().duration(transitionMs)
+				.attr("d", svgLine);
+		sumLine.exit().remove();
 	}
 
 	that.sources = sources;
@@ -731,9 +774,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			}
 		}
 		setup(rawData);
-		redraw();
 		adjustAxisX();
 		adjustAxisY();
+		redraw();
 		return that;
 	};
 	
@@ -782,6 +825,49 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	that.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
 		transitionMs = +value; // the + used to make sure we have a Number
+		return that;
+	};
+	
+	/**
+	 * Toggle showing the sum line, or get the current setting.
+	 * 
+	 * @param {boolean} [value] <em>true</em> to show the sum line, <em>false</em> to hide it
+	 * @returns when used as a getter, the current setting
+	 * @memberOf sn.chart.energyIOBarChart
+	 */
+	that.showSumLine = function(value) {
+		if ( !arguments.length ) return !svgSumLineGroup.classed('off');
+		svgSumLineGroup
+			.style("opacity", (value ? 1e-6 : 1))
+			.classed('off', false)
+		.transition().duration(transitionMs)
+			.style("opacity", (value ? 1 : 1e-6))
+			.each('end', function() {
+				// remove the opacity style
+				d3.select(this)
+					.style("opacity", null)
+					.classed('off', !value);
+			});
+		return that;
+	};
+	
+	/**
+	 * Toggle between nothern/southern hemisphere seasons, or get the current setting.
+	 * 
+	 * @param {boolean} [value] <em>true</em> for northern hemisphere seasons, <em>false</em> for sothern hemisphere
+	 * @returns when used as a getter, the current setting
+	 * @memberOf sn.chart.energyIOBarChart
+	 */
+	that.northernHemisphere = function(value) {
+		if ( !arguments.length ) return northernHemisphere;
+		if ( value === northernHemisphere ) {
+			return;
+		}
+		northernHemisphere = (value === true);
+		svgAggBandGroup.selectAll("line").transition().duration(transitionMs)
+			.style('stroke', seasonColor);
+		aggGroup.selectAll("text").transition().duration(transitionMs)
+			.style("fill", labelSeasonColors);
 		return that;
 	};
 
