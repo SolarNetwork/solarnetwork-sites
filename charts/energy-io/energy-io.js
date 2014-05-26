@@ -61,20 +61,30 @@ function setup(repInterval, sourceMap) {
 	function wattHourChartSetup(endDate) {
 		var end;
 		var start;
+		var timeCount;
+		var timeUnit;
 		if ( wattHourAggregate === 'Day' ) {
+			timeCount = sn.env.numMonths;
+			timeUnit = 'month';
 			end = d3.time.month(endDate);
 			start = d3.time.month.offset(end, sn.env.numMonths ? (1 - sn.env.numMonths) : -3);
 			start = d3.time.day.offset(start, endDate.getDate());
 		} else {
 			// assume Hour
+			timeCount = sn.env.numDays;
+			timeUnit = 'day';
 			end = d3.time.hour(endDate);
 			start = d3.time.day.offset(end, sn.env.numDays ? (1 - sn.env.numDays) : -6);
 		}
 		if ( energyBarChart === undefined ) {
-			energyBarChart = sn.chart.energyIOBarChart('#week-watthour', {
+			energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', {
 				excludeSources: sn.runtime.excludeSources,
 			});
 		}
+		
+		d3.select('.watthour-chart .time-count').text(timeCount);
+		d3.select('.watthour-chart .time-unit').text(timeUnit);
+		
 		var q = queue();
 		sn.env.dataTypes.forEach(function(e, i) {
 			var urlHelper = (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper); // FIXME: remove
@@ -199,9 +209,6 @@ function onDocumentReady() {
 	});
 	sn.config.wChartRefreshMs = 30 * 60 * 1000;
 	
-	// setup DOM based on environment
-	d3.select('#num-days').text(sn.env.numDays);
-	d3.select('#num-months').text(sn.env.numMonths);
 	d3.selectAll('.node-id').text(sn.env.nodeId);
 	
 	// find our available data range, and then draw our charts!

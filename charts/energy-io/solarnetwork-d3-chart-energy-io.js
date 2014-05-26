@@ -289,24 +289,26 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	}
 	
 	function adjustAxisXAggregateGeneration(aggTicks) {
-		var aggLabels = aggGroup.selectAll("text").data(aggTicks)
-			.attr('x', axisXPosFn)
-			.text(axisXAggSumTextFn);
+		var aggLabels = aggGroup.selectAll("text").data(aggTicks);
 		
 		aggLabels.transition().duration(transitionMs)
 				.attr("x", axisXPosFn)
 				.text(axisXAggGenerationTextFn);
 			
-		aggLabels.exit().transition().duration(transitionMs)
-	  			.style("opacity", 1e-6)
-	  			.remove();
-
 		aggLabels.enter().append("text")
 				.attr("x", axisXPosFn)
 				.style("opacity", 1e-6)
-				.text(axisXAggGenerationTextFn)
 			.transition().duration(transitionMs)
-				.style("opacity", null);
+				.text(axisXAggGenerationTextFn)
+				.style("opacity", 1)
+				.each('end', function() {
+					// remove the opacity style
+					d3.select(this).style("opacity", null);
+				});
+
+		aggLabels.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
 	}
 	
 	/**
@@ -374,21 +376,36 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		}
 
 		// Add date labels, centered within associated band
-		var gx = svgTickGroupX.selectAll("text").data(ticks)
-		  	.attr("x", axisXPosFn)
-		  	.text(tickText)
-		  	.classed({
+		var labels = svgTickGroupX.selectAll("text").data(ticks)
+			.classed({
 				agg : tickClassAgg,
 				neg : tickClassNeg
 			});
-		gx.enter().append("text")
+
+		labels.transition().duration(transitionMs)
+		  	.attr("x", axisXPosFn)
+		  	.text(tickText);
+		
+		var newLabels = labels.enter().append("text")
+			.attr("dy", "-0.5em") // needed so descenders not cut off
+			.style("opacity", 1e-6)
 			.attr("x", axisXPosFn)
 			.classed({
 				agg : tickClassAgg,
 				neg : tickClassNeg
-			})
-			.text(tickText);
-		gx.exit().remove();
+			});
+			
+		newLabels.transition().duration(transitionMs)
+				.style("opacity", 1)
+				.text(tickText)
+				.each('end', function() {
+						// remove the opacity style
+						d3.select(this).style("opacity", null);
+					});
+		
+		labels.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
 		
 		adjustAxisXAggregateGeneration(aggTicks);
 	}
@@ -465,7 +482,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.attr("y", valueY)
 			.attr("height", heightY);
 		
-		bars.exit().remove();
+		bars.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+  			.remove();
 	}
 
 	that.sources = sources;
