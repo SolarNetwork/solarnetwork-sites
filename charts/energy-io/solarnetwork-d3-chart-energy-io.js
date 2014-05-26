@@ -18,6 +18,9 @@ if ( sn === undefined ) {
  * @property {number[]} [padding=[30, 0, 30, 30]] - padding to inset the chart by, in top, right, bottom, left order
  * @property {number} [transitionMs=600] - transition time
  * @property {string} [aggregate] - the aggregation type; one of 'Month' or 'Hour' or 'Day'
+ * @property {number} [ruleOpacity] - the maximum opacity to render rules at, during transitions
+ * @property {number} [vertRuleOpacity] - the maximum opacity to render rules at, during transitions
+ * @property {string[]} [seasonColors] - array of color values for spring, summer, autumn, and winter
  * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
  */
 
@@ -57,6 +60,12 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			: parameters.aggregate === 'Day' ? 'Day' : 'Hour');
 	
 	var transitionMs = (parameters.transitionMs || 600);
+	
+	var ruleOpacity = (parameters.ruleOpacity || 0.1);
+	var vertRuleOpacity = (parameters.vertRuleOpacity || 0.05);
+	
+	// spring, summer, autumn, winter
+	var seasonColors = (parameters.seasonColors || ['#8cc63f', '#f7c819', '#d6591c', '#9ddcf9']);
 
 	var svgRoot = undefined,
 		svg = undefined,
@@ -92,6 +101,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		.attr("class", "ticks")
 		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
 	
+	svgRoot.append("g")
+		.attr("class", "vertrule")
+		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+
+	svgRoot.append("g")
+		.attr("class", "agg-band")
+		.attr("transform", "translate(" + p[3] + "," +(h + p[0] + p[2] - 20) + ")");
+
 	svgRoot.append("g")
 		.attr("class", "rule")
 		.attr("transform", "translate(0," + p[0] + ")");
@@ -358,32 +375,61 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		return result;
 	}
 
+	function tickClassAgg(d) {
+		return (aggregateType === 'Day' && d.getDate() === 15)
+			|| (aggregateType === 'Hour' && d.getHours() === 12)
+			|| (aggregateType === 'Month' && d.getMonth() % 3 === 1);
+	}
+	
+	function tickClassNeg(d) {
+		return (tickClassAgg(d) && axisXAggValue(d, 'wattHoursTotal') < 0);
+	}
+
 	function adjustAxisX() {
 		if ( d3.event && d3.event.transform ) {
 			d3.event.transform(x);
 		}
 		var ticks;
-		var aggTicks;
+		var aggTicks = [];
+		var aggVertRuleTicks = [];
+		var e, i, len, date;
 		if ( aggregateType === 'Month' ) {
 			ticks = solarQuarterDates(x.domain());
 			// ticks are on Jan,Feb, Apr,May, Jul,Aug, Oct,Nov
-			aggTicks = ticks.filter(function(e) {
-				return (e.getMonth() % 3 === 1);
-			});
+			for ( i = 0, len = ticks.length; i < len; i++ ) {
+				e = ticks[i];
+				if ( e.getMonth() % 3 === 1 ) {
+					aggTicks.push(e);
+				} else if ( e.getMonth() % 3 === 0 ) {
+					date = d3.time.month.offset(e, -1);
+					if ( date.getTime() >= x.domain()[0].getTime() ) {
+						aggVertRuleTicks.push(date);
+					}
+				}
+			}
 		} else if ( aggregateType === 'Day' ) {
 			ticks = firstAndMidMonthDates(x.domain());
 			// agg ticks shifted by 14 days so centered within the month
-			aggTicks = x.ticks(d3.time.months, 1).map(function(e) {
-				return d3.time.day.offset(e, 14);
-			});
+			for ( i = 0, len = ticks.length; i < len; i++ ) {
+				e = ticks[i];
+				if ( e.getDate() === 15 ) {
+					aggTicks.push(e);
+				} else if ( e.getDate() === 1 ) {
+					aggVertRuleTicks.push(e);
+				}
+			}
 		} else {
 			// assume aggregateType == Hour
 			ticks = x.ticks(d3.time.hours, 12);
 			
-			// agg ticks shifted by 12 hours so centered within the day
-			aggTicks = x.ticks(d3.time.days, 1).map(function(e) {
-				return d3.time.hour.offset(e, 12);
-			});
+			for ( i = 0, len = ticks.length; i < len; i++ ) {
+				e = ticks[i];
+				if ( e.getHours() === 12 ) {
+					aggTicks.push(e);
+				} else if ( e.getHours() === 0 ) {
+					aggVertRuleTicks.push(e);
+				}
+			}
 		}
 		dailyAggregateWh = calculateAggregateWh();
 
@@ -395,16 +441,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			} else {
 				return fx(d);
 			}
-		}
-
-		function tickClassAgg(d) {
-			return (aggregateType === 'Day' && d.getDate() === 15)
-				|| (aggregateType === 'Hour' && d.getHours() === 12)
-				|| (aggregateType === 'Month' && d.getMonth() % 3 === 1);
-		}
-		
-		function tickClassNeg(d) {
-			return (tickClassAgg(d) && axisXAggValue(d, 'wattHoursTotal') < 0);
 		}
 
 		// Add date labels, centered within associated band
@@ -438,7 +474,75 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		labels.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
+
+		function valueXVertRule(d) {
+  			return (Math.round(x(d) + 0.5) - 0.5);
+		}
 		
+		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggVertRuleTicks);
+		axisLines.transition().duration(transitionMs)
+	  		.attr("x1", valueXVertRule)
+	  		.attr("x2", valueXVertRule);
+		
+		axisLines.enter().append("line")
+			.style("opacity", 1e-6)
+			.attr("x1", valueXVertRule)
+	  		.attr("x2", valueXVertRule)
+	  		.attr("y1", 0)
+	  		.attr("y2", h + 10)
+		.transition().duration(transitionMs)
+			.style("opacity", vertRuleOpacity)
+			.each('end', function() {
+				// remove the opacity style
+				d3.select(this).style("opacity", null);
+			});
+		
+		axisLines.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+		
+		var aggBandTicks = (aggregateType === 'Month' ? aggVertRuleTicks : []);
+		var aggBands = svgRoot.select("g.agg-band").selectAll("line").data(aggBandTicks);
+		var bandPosition = function(s) {
+			s.attr("x1", valueXVertRule)
+				.attr("x2", function(d, i) {
+					if ( i + 1 < aggBandTicks.length ) {
+						return valueXVertRule(aggBandTicks[i+1]);
+					}
+					return valueXVertRule(x.domain()[1]);
+				})
+				.style('stroke', function(d) {
+					var month = d.getMonth();
+					if ( month < 2 || month == 11 ) {
+						return seasonColors[3];
+					}
+					if ( month < 5 ) {
+						return seasonColors[0];
+					}
+					if ( month < 8 ) {
+						return seasonColors[1];
+					}
+					return seasonColors[2];
+				});
+		};
+		aggBands.transition().duration(transitionMs)
+			.call(bandPosition);
+
+		aggBands.enter().append("line")
+			.style("opacity", 1e-6)
+			.call(bandPosition)
+		.transition().duration(transitionMs)
+			.style("opacity", 1)
+			.each('end', function() {
+				// remove the opacity style
+				d3.select(this).style("opacity", null);
+			});
+
+		aggBands.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+	
+
 		adjustAxisXAggregateGeneration(aggTicks);
 	}
 
@@ -471,7 +575,19 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 				.attr("x", p[3] - 10)
 				.text(displayFormat);
 		entered.transition().duration(transitionMs)
-				.style("opacity", null);
+			.style("opacity", null);
+	}
+	
+	/**
+	 * Return the x pixel coordinate for a given bar.
+	 * 
+	 * @param {Object} d the data element
+	 * @param {Number} i the domain index
+	 * @returns {Number} x pixel coordinate
+	 */
+	function valueX(d, i) {
+		// x(d.x) returns a non-perfect month interpolation, so just use our barWidth
+		return (i * barWidth);
 	}
 	
 	function redraw() {
@@ -484,11 +600,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		sourceGroups.exit().remove();
 		
 		var centerYLoc = y(0);
-		
-		function valueX(d, i) {
-			// x(d.x) returns a non-perfect month interpolation, so just use our barWidth
-			return (i * barWidth);
-		}
 		
 		function valueY(d) {
 			return y(d.y0 + d.y);
