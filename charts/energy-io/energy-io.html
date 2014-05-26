@@ -6,7 +6,10 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 	<title>SolarNetwork Chart - Energy I/O</title>
+	
+	<link rel="stylesheet" href="../css/font-awesome.min.css">
 	<link type="text/css" rel="stylesheet" href="energy-io.css" />
+	
 	<script type="text/javascript" src="../js-lib/d3-3.js"></script>
 	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
 	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
@@ -37,7 +40,7 @@
 	<div class="hbox">
 		<div class="vbox main">
 			<div class="pane watthour-chart days">
-				<h2><span id="num-days"></span> day energy <span class="alt"><span class="unit">(kWh)</span></span></h2>
+				<h2><span id="num-days"></span> <span id="time-unit">day</span> energy <span class="alt"><span class="unit">(kWh)</span></span></h2>
 				<div id="week-watthour" class="chart-container"></div>
 			</div>
 			<div class="pane watthour-chart months">
@@ -48,6 +51,9 @@
 		<div class="vbox sub">
 			<div class="pane">
 				<div id="source-labels"></div>
+			</div>
+			<div class="pane">
+				<i id="range-toggle" class="fa fa-wrench"></i>
 			</div>
 		</div>
 	</div>
