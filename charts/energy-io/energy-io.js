@@ -63,18 +63,20 @@ function setup(repInterval, sourceMap) {
 		var start;
 		var timeCount;
 		var timeUnit;
-		if ( wattHourAggregate === 'Day' ) {
-			timeCount = sn.env.numMonths;
+		if ( wattHourAggregate === 'Month' ) {
+			timeCount = (sn.env.numYears || 1);
+			timeUnit = 'year';
+			start = d3.time.year.offset(d3.time.month.ceil(endDate), -timeCount);
+		} else if ( wattHourAggregate === 'Day' ) {
+			timeCount = (sn.env.numMonths || 4);
 			timeUnit = 'month';
-			end = d3.time.month(endDate);
-			start = d3.time.month.offset(end, sn.env.numMonths ? (1 - sn.env.numMonths) : -3);
-			start = d3.time.day.offset(start, endDate.getDate());
+			start = d3.time.month.offset(d3.time.day.ceil(endDate), -timeCount);
 		} else {
 			// assume Hour
-			timeCount = sn.env.numDays;
+			timeCount = (sn.env.numDays || 7);
 			timeUnit = 'day';
 			end = d3.time.hour(endDate);
-			start = d3.time.day.offset(end, sn.env.numDays ? (1 - sn.env.numDays) : -6);
+			start = d3.time.day.offset(end, 1 - timeCount);
 		}
 		if ( energyBarChart === undefined ) {
 			energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', {
@@ -125,54 +127,9 @@ function setup(repInterval, sourceMap) {
 
 	d3.select('#range-toggle').classed('clickable', true).on('click', function(d, i) {
 		var currAgg = energyBarChart.aggregate();
-		wattHourAggregate = (currAgg === 'Day' ? 'Hour' : 'Day');
+		wattHourAggregate = (currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Hour');
 		wattHourChartSetup(reportableEndDate);
 	});
-	
-
-	// Watt hour stacked bar chart (hours)
-	function wattHourMonthChartSetup(endDate) {
-		var monthEnd = d3.time.month(endDate);
-		var monthStart = d3.time.month.offset(monthEnd, sn.env.numMonths ? (1 - sn.env.numMonths) : -3);
-		monthEnergyBarChart = sn.chart.energyIOBarChart('#month-watthour', {
-			excludeSources : sn.runtime.excludeSources,
-			aggregate : 'Day'
-		});
-		var q = queue();
-		sn.env.dataTypes.forEach(function(e, i) {
-			var urlHelper = (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper); // FIXME: remove
-			q.defer(d3.json, urlHelper.dateTimeQuery(e, monthStart, endDate, 'Day'));
-		});
-		q.awaitAll(function(error, results) {
-			if ( error ) {
-				sn.log('Error requesting data: ' +error);
-				return;
-			}
-			var combinedData = [];
-			var i, iMax, j, jMax, json, datum, mappedSourceId;
-			for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-				json = results[i];
-				if ( json.success !== true || Array.isArray(json.data) !== true ) {
-					sn.log('No data available for node {0} data type {1}', sn.runtime.urlHelper.nodeId(), sn.env.dataTypes[i]);
-					return;
-				}
-				for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
-					datum = json.data[j];
-					mappedSourceId = sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
-					if ( mappedSourceId !== undefined ) {
-						datum.sourceId = mappedSourceId;
-					}
-				}
-				combinedData = combinedData.concat(json.data);
-			}
-			monthEnergyBarChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
-			monthEnergyBarChart.load(combinedData);
-			sn.log("Energy IO chart watt hour range: {0}", monthEnergyBarChart.yDomain());
-			sn.log("Energy IO chart time range: {0}", monthEnergyBarChart.xDomain());
-			adjustChartDisplayUnits('.watthour-chart', 'Wh', monthEnergyBarChart.yScale());
-		});
-	}
-	//wattHourMonthChartSetup(reportableEndDate);
 	
 	// refresh chart data on interval
 	setInterval(function() {
@@ -204,6 +161,7 @@ function onDocumentReady() {
 		consumptionNodeId : 108,
 		numDays : 7,
 		numMonths : 4,
+		numYears : 1,
 		maxPowerKW : 3,
 		dataTypes: ['Consumption', 'Power']
 	});

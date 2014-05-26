@@ -17,7 +17,7 @@ if ( sn === undefined ) {
  * @property {number} [height=300] - desired height, in pixels, of the chart
  * @property {number[]} [padding=[30, 0, 30, 30]] - padding to inset the chart by, in top, right, bottom, left order
  * @property {number} [transitionMs=600] - transition time
- * @property {string} [aggregate] - the aggregation type; one of 'Hour' or 'Day'
+ * @property {string} [aggregate] - the aggregation type; one of 'Month' or 'Hour' or 'Day'
  * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
  */
 
@@ -53,7 +53,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
 	
-	var aggregateType = (parameters.aggregate === 'Day' ? 'Day' : 'Hour');
+	var aggregateType = (parameters.aggregate === 'Month' ? 'Month' 
+			: parameters.aggregate === 'Day' ? 'Day' : 'Hour');
 	
 	var transitionMs = (parameters.transitionMs || 600);
 
@@ -102,7 +103,16 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	function computeDomainX() {
 		// Add extra x domain to accommodate bar width, otherwise last bar is cut off right edge of chart
 		var xMax = layers.domainX[1];
-		xMax = new Date(xMax.getTime() + (xMax.getTime() - layers[0][layers[0].length - 2].x.getTime()));
+		var time;
+		if ( aggregateType === 'Month' ) {
+			time = d3.time.month;
+		} else if ( aggregateType === 'Day' ) {
+			time = d3.time.day;
+		} else {
+			// assume 'Hour'
+			time = d3.time.hour;
+		}
+		xMax = time.offset(xMax, 1);
 		x.domain([layers.domainX[0], xMax]);
 		barWidth = (layers[0].length === 0 ? 0 : (w / (layers[0].length)));
 	}
@@ -170,9 +180,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 				if ( startIndex === undefined ) {
 					// we only want to sum for full ranges; e.g. for Hour aggregation if our domain starts at noon, 
 					// we don't start aggregating values until we find the first midnight value
-					if ( aggregateType === 'Hour' && obj.x.getHours() === 0 ) {
-						startIndex = i;
-					} else if ( aggregateType === 'Day' && obj.x.getDate() === 1 ) {
+					if ( (aggregateType === 'Hour' && obj.x.getHours() === 0)
+							|| (aggregateType === 'Day' && obj.x.getDate() === 1)
+							|| (aggregateType === 'Month' && (obj.x.getMonth() % 3) === 2) ) {
 						startIndex = i;
 					} else {
 						continue OUTER;
@@ -180,20 +190,16 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 				}
 				if ( currDayData === undefined 
 						|| (aggregateType === 'Hour' && obj.x.getDate() !== currDayData.date.getDate())
-						|| obj.x.getMonth() !== currDayData.date.getMonth() 
-						|| obj.x.getYear() !== currDayData.date.getYear() ) {
+						|| (aggregateType !== 'Month' && obj.x.getMonth() !== currDayData.date.getMonth()) 
+						|| (aggregateType !== 'Month' && obj.x.getYear() !== currDayData.date.getYear())
+						|| (aggregateType === 'Month' && (obj.x.getMonth() % 3) === 2 && obj.x.getTime() >= d3.time.month.offset(currDayData.date, 3).getTime()) ) {
 					currDayData = {
 							date : new Date(obj.x.getTime()), 
 							wattHoursTotal : 0,
 							wattHoursConsumed : 0,
 							wattHoursGenerated : 0
 						};
-					if ( aggregateType === 'Day' ) {
-						currDayData.date.setHours(0, 0, 0, 0);
-					} else {
-						// assume Hour aggregateType
-						currDayData.date.setHours(0,0,0,0);
-					}
+					currDayData.date.setHours(0, 0, 0, 0);
 					results.push(currDayData);
 					
 					// also add key for data's time in returned array, for fast lookup
@@ -258,7 +264,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	function axisXAggObject(d, propName) {
 		var t = new Date(d.getTime());
-		if ( aggregateType === 'Day' ) {
+		if ( aggregateType === 'Month' ) {
+			t = d3.time.month.floor(d);
+			t = d3.time.month.offset(t, -((t.getMonth() + 1) % 3));
+		} if ( aggregateType === 'Day' ) {
 			t = d3.time.month.floor(d);
 		}
 		t.setHours(0, 0, 0, 0); // truncate to midnight of day
@@ -331,6 +340,23 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		return result;
 	}
 
+	function solarQuarterDates(domain) {
+		var end = domain[domain.length - 1].getTime();
+		var month = d3.time.month.ceil(domain[0]);
+		var result = [];
+		while ( month.getTime() < end ) {
+			if ( result.length === 0 ) {
+				month = d3.time.month.offset(month, 3 - (month.getMonth() % 3)); // not month + 1 because here we want Jan
+			}
+			result.push(month); // this is the date we'll display the month label on
+			month = d3.time.month.offset(month, 1);
+			if ( month.getTime() < end ) {
+				result.push(month); // this is date we'll display the agg data on
+			}
+			month = d3.time.month.offset(month, 2);
+		}
+		return result;
+	}
 
 	function adjustAxisX() {
 		if ( d3.event && d3.event.transform ) {
@@ -338,7 +364,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		}
 		var ticks;
 		var aggTicks;
-		if ( aggregateType === 'Day' ) {
+		if ( aggregateType === 'Month' ) {
+			ticks = solarQuarterDates(x.domain());
+			// ticks are on Jan,Feb, Apr,May, Jul,Aug, Oct,Nov
+			aggTicks = ticks.filter(function(e) {
+				return (e.getMonth() % 3 === 1);
+			});
+		} else if ( aggregateType === 'Day' ) {
 			ticks = firstAndMidMonthDates(x.domain());
 			// agg ticks shifted by 14 days so centered within the month
 			aggTicks = x.ticks(d3.time.months, 1).map(function(e) {
@@ -367,7 +399,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 
 		function tickClassAgg(d) {
 			return (aggregateType === 'Day' && d.getDate() === 15)
-				|| (aggregateType === 'Hour' && d.getHours() === 12);
+				|| (aggregateType === 'Hour' && d.getHours() === 12)
+				|| (aggregateType === 'Month' && d.getMonth() % 3 === 1);
 		}
 		
 		function tickClassNeg(d) {
@@ -452,8 +485,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		
 		var centerYLoc = y(0);
 		
-		function valueX(d) {
-			return x(d.x);
+		function valueX(d, i) {
+			// x(d.x) returns a non-perfect month interpolation, so just use our barWidth
+			return (i * barWidth);
 		}
 		
 		function valueY(d) {
@@ -525,7 +559,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 */
 	that.aggregate = function(value) { 
 		if ( !arguments.length ) return aggregateType;
-		aggregateType = (value === 'Day' ? 'Day' : 'Hour');
+		aggregateType = (value === 'Month' ? 'Month' : value === 'Day' ? 'Day' : 'Hour');
 		return that;
 	};
 	
