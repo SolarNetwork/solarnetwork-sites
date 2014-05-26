@@ -464,6 +464,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		}
 		dailyAggregateWh = calculateAggregateWh();
 
+		adjustAxisXTicks(ticks);
+		adjustAxisXRules(aggVertRuleTicks);
+		adjustAxisXAggregateBands(aggBandTicks, ticks);
+		adjustAxisXAggregateGeneration(aggTicks);
+	}
+	
+	function adjustAxisXTicks(ticks) {
 		var fx = x.tickFormat(ticks.length);
 		
 		function tickText(d) {
@@ -485,16 +492,15 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		  	.attr("x", axisXPosFn)
 		  	.text(tickText);
 		
-		var newLabels = labels.enter().append("text")
+		labels.enter().append("text")
 			.attr("dy", "-0.5em") // needed so descenders not cut off
 			.style("opacity", 1e-6)
 			.attr("x", axisXPosFn)
 			.classed({
 				agg : tickClassAgg,
 				neg : tickClassNeg
-			});
-			
-		newLabels.transition().duration(transitionMs)
+			})
+		.transition().duration(transitionMs)
 				.style("opacity", 1)
 				.text(tickText)
 				.each('end', function() {
@@ -505,7 +511,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		labels.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
-
+	}
+	
+	function adjustAxisXRules(aggVertRuleTicks) {
 		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggVertRuleTicks);
 		axisLines.transition().duration(transitionMs)
 	  		.attr("x1", valueXVertRule)
@@ -527,13 +535,15 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		axisLines.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
-		
-		var aggBands = svgRoot.select("g.agg-band").selectAll("line").data(aggBandTicks);
+	}
+	
+	function adjustAxisXAggregateBands(bandTicks, labelTicks) {
+		var aggBands = svgRoot.select("g.agg-band").selectAll("line").data(bandTicks);
 		var bandPosition = function(s) {
 			s.attr("x1", valueXAggBand)
 				.attr("x2", function(d, i) {
-					if ( i + 1 < aggBandTicks.length ) {
-						return valueXAggBand(aggBandTicks[i+1]);
+					if ( i + 1 < bandTicks.length ) {
+						return valueXAggBand(bandTicks[i+1]);
 					}
 					return valueXAggBand(x.domain()[1]);
 				})
@@ -556,7 +566,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.style("opacity", 1e-6)
 			.remove();
 		
-		var aggBandLabels = svgRoot.select("g.agg-band-ticks").selectAll("text").data(ticks);
+		var aggBandLabels = svgRoot.select("g.agg-band-ticks").selectAll("text").data(labelTicks);
 		aggBandLabels.transition().duration(transitionMs)
 		  	.attr("x", axisXPosFn)
 		  	.text(axisXAggSumTextFn);
@@ -575,9 +585,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		aggBandLabels.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
-	
-
-		adjustAxisXAggregateGeneration(aggTicks);
 	}
 
 	function adjustAxisY() {
