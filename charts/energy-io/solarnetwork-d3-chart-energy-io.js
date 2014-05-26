@@ -66,6 +66,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	// spring, summer, autumn, winter
 	var seasonColors = (parameters.seasonColors || ['#8cc63f', '#f7c819', '#d6591c', '#9ddcf9']);
+	var northernHemisphere = (parameters.northernHemisphere === true ? true : false);
 
 	var svgRoot = undefined,
 		svg = undefined,
@@ -316,13 +317,22 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	function adjustAxisXAggregateGeneration(aggTicks) {
 		var aggLabels = aggGroup.selectAll("text").data(aggTicks);
 		
+		function labelSeasonColors(d) {
+			if ( aggregateType === 'Month' ) {
+				return seasonColor(d);
+			}
+			return null;
+		}
+		
 		aggLabels.transition().duration(transitionMs)
 				.attr("x", axisXPosFn)
-				.text(axisXAggGenerationTextFn);
+				.text(axisXAggGenerationTextFn)
+				.style("fill", labelSeasonColors);
 			
 		aggLabels.enter().append("text")
 				.attr("x", axisXPosFn)
 				.style("opacity", 1e-6)
+				.style("fill", labelSeasonColors)
 			.transition().duration(transitionMs)
 				.text(axisXAggGenerationTextFn)
 				.style("opacity", 1)
@@ -385,6 +395,20 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		return (tickClassAgg(d) && axisXAggValue(d, 'wattHoursTotal') < 0);
 	}
 
+	function seasonColor(d) {
+		var month = d.getMonth();
+		if ( month < 2 || month == 11 ) {
+			return (northernHemisphere ? seasonColors[3] : seasonColors[1]);
+		}
+		if ( month < 5 ) {
+			return (northernHemisphere ? seasonColors[0] : seasonColors[2]);
+		}
+		if ( month < 8 ) {
+			return (northernHemisphere ? seasonColors[1] : seasonColors[3]);
+		}
+		return (northernHemisphere ? seasonColors[2] : seasonColors[0]);
+	}
+	
 	function adjustAxisX() {
 		if ( d3.event && d3.event.transform ) {
 			d3.event.transform(x);
@@ -479,7 +503,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
   			return (Math.round(x(d) + 0.5) - 0.5);
 		}
 		
-		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggVertRuleTicks);
+		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggregateType !== 'Month' ? aggVertRuleTicks : []);
 		axisLines.transition().duration(transitionMs)
 	  		.attr("x1", valueXVertRule)
 	  		.attr("x2", valueXVertRule);
@@ -511,19 +535,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 					}
 					return valueXVertRule(x.domain()[1]);
 				})
-				.style('stroke', function(d) {
-					var month = d.getMonth();
-					if ( month < 2 || month == 11 ) {
-						return seasonColors[3];
-					}
-					if ( month < 5 ) {
-						return seasonColors[0];
-					}
-					if ( month < 8 ) {
-						return seasonColors[1];
-					}
-					return seasonColors[2];
-				});
+				.style('stroke', seasonColor);
 		};
 		aggBands.transition().duration(transitionMs)
 			.call(bandPosition);

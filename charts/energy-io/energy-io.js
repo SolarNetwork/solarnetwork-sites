@@ -80,7 +80,8 @@ function setup(repInterval, sourceMap) {
 		}
 		if ( energyBarChart === undefined ) {
 			energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', {
-				excludeSources: sn.runtime.excludeSources,
+				excludeSources : sn.runtime.excludeSources,
+				northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
 			});
 		}
 		
@@ -163,6 +164,7 @@ function onDocumentReady() {
 		numMonths : 4,
 		numYears : 1,
 		maxPowerKW : 3,
+		northernHemisphere : 'false',
 		dataTypes: ['Consumption', 'Power']
 	});
 	sn.config.wChartRefreshMs = 30 * 60 * 1000;
