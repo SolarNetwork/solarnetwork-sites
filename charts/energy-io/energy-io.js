@@ -44,17 +44,17 @@ function wattHourChartSetup(endDate, sourceMap) {
 	if ( sn.runtime.wattHourAggregate === 'Month' ) {
 		timeCount = (sn.env.numYears || 1);
 		timeUnit = 'year';
-		start = d3.time.year.offset(d3.time.month.ceil(endDate), -timeCount);
+		start = d3.time.year.utc.offset(d3.time.month.utc.ceil(endDate), -timeCount);
 	} else if ( sn.runtime.wattHourAggregate === 'Day' ) {
 		timeCount = (sn.env.numMonths || 4);
 		timeUnit = 'month';
-		start = d3.time.month.offset(d3.time.day.ceil(endDate), -timeCount);
+		start = d3.time.month.utc.offset(d3.time.day.utc.ceil(endDate), -timeCount);
 	} else {
 		// assume Hour
 		timeCount = (sn.env.numDays || 7);
 		timeUnit = 'day';
-		end = d3.time.hour(endDate);
-		start = d3.time.day.offset(end, 1 - timeCount);
+		end = d3.time.hour.utc(endDate);
+		start = d3.time.day.utc.offset(end, 1 - timeCount);
 	}
 	
 	d3.select('.watthour-chart .time-count').text(timeCount);

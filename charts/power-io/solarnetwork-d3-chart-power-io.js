@@ -48,7 +48,7 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	var p = (parameters.padding || [10, 0, 20, 30]),
 		w = (parameters.width || containerWidth || 812) - p[1] - p[3],
 		h = (parameters.height || 300) - p[0] - p[2],
-    	x = d3.time.scale().range([0, w]),
+    	x = d3.time.scale.utc().range([0, w]),
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
 

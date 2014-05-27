@@ -52,7 +52,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	var p = (parameters.padding || [20, 0, 40, 30]),
 		w = (parameters.width || containerWidth || 812) - p[1] - p[3],
 		h = (parameters.height || 300) - p[0] - p[2],
-    	x = d3.time.scale().range([0, w]),
+    	x = d3.time.scale.utc().range([0, w]),
+    	xBar = d3.scale.ordinal(),
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
 	
@@ -79,7 +80,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	var layerGenerator = undefined;
 	var layers = undefined;
 	var minY = 0;
-	var barWidth = 0;
+	//var barWidth = 0;
 	var dailyAggregateWh = undefined;
 	var aggDisplayFormatter = d3.format(',d');
 	
@@ -132,17 +133,25 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		// Add extra x domain to accommodate bar width, otherwise last bar is cut off right edge of chart
 		var xMax = layers.domainX[1];
 		var time;
+		var buckets;
 		if ( aggregateType === 'Month' ) {
-			time = d3.time.month;
+			time = d3.time.month.utc;
+			buckets = d3.time.months.utc;
 		} else if ( aggregateType === 'Day' ) {
-			time = d3.time.day;
+			time = d3.time.day.utc;
+			buckets = d3.time.days.utc;
 		} else {
 			// assume 'Hour'
-			time = d3.time.hour;
+			time = d3.time.hour.utc;
+			buckets = d3.time.hours.utc;
 		}
 		xMax = time.offset(xMax, 1);
 		x.domain([layers.domainX[0], xMax]);
-		barWidth = (layers[0].length === 0 ? 0 : (w / (layers[0].length)));
+		
+		buckets = buckets(layers.domainX[0], xMax);
+		xBar.domain(buckets).rangeRoundBands(x.range(), 0.2); 
+		
+		//barWidth = (layers[0].length === 0 ? 0 : (w / (layers[0].length)));
 	}
 
 	function computeDomainY() {
@@ -208,26 +217,26 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 				if ( startIndex === undefined ) {
 					// we only want to sum for full ranges; e.g. for Hour aggregation if our domain starts at noon, 
 					// we don't start aggregating values until we find the first midnight value
-					if ( (aggregateType === 'Hour' && obj.x.getHours() === 0)
-							|| (aggregateType === 'Day' && obj.x.getDate() === 1)
-							|| (aggregateType === 'Month' && (obj.x.getMonth() % 3) === 2) ) {
+					if ( (aggregateType === 'Hour' && obj.x.getUTCHours() === 0)
+							|| (aggregateType === 'Day' && obj.x.getUTCDate() === 1)
+							|| (aggregateType === 'Month' && (obj.x.getUTCMonth() % 3) === 2) ) {
 						startIndex = i;
 					} else {
 						continue OUTER;
 					}
 				}
 				if ( currDayData === undefined 
-						|| (aggregateType === 'Hour' && obj.x.getDate() !== currDayData.date.getDate())
-						|| (aggregateType !== 'Month' && obj.x.getMonth() !== currDayData.date.getMonth()) 
-						|| (aggregateType !== 'Month' && obj.x.getYear() !== currDayData.date.getYear())
-						|| (aggregateType === 'Month' && (obj.x.getMonth() % 3) === 2 && obj.x.getTime() >= d3.time.month.offset(currDayData.date, 3).getTime()) ) {
+						|| (aggregateType === 'Hour' && obj.x.getUTCDate() !== currDayData.date.getUTCDate())
+						|| (aggregateType !== 'Month' && obj.x.getUTCMonth() !== currDayData.date.getUTCMonth()) 
+						|| (aggregateType !== 'Month' && obj.x.getUTCFullYear() !== currDayData.date.getUTCFullYear())
+						|| (aggregateType === 'Month' && (obj.x.getUTCMonth() % 3) === 2 && obj.x.getTime() >= d3.time.month.utc.offset(currDayData.date, 3).getTime()) ) {
 					currDayData = {
 							date : new Date(obj.x.getTime()), 
 							wattHoursTotal : 0,
 							wattHoursConsumed : 0,
 							wattHoursGenerated : 0
 						};
-					currDayData.date.setHours(0, 0, 0, 0);
+					currDayData.date.setUTCHours(0, 0, 0, 0);
 					results.push(currDayData);
 					
 					// also add key for data's time in returned array, for fast lookup
@@ -288,17 +297,19 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
 	}
 
-	function axisXPosFn(d) { return x(d) + (barWidth / 2); }
+	function axisXMidBarValue(d) { 
+		return xBar(d) + (xBar.rangeBand() / 2); 
+	}
 	
 	function axisXAggObject(d, propName) {
 		var t = new Date(d.getTime());
 		if ( aggregateType === 'Month' ) {
-			t = d3.time.month.floor(d);
-			t = d3.time.month.offset(t, -((t.getMonth() + 1) % 3));
+			t = d3.time.month.utc.floor(d);
+			t = d3.time.month.utc.offset(t, -((t.getUTCMonth() + 1) % 3));
 		} if ( aggregateType === 'Day' ) {
-			t = d3.time.month.floor(d);
+			t = d3.time.month.utc.floor(d);
 		}
-		t.setHours(0, 0, 0, 0); // truncate to midnight of day
+		t.setUTCHours(0, 0, 0, 0); // truncate to midnight of day
 		return dailyAggregateWh[t.getTime()];
 	}
 	
@@ -335,12 +346,12 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		var aggLabels = aggGroup.selectAll("text").data(aggTicks);
 		
 		aggLabels.transition().duration(transitionMs)
-				.attr("x", axisXPosFn)
+				.attr("x", axisXMidBarValue)
 				.text(axisXAggGenerationTextFn)
 				.style("fill", labelSeasonColors);
 			
 		aggLabels.enter().append("text")
-				.attr("x", axisXPosFn)
+				.attr("x", axisXMidBarValue)
 				.style("opacity", 1e-6)
 				.style("fill", labelSeasonColors)
 			.transition().duration(transitionMs)
@@ -364,14 +375,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 */
 	function firstAndMidMonthDates(domain) {
 		var end = domain[domain.length - 1].getTime();
-		var day = d3.time.month.ceil(domain[0]);
+		var day = d3.time.month.utc.ceil(domain[0]);
 		var result = [];
 		while ( day.getTime() < end ) {
 			result.push(day);
-			if ( day.getDate() === 1 ) {
-				day = d3.time.day.offset(day, 14);
+			if ( day.getUTCDate() === 1 ) {
+				day = d3.time.day.utc.offset(day, 14);
 			} else {
-				day = d3.time.month.ceil(day);
+				day = d3.time.month.utc.ceil(day);
 			}
 		}
 		return result;
@@ -379,23 +390,22 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 
 	function solarQuarterDates(domain) {
 		var end = domain[domain.length - 1].getTime();
-		var month = d3.time.month.ceil(domain[0]);
+		var month = d3.time.month.utc.ceil(domain[0]);
 		var result = [];
 		while ( month.getTime() < end ) {
 			if ( result.length === 0 ) {
-				month = d3.time.month.offset(month, 3 - (month.getMonth() % 3)); // not month + 1 because here we want Jan
+				month = d3.time.month.utc.offset(month, 3 - (month.getUTCMonth() % 3)); // not month + 1 because here we want Jan
 			}
-			month.setHours(0, 0, 0, 0); // WTF DST
 			result.push(month);
-			month = d3.time.month.offset(month, 3);
+			month = d3.time.month.utc.offset(month, 3);
 		}
 		return result;
 	}
 
 	function tickClassAgg(d) {
-		return (aggregateType === 'Day' && d.getDate() === 15)
-			|| (aggregateType === 'Hour' && d.getHours() === 12)
-			|| (aggregateType === 'Month' && d.getMonth() % 3 === 1);
+		return (aggregateType === 'Day' && d.getUTCDate() === 15)
+			|| (aggregateType === 'Hour' && d.getUTCHours() === 12)
+			|| (aggregateType === 'Month' && d.getUTCMonth() % 3 === 1);
 	}
 	
 	function tickClassNeg(d) {
@@ -403,7 +413,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	}
 
 	function seasonColor(d) {
-		var month = d.getMonth();
+		var month = d.getUTCMonth();
 		if ( month < 2 || month == 11 ) {
 			return (northernHemisphere ? seasonColors[3] : seasonColors[1]);
 		}
@@ -416,12 +426,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		return (northernHemisphere ? seasonColors[2] : seasonColors[0]);
 	}
 	
-	function valueXVertRule(d) {
-			return (Math.round(x(d) + 0.5) - 0.5);
-	}
-	
-	function valueXAggBand(d) {
-			return Math.round(x(d));
+	function axisXVertRule(d) {
+			return (xBar(d) + 0.5);
 	}
 	
 	function adjustAxisX() {
@@ -438,7 +444,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			// ticks are on Jan, Apr, Jul, Oct
 			for ( i = 0, len = ticks.length; i < len; i++ ) {
 				e = ticks[i];
-				date = d3.time.month.offset(e, -1);
+				date = d3.time.month.utc.offset(e, -1);
 				if ( date.getTime() < x.domain()[0].getTime() ) {
 					date = x.domain()[0];
 				}
@@ -450,21 +456,21 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			// agg ticks shifted by 14 days so centered within the month
 			for ( i = 0, len = ticks.length; i < len; i++ ) {
 				e = ticks[i];
-				if ( e.getDate() === 15 ) {
+				if ( e.getUTCDate() === 15 ) {
 					aggTicks.push(e);
-				} else if ( e.getDate() === 1 ) {
+				} else if ( e.getUTCDate() === 1 ) {
 					aggVertRuleTicks.push(e);
 				}
 			}
 		} else {
 			// assume aggregateType == Hour
-			ticks = x.ticks(d3.time.hours, 12);
+			ticks = x.ticks(d3.time.hours.utc, 12);
 			
 			for ( i = 0, len = ticks.length; i < len; i++ ) {
 				e = ticks[i];
-				if ( e.getHours() === 12 ) {
+				if ( e.getUTCHours() === 12 ) {
 					aggTicks.push(e);
-				} else if ( e.getHours() === 0 ) {
+				} else if ( e.getUTCHours() === 0 ) {
 					aggVertRuleTicks.push(e);
 				}
 			}
@@ -496,13 +502,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			});
 
 		labels.transition().duration(transitionMs)
-		  	.attr("x", axisXPosFn)
+		  	.attr("x", axisXMidBarValue)
 		  	.text(tickText);
 		
 		labels.enter().append("text")
 			.attr("dy", "-0.5em") // needed so descenders not cut off
 			.style("opacity", 1e-6)
-			.attr("x", axisXPosFn)
+			.attr("x", axisXMidBarValue)
 			.classed({
 				agg : tickClassAgg,
 				neg : tickClassNeg
@@ -523,13 +529,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	function adjustAxisXRules(aggVertRuleTicks) {
 		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggVertRuleTicks);
 		axisLines.transition().duration(transitionMs)
-	  		.attr("x1", valueXVertRule)
-	  		.attr("x2", valueXVertRule);
+	  		.attr("x1", axisXVertRule)
+	  		.attr("x2", axisXVertRule);
 		
 		axisLines.enter().append("line")
 			.style("opacity", 1e-6)
-			.attr("x1", valueXVertRule)
-	  		.attr("x2", valueXVertRule)
+			.attr("x1", axisXVertRule)
+	  		.attr("x2", axisXVertRule)
 	  		.attr("y1", 0)
 	  		.attr("y2", h + 10)
 		.transition().duration(transitionMs)
@@ -545,14 +551,24 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	}
 	
 	function adjustAxisXAggregateBands(bandTicks, labelTicks) {
+		var barWidth = xBar.rangeBand();
+		var barSpacing = (xBar.domain().length > 1 
+			? (xBar(xBar.domain()[1]) - xBar(xBar.domain()[0])) 
+			: barWidth);
+		var barPadding = (barSpacing - barWidth) / 2;
 		var aggBands = svgRoot.select("g.agg-band").selectAll("line").data(bandTicks);
 		var bandPosition = function(s) {
-			s.attr("x1", valueXAggBand)
+				s.attr("x1", function(d) {
+					return xBar(d) - barPadding;
+				})
 				.attr("x2", function(d, i) {
 					if ( i + 1 < bandTicks.length ) {
-						return valueXAggBand(bandTicks[i+1]);
+						return xBar(bandTicks[i+1]) + barPadding;
 					}
-					return valueXAggBand(x.domain()[1]);
+					if ( bandTicks.length > 1 ) {
+						return (xBar(d) + xBar(bandTicks[1]) - xBar(bandTicks[0]) + barPadding);
+					}
+					return xBar(d) + barPadding;
 				})
 				.style('stroke', seasonColor);
 		};
@@ -575,12 +591,12 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		
 		var aggBandLabels = svgRoot.select("g.agg-band-ticks").selectAll("text").data(labelTicks);
 		aggBandLabels.transition().duration(transitionMs)
-		  	.attr("x", axisXPosFn)
+		  	.attr("x", axisXMidBarValue)
 		  	.text(axisXAggSumTextFn);
 		
 		aggBandLabels.enter().append("text")
 			.style("opacity", 1e-6)
-			.attr("x", axisXPosFn)
+			.attr("x", axisXMidBarValue)
 		.transition().duration(transitionMs)
 				.style("opacity", 1)
 				.text(axisXAggSumTextFn)
@@ -634,12 +650,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 * @returns {Number} x pixel coordinate
 	 */
 	function valueX(d, i) {
+		return xBar(d.x);
 		// x(d.x) returns a non-perfect month interpolation, so just use our barWidth
-		return (i * barWidth);
+		//return (i * barWidth);
 	}
 	
 	function valueXMidBar(d, i) {
-		return ((i * barWidth) + (barWidth / 2));
+		return (xBar(d.x) + (xBar.rangeBand() / 2));
+		//return ((i * barWidth) + (barWidth / 2));
 	}
 	
 	function redraw() {
@@ -667,13 +685,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			.attr("x", valueX)
 			.attr("y", valueY)
 			.attr("height", heightY)
-			.attr("width", barWidth);
+			.attr("width", xBar.rangeBand());
 		
 		var entered = bars.enter().append("rect")
 			.attr("x", valueX)
 			.attr("y", centerYLoc)
 			.attr("height", 1e-6)
-			.attr("width", barWidth);
+			.attr("width", xBar.rangeBand());
 		
 		entered.transition().duration(transitionMs)
 			.attr("y", valueY)
@@ -698,14 +716,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 						sum += e.y;
 					}
 				}
-				result.push(y(sum));
+				result.push({x:layers[0][i].x, y:y(sum)});
 			}
 			return result;
 		})();
 		
 		var svgLine = d3.svg.line()
 			.x(valueXMidBar)
-			.y(Object)
+			.y(function(d) { return d.y; })
 			.interpolate("monotone");
 		var sumLine = svgSumLineGroup.selectAll("path").data([sumLineData]);
 		sumLine.transition().duration(transitionMs)

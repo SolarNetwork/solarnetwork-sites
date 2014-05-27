@@ -68,11 +68,11 @@ var sn = {
 
 	runtime : {},
 	
-	dateTimeFormat : d3.time.format("%Y-%m-%d %H:%M"),
+	dateTimeFormat : d3.time.format.utc("%Y-%m-%d %H:%M"),
 
 	dateTimeFormatURL : d3.time.format.utc("%Y-%m-%dT%H:%M"),
 	
-	dateFormat : d3.time.format("%Y-%m-%d"),
+	dateFormat : d3.time.format.utc("%Y-%m-%d"),
 	
 	// fmt(string, args...): helper to be able to use placeholders even on iOS, where console.log doesn't support them
 	fmt : function() {
@@ -81,7 +81,7 @@ var sn = {
 			var regexp = new RegExp('\\{'+(i-1)+'\\}', 'gi');
 			var replaceValue = arguments[i];
 			if ( replaceValue instanceof Date ) {
-				replaceValue = (replaceValue.getHours() === 0 && replaceValue.getMinutes() === 0 
+				replaceValue = (replaceValue.getUTCHours() === 0 && replaceValue.getMinutes() === 0 
 					? sn.dateFormat(replaceValue) : sn.dateTimeFormat(replaceValue));
 			}
 			formatted = formatted.replace(regexp, replaceValue);
@@ -458,7 +458,7 @@ sn.nodeUrlHelper = function(nodeId) {
 		dateTimeQuery : function(type, startDate, endDate, agg, opts) {
 			var types = (Array.isArray(type) ? type : [type]);
 			types.sort();
-			var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.offset(endDate, -1) : endDate);
+			var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.utc.offset(endDate, -1) : endDate);
 			var dataURL = (baseURL() +'/datum/query?nodeId=' +nodeId 
                     		+'&type=' +encodeURIComponent(type.toLowerCase())
                     		+'&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate))
