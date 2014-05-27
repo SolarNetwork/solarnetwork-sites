@@ -366,13 +366,19 @@ sn.availableDataRange = function(helper, dataTypes) {
 
 sn.colorDataLegendTable = function(containerSelector, colorData, clickHandler, labelRenderer) {
 	// add labels based on available sources
-	var labelTableRows = d3.select(containerSelector).append('table').append('tbody')
-			.selectAll('tr').data(colorData).enter().append('tr');
+	var table = d3.select(containerSelector).selectAll('table').data([0]);
+	table.enter().append('table').append('tbody');
+	
+	var labelTableRows = table.select('tbody').selectAll('tr').data(colorData);
+	
+	var newLabelTableRows = labelTableRows.enter().append('tr');
+	
+	labelTableRows.exit().remove();
 			
 	if ( clickHandler ) {
 		// attach the event handler for 'click', and add the 'clickable' class
 		// so can be styled appropriately (e.g. cursor: pointer)
-		labelTableRows.on('click', clickHandler).classed('clickable', true);
+		newLabelTableRows.on('click', clickHandler).classed('clickable', true);
 	}
 	
 	if ( labelRenderer === undefined ) {
@@ -381,17 +387,21 @@ sn.colorDataLegendTable = function(containerSelector, colorData, clickHandler, l
 			s.text(Object);
 		};
 	}	
-	labelTableRows.selectAll('td.swatch')
-			.data(function(d) { return [d.color]; })
-		.enter().append('td')
+	var swatches = labelTableRows.selectAll('td.swatch')
+		.data(function(d) { return [d.color]; })
+			.style('background-color', Object);
+	swatches.enter().append('td')
 				.attr('class', 'swatch')
-				.style('background-color', function(d) { return d; });
+				.style('background-color', Object);
+	swatches.exit().remove();
 			
-	labelTableRows.selectAll('td.desc')
-			.data(function(d) { return [(d.source === '' ? 'Main' : d.source)]; })
-		.enter().append('td')
+	var descriptions = labelTableRows.selectAll('td.desc')
+		.data(function(d) { return [(d.source === '' ? 'Main' : d.source)]; })
+			.call(labelRenderer);
+	descriptions.enter().append('td')
 			.attr('class', 'desc')
 			.call(labelRenderer);
+	descriptions.exit().remove();
 };
 
 /**

@@ -644,7 +644,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	function redraw() {
 		// Add a group for each source.
-		var sourceGroups = svg.selectAll("g.source").data(layers);
+		var sourceGroups = svg.selectAll("g.source").data(layers)
+			.style("fill", sn.colorFn);
 		sourceGroups.enter()
 			.append("g")
 				.attr("class", "source")
