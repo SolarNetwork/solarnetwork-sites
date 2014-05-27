@@ -228,16 +228,24 @@ svg {
 	fill: #1B7D30;
 }
 
-.chart g.rule {
+.chart g.rule,
+.chart g.vertrule {
 	shape-rendering: crispEdges;
 }
 
-.chart g.rule line {
+.chart g.rule line,
+.chart g.vertrule line {
 	stroke: black;
 	opacity: 0.1;
 }
 
-.chart g.rule line.origin {
+.chart g.vertrule line {
+	opacity: 0.05;
+	stroke-dasharray: 2 1;
+}
+
+.chart g.rule line.origin,
+.chart g.vertrule line.origin {
 	stroke: black !important;
 	opacity: 1 !important;
 }
@@ -245,6 +253,27 @@ svg {
 .chart g.rule text {
 	text-anchor: end;
 	alignment-baseline: middle;
+}
+
+.chart g.agg-band line {
+	stroke: black;
+	stroke-width: 15px;
+}
+
+.chart g.agg-band-ticks text {
+	fill: white;
+	text-anchor: middle;
+	font-weight: bold;
+}
+
+.chart g.agg-sum path {
+	stroke-width: 1px;
+	stroke: #C42F2F;
+	fill: none;
+}
+
+.chart .off {
+	display: none;
 }
 
 .chart path.area {
