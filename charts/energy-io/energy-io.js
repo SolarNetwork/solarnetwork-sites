@@ -8,7 +8,7 @@
 sn.config.debug = true;
 sn.config.host = 'data.solarnetwork.net';
 sn.runtime.excludeSources = new sn.Configuration();
-sn.runtime.wattHourAggregate = 'Month';
+sn.runtime.wattHourAggregate = 'Hour';
 
 // adjust display units as needed (between W and kW, etc)
 function adjustChartDisplayUnits(chartKey, baseUnit, scale) {
