@@ -49,9 +49,30 @@
 				<div id="source-labels"></div>
 			</div>
 			<div class="pane">
-				<i id="range-toggle" class="fa fa-wrench button"></i>
-				<i id="sumline-toggle" class="fa fa-paper-plane button"></i>
-				<i id="hemisphere-toggle" class="fa fa-globe button south"></i>
+				<form id="details">
+					<label for="nodeId" class="generation">Node</label>
+					<input type="number" name="nodeId" value="30"/>
+					<label for="consumptionNodeId" class="consumption">Node</label>
+					<input type="number" name="consumptionNodeId" value="11"/>
+					<div class="range hour">
+						<label for="days">Days</label>
+						<input type="number" name="numDays" value="7"/>
+					</div>
+					<div class="range day">
+						<label for="months">Months</label>
+						<input type="number" name="numMonths" value="4"/>
+					</div>
+					<div class="range month">
+						<label for="years">Years</label>
+						<input type="number" name="numYears" value="2"/>
+					</div>
+					</table>
+				</form>
+				<div class="actions">
+					<i id="range-toggle" class="fa fa-wrench button"></i>
+					<i id="sumline-toggle" class="fa fa-paper-plane button"></i>
+					<i id="hemisphere-toggle" class="fa fa-globe button south"></i>
+				</div>
 			</div>
 		</div>
 	</div>

@@ -12,7 +12,6 @@ sn.runtime.excludeSources = new sn.Configuration();
 function setup(repInterval, sourceMap) {
 	var reportableEndDate = repInterval.eDate;
 	var energyBarChart = undefined;
-	var monthEnergyBarChart = undefined;
 	var sourceColorMap = sn.sourceColorMapping(sourceMap);
 	
 	// we make use of sn.colorFn, so stash the required color map where expected
@@ -23,6 +22,10 @@ function setup(repInterval, sourceMap) {
 		var unit = (scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
 		d3.selectAll(chartKey +' .unit').text(unit);
 	}
+	
+	// set up form-based details
+	d3.select('#details .consumption').style('color', sourceColorMap.colorMap[sourceColorMap.displaySourceMap['Consumption'][sourceMap['Consumption'][0]]]);
+	d3.select('#details .generation').style('color', sourceColorMap.colorMap[sourceColorMap.displaySourceMap['Power'][sourceMap['Power'][0]]]);
 
 	// handle clicks on legend handler
 	function legendClickHandler(d, i) {
@@ -48,6 +51,22 @@ function setup(repInterval, sourceMap) {
 	});
 	
 	var wattHourAggregate = 'Month';
+	
+	// show/hide the proper range selection based on the current aggregate level
+	function updateRangeSelection() {
+		d3.selectAll('#details div.range').style('display', function() {
+			return (d3.select(this).classed(wattHourAggregate.toLowerCase()) ? 'block' : 'none');
+		});
+	}
+	updateRangeSelection();
+	
+	// update the chart details
+	d3.selectAll('#details input').on('change', function(e) {
+		var me = d3.select(this);
+		var propName = me.attr('name');
+		sn.env[propName] = me.property('value');
+		wattHourChartSetup(reportableEndDate);
+	});
 
 	// Watt hour stacked bar chart (hours)
 	function wattHourChartSetup(endDate) {
@@ -128,6 +147,7 @@ function setup(repInterval, sourceMap) {
 		setTimeout(function() {
 			me.classed('hit', false);
 		}, 500);
+		updateRangeSelection();
 	});
 	
 	// toggle sum lines on/off
