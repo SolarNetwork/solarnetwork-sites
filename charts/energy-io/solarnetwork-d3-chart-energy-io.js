@@ -385,6 +385,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			if ( result.length === 0 ) {
 				month = d3.time.month.offset(month, 3 - (month.getMonth() % 3)); // not month + 1 because here we want Jan
 			}
+			month.setHours(0, 0, 0, 0); // WTF DST
 			result.push(month);
 			month = d3.time.month.offset(month, 3);
 		}
