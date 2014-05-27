@@ -56,17 +56,16 @@
 					<input type="number" name="consumptionNodeId" value=""/>
 					<div class="range hour">
 						<label for="days">Days</label>
-						<input type="number" name="numDays" value="7"/>
+						<input type="number" name="numDays" value="7" min="1" max="11"/>
 					</div>
 					<div class="range day">
 						<label for="months">Months</label>
-						<input type="number" name="numMonths" value="4"/>
+						<input type="number" name="numMonths" value="4" min="1" max="8"/>
 					</div>
 					<div class="range month">
 						<label for="years">Years</label>
-						<input type="number" name="numYears" value="2"/>
+						<input type="number" name="numYears" value="2" min="1" max="5"/>
 					</div>
-					</table>
 				</form>
 				<div class="actions">
 					<i id="range-toggle" class="fa fa-wrench button"></i>
