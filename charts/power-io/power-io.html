@@ -37,13 +37,25 @@
 	<div class="hbox">
 		<div class="vbox main">
 			<div class="pane watt-chart">
-				<h2><span id="num-hours"></span> hour power <span class="alt"><span class="unit">(kW)</span></span></h2>
-				<div id="day-watt" class="chart-container"></div>
+				<h2><span class="time-count"></span> <span class="time-unit">hour</span> power <span class="alt"><span class="unit">(kW)</span></span></h2>
+				<div id="watt-chart" class="chart-container"></div>
 			</div>
 		</div>
 		<div class="vbox sub">
 			<div class="pane">
 				<div id="source-labels"></div>
+			</div>
+			<div class="pane">
+				<form id="details">
+					<label for="nodeId" class="generation">Node</label>
+					<input type="number" name="nodeId" value=""/>
+					<label for="consumptionNodeId" class="consumption">Node</label>
+					<input type="number" name="consumptionNodeId" value=""/>
+					<div class="range hour">
+						<label for="days">Days</label>
+						<input type="number" name="numDays" value="7" min="1" max="11"/>
+					</div>
+				</form>
 			</div>
 		</div>
 	</div>

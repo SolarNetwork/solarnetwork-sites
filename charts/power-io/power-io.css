@@ -144,6 +144,35 @@ a {
 	margin: 2px;
 }
 
+#details label {
+	font-weight: bold;
+	font-size: 12px;
+	line-height: 24px;
+	margin-right: 4px;
+}
+
+#details input[type=number] {
+	width: 4em;
+	font-size: 12px;
+}
+
+#details .range input {
+	width: 3em;
+}
+
+.pane .actions {
+	margin-top: 8px;
+	text-align: center;
+}
+
+.button {
+	color: black;
+}
+
+.button.off {
+	color: #ccc;
+}
+
 svg {
 	/*background-color: rgb(242,242,242);*/
 }
