@@ -70,6 +70,8 @@ var sn = {
 	
 	dateTimeFormat : d3.time.format.utc("%Y-%m-%d %H:%M"),
 
+	dateTimeFormatLocal : d3.time.format("%Y-%m-%d %H:%M"),
+
 	dateTimeFormatURL : d3.time.format.utc("%Y-%m-%dT%H:%M"),
 	
 	dateFormat : d3.time.format.utc("%Y-%m-%d"),
@@ -309,32 +311,74 @@ sn.availableDataRange = function(helper, dataTypes) {
 		// just turn into a function that returns helper
 		urlHelperFn = function() { return helper; };
 	}
+	
+	// if nodeId same for all data types, we can issue a single query, otherwise one query per node ID
+	var numRangeQueries = 0;
+	var lastNodeId = undefined;
+	
 	var q = queue();
-	q.defer(d3.json, urlHelperFn().reportableInterval(dataTypes));
+	var sourcesRequests = [];
 	dataTypes.forEach(function(e, i) {
-		q.defer(d3.json, urlHelperFn(e, i).availableSources(e));
+		var urlHelper = urlHelperFn(e, i);
+		if ( urlHelper.nodeId() !== lastNodeId ) {
+			q.defer(d3.json, urlHelper.reportableInterval(dataTypes));
+			lastNodeId = urlHelper.nodeId();
+			numRangeQueries++;
+		}
+		sourcesRequests.push(urlHelperFn(e, i).availableSources(e));
 	});
+	sourcesRequests.forEach(function(e) {
+		q.defer(d3.json, e);
+	});
+	
+	function extractReportableInterval(results) {
+		var result = undefined;
+		var i = -1;
+		while ( ++i < numRangeQueries ) {
+			var repInterval = results[i];
+			if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
+				sn.log('No data available for node {0}: {1}', urlHelperFn(dataTypes[i], i).nodeId(), (error ? error : 'unknown reason'));
+				continue;
+			}
+			repInterval = repInterval.data;
+			if ( result === undefined ) {
+				result = repInterval;
+			} else {
+				// merge start/end dates
+				if ( repInterval.endDateMillis > result.endDateMillis ) {
+					result.endDateMillis = repInterval.endDateMillis;
+				}
+				if ( repInterval.startDateMillis < result.startDateMillis ) {
+					result.startDateMillis = repInterval.startDateMillis;
+				}
+			}
+		}
+		return result;
+	}
+	
 	q.awaitAll(function(error, results) {
 		if ( error ) {
 			sn.log('Error requesting available data range: ' +error);
 			return;
 		}
-		var repInterval = results[0];
+		/*var repInterval = results[0];
 		if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
 			sn.log('No data available for node {0}: {1}', sn.runtime.urlHelper.nodeId(), (error ? error : 'unknown reason'));
 			return;
-		}
+		}*/
 
 		// turn start/end date strings into actual Date objects;
 		// NOTE: we use the date strings here, rather than the available *DateMillis values, because the date strings
 		//       are formatted in the node's local time zone, which allows the chart to display the data in OTHER
 		//       time zones as if it were also in the node's local time zone.
-		var intervalObj = repInterval.data;
+		var intervalObj = extractReportableInterval(results);// repInterval.data;
 		if ( intervalObj.startDate !== undefined ) {
 			intervalObj.sDate = sn.dateTimeFormat.parse(intervalObj.startDate);
+			intervalObj.sLocalDate = sn.dateTimeFormatLocal.parse(intervalObj.startDate);
 		}
 		if ( intervalObj.endDate !== undefined ) {
 			intervalObj.eDate = sn.dateTimeFormat.parse(intervalObj.endDate);
+			intervalObj.eLocalDate = sn.dateTimeFormatLocal.parse(intervalObj.endDate);
 		}
 
 		var evt = document.createEvent('Event');
@@ -344,13 +388,13 @@ sn.availableDataRange = function(helper, dataTypes) {
 				availableSourcesMap : {} // mapping of data type -> sources
 		};
 
-		// now extract sources, which start at index 1
-		var i = 1, len = results.length;
+		// now extract sources, which start at index numRangeQueries
+		var i = numRangeQueries, len = results.length;
 		var response;
 		for ( ; i < len; i++ ) {
 			response = results[i];
 			if ( response.success !== true || Array.isArray(response.data) !== true || response.data.length < 1 ) {
-				sn.log('No sources available for node {0} data type {1}', urlHelper.nodeId(), dataTypes[i-1]);
+				sn.log('No sources available for node {0} data type {1}', urlHelperFn(dataTypes[i - numRangeQueries], i - numRangeQueries).nodeId(), dataTypes[i - numRangeQueries]);
 				continue;
 			}
 			response.data.sort();
@@ -358,7 +402,7 @@ sn.availableDataRange = function(helper, dataTypes) {
 				// add as "default" set of sources, for the first data type
 				evt.data.availableSources = response.data;
 			}
-			evt.data.availableSourcesMap[dataTypes[i-1]] = response.data;
+			evt.data.availableSourcesMap[dataTypes[i-numRangeQueries]] = response.data;
 		}
 		document.dispatchEvent(evt);
 	});
