@@ -80,7 +80,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	var layerGenerator = undefined;
 	var layers = undefined;
 	var minY = 0;
-	//var barWidth = 0;
 	var dailyAggregateWh = undefined;
 	var aggDisplayFormatter = d3.format(',d');
 	
@@ -130,28 +129,18 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		.attr("transform", "translate(" + p[3] + ",15)");
 
 	function computeDomainX() {
-		// Add extra x domain to accommodate bar width, otherwise last bar is cut off right edge of chart
-		var xMax = layers.domainX[1];
-		var time;
 		var buckets;
 		if ( aggregateType === 'Month' ) {
-			time = d3.time.month.utc;
 			buckets = d3.time.months.utc;
 		} else if ( aggregateType === 'Day' ) {
-			time = d3.time.day.utc;
 			buckets = d3.time.days.utc;
 		} else {
 			// assume 'Hour'
-			time = d3.time.hour.utc;
 			buckets = d3.time.hours.utc;
 		}
-		xMax = time.offset(xMax, 1);
-		x.domain([layers.domainX[0], xMax]);
-		
-		buckets = buckets(layers.domainX[0], xMax);
+		x.domain(layers.domainX);
+		buckets = buckets(layers.domainX[0], layers.domainX[1]);
 		xBar.domain(buckets).rangeRoundBands(x.range(), 0.2); 
-		
-		//barWidth = (layers[0].length === 0 ? 0 : (w / (layers[0].length)));
 	}
 
 	function computeDomainY() {
@@ -651,13 +640,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 */
 	function valueX(d, i) {
 		return xBar(d.x);
-		// x(d.x) returns a non-perfect month interpolation, so just use our barWidth
-		//return (i * barWidth);
 	}
 	
 	function valueXMidBar(d, i) {
 		return (xBar(d.x) + (xBar.rangeBand() / 2));
-		//return ((i * barWidth) + (barWidth / 2));
 	}
 	
 	function redraw() {

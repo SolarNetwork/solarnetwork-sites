@@ -44,17 +44,19 @@ function wattHourChartSetup(endDate, sourceMap) {
 	if ( sn.runtime.wattHourAggregate === 'Month' ) {
 		timeCount = (sn.env.numYears || 1);
 		timeUnit = 'year';
-		start = d3.time.year.utc.offset(d3.time.month.utc.ceil(endDate), -timeCount);
+		end = d3.time.month.utc.ceil(endDate);
+		start = d3.time.year.utc.offset(end, -timeCount);
 	} else if ( sn.runtime.wattHourAggregate === 'Day' ) {
 		timeCount = (sn.env.numMonths || 4);
 		timeUnit = 'month';
-		start = d3.time.month.utc.offset(d3.time.day.utc.ceil(endDate), -timeCount);
+		end = d3.time.day.utc.ceil(endDate);
+		start = d3.time.month.utc.offset(end, -timeCount);
 	} else {
 		// assume Hour
 		timeCount = (sn.env.numDays || 7);
 		timeUnit = 'day';
-		end = d3.time.hour.utc(endDate);
-		start = d3.time.day.utc.offset(end, 1 - timeCount);
+		end = d3.time.hour.utc.ceil(endDate);
+		start = d3.time.day.utc.offset(end, -timeCount);
 	}
 	
 	d3.select('.watthour-chart .time-count').text(timeCount);
@@ -63,7 +65,7 @@ function wattHourChartSetup(endDate, sourceMap) {
 	var q = queue();
 	sn.env.dataTypes.forEach(function(e, i) {
 		var urlHelper = (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper); // FIXME: remove
-		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, endDate, sn.runtime.wattHourAggregate));
+		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, sn.runtime.wattHourAggregate));
 	});
 	q.awaitAll(function(error, results) {
 		if ( error ) {
@@ -98,7 +100,7 @@ function wattHourChartSetup(endDate, sourceMap) {
 }
 
 function setup(repInterval, sourceMap) {
-	sn.runtime.reportableEndDate = repInterval.eDate;
+	sn.runtime.reportableEndDate = repInterval.eLocalDate;
 	sn.runtime.sourceMap = sourceMap;
 	sn.runtime.sourceColorMap = sn.sourceColorMapping(sourceMap);
 	
@@ -153,8 +155,9 @@ function onDocumentReady() {
 	d3.selectAll('.node-id').text(sn.env.nodeId);
 	
 	// update details form based on env
-	d3.select('input[name=nodeId]').property('value', sn.env.nodeId);
-	d3.select('input[name=consumptionNodeId]').property('value', sn.env.consumptionNodeId);
+	['nodeId', 'consumptionNodeId', 'numDays', 'numMonths', 'numYears'].forEach(function(e) {
+		d3.select('input[name='+e+']').property('value', sn.env[e]);
+	});
 
 	// update the chart details
 	d3.selectAll('#details input').on('change', function(e) {
@@ -219,13 +222,8 @@ function onDocumentReady() {
 						return;
 					}
 					if ( sn.runtime.energyBarChart !== undefined ) {
-						var jsonEndDate = sn.dateTimeFormat.parse(json.data.endDate);
-						var xDomain = sn.runtime.energyBarChart.xDomain();
-						var currEndDate = xDomain[xDomain.length - 1];
-						var newEndDate = new Date(jsonEndDate.getTime());
-						currEndDate.setMinutes(0,0,0); // truncate to nearest hour
-						newEndDate.setMinutes(0,0,0);
-						if ( newEndDate.getTime() > currEndDate.getTime() ) {
+						var jsonEndDate = sn.dateTimeFormatLocal.parse(json.data.endDate);
+						if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 							sn.runtime.reportableEndDate = jsonEndDate;
 							wattHourChartSetup(jsonEndDate, sn.runtime.sourceMap);
 						}
