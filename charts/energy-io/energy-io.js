@@ -35,7 +35,7 @@ function updateRangeSelection() {
 	});
 }
 
-// Watt hour stacked bar chart (hours)
+// Watt hour stacked bar chart
 function wattHourChartSetup(endDate, sourceMap) {
 	var end;
 	var start;
