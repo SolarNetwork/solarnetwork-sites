@@ -64,7 +64,7 @@ function wattHourChartSetup(endDate, sourceMap) {
 	
 	var q = queue();
 	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper); // FIXME: remove
+		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
 		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, sn.runtime.wattHourAggregate));
 	});
 	q.awaitAll(function(error, results) {
@@ -131,7 +131,7 @@ function setup(repInterval, sourceMap) {
 
 function urlHelperForAvailbleDataRange(e, i) {
 	if ( !arguments.length ) return sn.runtime.urlHelper;
-	return (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper);
+	return (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
 }
 
 function setupUI() {
@@ -149,7 +149,7 @@ function setupUI() {
 		var getAvailable = false;
 		sn.env[propName] = me.property('value');
 		if ( propName === 'consumptionNodeId' ) {
-			sn.runtime.devUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
+			sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
 			getAvailable = true;
 		} else if ( propName === 'nodeId' ) {
 			sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
@@ -238,6 +238,6 @@ function onDocumentReady() {
 	}
 	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
 	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.devUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
 	sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
 }
