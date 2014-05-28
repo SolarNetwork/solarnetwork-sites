@@ -435,6 +435,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		var e, i, len, date;
 		if ( aggregateType === 'Month' ) {
 			ticks = solarQuarterDates(x.domain());
+			if ( ticks.length > 0 && ticks[0].getUTCMonth() % 3 !== 2 ) {
+				// insert a tick for the band to show the first partial season
+				aggBandTicks.push(x.domain()[0]);
+			}
 			// ticks are on Jan, Apr, Jul, Oct
 			for ( i = 0, len = ticks.length; i < len; i++ ) {
 				e = ticks[i];
@@ -556,11 +560,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 					return xBar(d) - barPadding;
 				})
 				.attr("x2", function(d, i) {
+					// for all bands but last, x2 set to start of next band
 					if ( i + 1 < bandTicks.length ) {
 						return xBar(bandTicks[i+1]) + barPadding;
 					}
+					// for last band, x2 set to end of last bar
 					if ( bandTicks.length > 1 ) {
-						return (xBar(d) + xBar(bandTicks[1]) - xBar(bandTicks[0]) + barPadding);
+						return (xBar(x.domain()[1]) + barWidth +  barPadding);
 					}
 					return xBar(d) + barPadding;
 				})
