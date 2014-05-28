@@ -134,24 +134,7 @@ function urlHelperForAvailbleDataRange(e, i) {
 	return (i === 0 ? sn.runtime.devUrlHelper : sn.runtime.urlHelper);
 }
 
-function onDocumentReady() {
-	sn.setDefaultEnv({
-		nodeId : 30,
-		consumptionNodeId : 108,
-		numDays : 7,
-		numMonths : 4,
-		numYears : 2,
-		maxPowerKW : 3,
-		northernHemisphere : 'false',
-		dataTypes: ['Consumption', 'Power']
-	});
-	sn.config.wChartRefreshMs = 30 * 60 * 1000;
-
-	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', {
-		excludeSources : sn.runtime.excludeSources,
-		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
-	});
-
+function setupUI() {
 	d3.selectAll('.node-id').text(sn.env.nodeId);
 	
 	// update details form based on env
@@ -207,7 +190,28 @@ function onDocumentReady() {
 		me.classed('south', !south);
 		sn.runtime.energyBarChart.northernHemisphere(south);
 	});
+}
+
+function onDocumentReady() {
+	sn.setDefaultEnv({
+		nodeId : 30,
+		consumptionNodeId : 108,
+		numDays : 7,
+		numMonths : 4,
+		numYears : 2,
+		maxPowerKW : 3,
+		northernHemisphere : 'false',
+		dataTypes: ['Consumption', 'Power']
+	});
+	sn.config.wChartRefreshMs = 30 * 60 * 1000;
+
+	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', {
+		excludeSources : sn.runtime.excludeSources,
+		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
+	});
 	
+	setupUI();
+
 	// find our available data range, and then draw our charts!
 	function handleAvailableDataRange(event) {
 		setup(event.data.reportableInterval, event.data.availableSourcesMap);
