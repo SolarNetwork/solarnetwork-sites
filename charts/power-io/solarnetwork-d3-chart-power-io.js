@@ -170,7 +170,8 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		var area = svg.selectAll("path.area").data(layers);
 		
 		area.transition().duration(transitionMs).delay(200)
-				.attr("d", areaPathGenerator);
+				.attr("d", areaPathGenerator)
+				.style("fill", sn.colorFn);
 		
 		area.enter().append("path")
 				.attr("class", "area")
@@ -194,14 +195,26 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		var ticks = x.ticks(numTicks);
 
 		// Generate x-ticks
-		var gx = svgTickGroupX.selectAll("text")
-			.data(ticks)
-				.attr("x", x)
-				.text(fx);
-		gx.enter().append("text")
-				.attr("x", x)
-				.text(fx);
-		gx.exit().remove();
+		var labels = svgTickGroupX.selectAll("text").data(ticks);
+		
+		labels.transition().duration(transitionMs)
+	  		.attr("x", x)
+	  		.text(fx);
+		
+		labels.enter().append("text")
+			.attr("dy", "-0.5em") // needed so descenders not cut off
+			.style("opacity", 1e-6)
+			.attr("x", x)
+		.transition().duration(transitionMs)
+				.style("opacity", 1)
+				.text(fx)
+				.each('end', function() {
+						// remove the opacity style
+						d3.select(this).style("opacity", null);
+					});
+		labels.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
 	}
 
 	function adjustAxisY() {
