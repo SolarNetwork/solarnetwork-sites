@@ -62,7 +62,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	
 	var transitionMs = (parameters.transitionMs || 600);
 	
-	var ruleOpacity = (parameters.ruleOpacity || 0.1);
+	//var ruleOpacity = (parameters.ruleOpacity || 0.1);
 	var vertRuleOpacity = (parameters.vertRuleOpacity || 0.05);
 	
 	// spring, summer, autumn, winter
