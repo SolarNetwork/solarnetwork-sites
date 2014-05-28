@@ -231,16 +231,10 @@ a {
 	font-size: 12px;
 }
 
-#details td {
-	padding: 0;
-}
-
 #details .range {
 	display: none;
 }
 
-#details .range input,
-#details .range input,
 #details .range input {
 	width: 3em;
 }
