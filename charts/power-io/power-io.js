@@ -82,6 +82,12 @@ function setup(repInterval, sourceMap) {
 	// we make use of sn.colorFn, so stash the required color map where expected
 	sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
 
+	// set up form-based details
+	d3.select('#details .consumption').style('color', 
+			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sourceMap['Consumption'][0]]]);
+	d3.select('#details .generation').style('color', 
+			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Power'][sourceMap['Power'][0]]]);
+
 	// create copy of color data for reverse ordering so labels vertically match chart layers
 	sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
 		if ( sn.env.linkOld === 'true' ) {
