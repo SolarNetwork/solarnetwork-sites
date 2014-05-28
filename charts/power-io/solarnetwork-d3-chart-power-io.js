@@ -65,6 +65,28 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	
 	var consumptionLayerCount = 0;
 	
+	svgRoot = d3.select(containerSelector).select('svg');
+	if ( svgRoot.empty() ) {
+		svgRoot = d3.select(containerSelector).append('svg:svg')
+			.attr('class', 'chart')
+			.attr("width", w + p[1] + p[3])
+			.attr("height", h + p[0] + p[2]);
+	} else {
+		svgRoot.selectAll('*').remove();
+	}
+
+	svg = svgRoot.append("g")
+		.attr('class', 'data')
+		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+	
+	svgTickGroupX = svgRoot.append("g")
+		.attr("class", "ticks")
+		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
+
+	svgRoot.append("g")
+		.attr("class", "crisp rule")
+		.attr("transform", "translate(0," + p[0] + ")");
+
 	function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
 
 	var areaPathGenerator = d3.svg.area()
@@ -108,6 +130,7 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 
 	function setup(rawData) {
 		// turn filteredData object into proper array, sorted by date
+		sources = [];
 		var dataArray = sn.powerPerSourceArray(rawData, sources);
 		sn.log('Available area sources: {0}', sources);
 
@@ -140,27 +163,6 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		computeDomainX();
 		computeDomainY();
 
-		svgRoot = d3.select(containerSelector).select('svg');
-		if ( svgRoot.empty() ) {
-			svgRoot = d3.select(containerSelector).append('svg:svg')
-				.attr('class', 'chart')
-				.attr("width", w + p[1] + p[3])
-				.attr("height", h + p[0] + p[2]);
-		} else {
-			svgRoot.selectAll('*').remove();
-		}
-
-		svg = svgRoot.append("g")
-			.attr('class', 'data')
-			.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-		
-		svgTickGroupX = svgRoot.append("g")
-			.attr("class", "ticks")
-			.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
-
-		svgRoot.append("g")
-			.attr("class", "crisp rule")
-			.attr("transform", "translate(0," + p[0] + ")");
 	}
 
 	function redraw() {	
@@ -272,9 +274,9 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	 */
 	that.load = function(rawData) {
 		setup(rawData);
-		redraw();
 		adjustAxisX();
 		adjustAxisY();
+		redraw();
 		return that;
 	};
 	

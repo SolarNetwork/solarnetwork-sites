@@ -102,9 +102,32 @@ function urlHelperForAvailbleDataRange(e, i) {
 }
 
 function setupUI() {
-	// setup DOM based on environment
-	d3.select('#num-hours').text(sn.env.numHours);
 	d3.selectAll('.node-id').text(sn.env.nodeId);
+
+	// update details form based on env
+	['nodeId', 'consumptionNodeId', 'numHours'].forEach(function(e) {
+		d3.select('input[name='+e+']').property('value', sn.env[e]);
+	});
+
+	// update the chart details
+	d3.selectAll('#details input').on('change', function(e) {
+		var me = d3.select(this);
+		var propName = me.attr('name');
+		var getAvailable = false;
+		sn.env[propName] = me.property('value');
+		if ( propName === 'consumptionNodeId' ) {
+			sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
+			getAvailable = true;
+		} else if ( propName === 'nodeId' ) {
+			sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
+			getAvailable = true;
+		}
+		if ( getAvailable ) {
+			sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
+		} else {
+			wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		}
+	});
 }
 
 function onDocumentReady() {
