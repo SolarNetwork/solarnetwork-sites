@@ -41,21 +41,22 @@ function wattHourChartSetup(endDate, sourceMap) {
 	var start;
 	var timeCount;
 	var timeUnit;
+	// for aggregate time ranges, the 'end' date in inclusive
 	if ( sn.runtime.wattHourAggregate === 'Month' ) {
 		timeCount = (sn.env.numYears || 1);
 		timeUnit = 'year';
-		end = d3.time.month.utc.ceil(endDate);
+		end = d3.time.month.utc.floor(endDate);
 		start = d3.time.year.utc.offset(end, -timeCount);
 	} else if ( sn.runtime.wattHourAggregate === 'Day' ) {
 		timeCount = (sn.env.numMonths || 4);
 		timeUnit = 'month';
-		end = d3.time.day.utc.ceil(endDate);
+		end = d3.time.day.utc.floor(endDate);
 		start = d3.time.month.utc.offset(end, -timeCount);
 	} else {
 		// assume Hour
 		timeCount = (sn.env.numDays || 7);
 		timeUnit = 'day';
-		end = d3.time.hour.utc.ceil(endDate);
+		end = d3.time.hour.utc.floor(endDate);
 		start = d3.time.day.utc.offset(end, -timeCount);
 	}
 	
