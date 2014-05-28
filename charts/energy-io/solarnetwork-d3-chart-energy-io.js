@@ -698,29 +698,41 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			var sum;
 			var result = [];
 			for ( i = 0, iMax = layers[0].length; i < iMax; i++ ) {
-				sum = 0;
+				sum = null;
 				for ( j = 0, len = layers.length; j < len; j++ ) {
 					e = layers[j][i];
+					if ( e.y === null ) {
+						continue;
+					}
 					if ( j < consumptionLayerCount ) {
 						sum -= e.y;
 					} else {
 						sum += e.y;
 					}
 				}
-				result.push({x:layers[0][i].x, y:y(sum)});
+				result.push({x:layers[0][i].x, y:sum});
 			}
 			return result;
 		})();
 		
+		function sumDefined(d) {
+			return d.y !== null;
+		}
+		
 		var svgLine = d3.svg.line()
 			.x(valueXMidBar)
-			.y(function(d) { return d.y; })
-			.interpolate("monotone");
+			.y(function(d) { return y(d.y) - 0.5; })
+			.interpolate("monotone")
+			.defined(sumDefined);
 		var sumLine = svgSumLineGroup.selectAll("path").data([sumLineData]);
 		sumLine.transition().duration(transitionMs)
 			.attr("d", svgLine);
 		sumLine.enter().append("path")
-				.attr("d", d3.svg.line().x(valueXMidBar).y(function() { return y(0); }).interpolate("monotone"))
+				.attr("d", d3.svg.line()
+						.x(valueXMidBar)
+						.y(function() { return y(0) - 0.5; })
+						.interpolate("monotone")
+						.defined(sumDefined))
 			.transition().duration(transitionMs)
 				.attr("d", svgLine);
 		sumLine.exit().remove();

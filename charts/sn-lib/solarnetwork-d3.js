@@ -670,7 +670,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 						return {
 							x: d.date, 
 							y: (excludeSources !== undefined && excludeSources.enabled(source) 
-								? 0 : d[source] !== undefined ? +d[source][valueProperty] : 0),
+								? 0 : d[source] !== undefined ? +d[source][valueProperty] : null),
 						};
 					});
 				array.source = source;
