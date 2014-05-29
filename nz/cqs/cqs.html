@@ -6,7 +6,8 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 	<title>Clyde Quay School Energy Profile</title>
-	<link type="text/css" rel="stylesheet" href="solarnetwork-d3-ui-flipcounter.css" />
+	<link type="text/css" rel="stylesheet" href="css/font-awesome.min.css">
+	<link type="text/css" rel="stylesheet" href="css/solarnetwork-d3-ui-flipcounter.css" />
 	<link type="text/css" rel="stylesheet" href="cqs.css" />
 	<script type="text/javascript" src="js-lib/d3-3.4.8.min.js"></script>
 	<script type="text/javascript" src="js-lib/colorbrewer.js"></script>
@@ -34,34 +35,38 @@
 <body>
 	<img class="header-logo" src="img/header-logo.png" alt="Clyde Quay School"/>
 	<h1>Clyde Quay School Energy Profile</h1>
-	<div class="hbox">
-		<div class="vbox main">
-			<div class="pane watt-chart">
-				<h2><span class="time-count"></span> <span class="time-unit">hour</span> power <span class="alt"><span class="unit">(kW)</span></span></h2>
-				<div id="watt-chart" class="chart-container"></div>
+	<div class="charts">
+		<div class="pane chart watt-chart">
+			<div class="actions"><i class="fa fa-compress decrease"></i><i class="fa fa-expand increase"></i></div>
+			<h2><span class="time-count"></span> <span class="time-unit">hour</span> power <span class="alt"><span class="unit">(kW)</span></span></h2>
+			<div id="watt-chart" class="chart-container"></div>
+		</div>
+		<div class="pane chart watthour-chart chart-waiting">
+			<div class="actions">
+				<i class="fa fa-bolt toggle-sumline"></i>
+				<i class="fa fa-compress decrease"></i>
+				<i class="fa fa-expand increase"></i>
 			</div>
-			<div class="pane watthour-chart">
-				<h2><span class="time-count"></span> <span class="time-unit">day</span> energy <span class="alt"><span class="unit">(kWh)</span></span></h2>
-				<div id="watthour-chart" class="chart-container"></div>
+			<h2><span class="time-count"></span> <span class="time-unit">day</span> energy <span class="alt"><span class="unit">(kWh)</span></span></h2>
+			<div id="watthour-chart" class="chart-container"></div>
+		</div>
+	</div>
+	<div class="readings">
+		<div class="pane">
+			<div id="source-labels"></div>
+		</div>
+		<div class="pane">
+			<div id="total-power-gauge"></div>
+			<div class="infobar">
+				<span class="total-power"><span class="dataType">Power</span>: <span class="value" id="total-power-value">0</span> <span class="alt unit">kW</span></span>
 			</div>
 		</div>
-		<div class="vbox sub readings">
-			<div class="pane">
-				<div id="source-labels"></div>
-			</div>
-			<div class="pane">
-				<div id="total-power-gauge"></div>
-				<div class="infobar">
-					<span class="total-power"><span class="dataType">Power</span>: <span class="value" id="total-power-value">0</span> <span class="alt unit">kW</span></span>
-				</div>
-			</div>
-			<div class="pane counter agg-kwh">
-				<h3><span class="literal">kWh</span> <span class="alt"><span class="dataType">generated</span></span></h3>
-				<div id="counter-kwh"></div>
+		<div class="pane counter agg-kwh">
+			<h3><span class="literal">kWh</span> <span class="alt"><span class="dataType">generated</span></span></h3>
+			<div id="counter-kwh"></div>
 
-				<h3><span class="literal">kWh</span> <span class="alt"><span class="dataType">consumed</span></span></h3>
-				<div id="counter-kwh-consume"></div>
-			</div>
+			<h3><span class="literal">kWh</span> <span class="alt"><span class="dataType">consumed</span></span></h3>
+			<div id="counter-kwh-consume"></div>
 		</div>
 	</div>
 	<div class="footer">

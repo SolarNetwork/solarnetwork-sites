@@ -10,7 +10,7 @@ html {
 
 body {
 	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
-	margin: 10px;
+	margin: 20px 10px;
 	background: none;
 }
 
@@ -94,7 +94,9 @@ img.header-logo {
 }
 
 div.footer {
-	margin: 20px;
+	position: absolute;
+	top: 620px;
+	left: 20px;
 }
 
 .literal {
@@ -112,40 +114,6 @@ div.main div.pane {
 	padding: 8px 12px;
 }
 
-div.hbox {
-	display: -webkit-box;
-	-webkit-box-orient: horizontal;
-	display: -moz-box;
-	-moz-box-orient: horizontal;
-	display: box;
-	box-orient: horizontal;
-}
-
-div.vbox {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	display: -moz-box;
-	-moz-box-orient: vertical;
-	display: box;
-	box-orient: vertical;
-}
-
-div.hbox > .main {
-	width: 804px;
-}
-
-div.hbox > .sub {
-	width: 190px;
-}
-
-div.vbox + div.vbox {
-	margin-left: 10px;
-}
-
-div.vbox > div + div {
-	margin-top: 12px;
-}
-
 a {
 	color: inherit;
 }
@@ -154,7 +122,58 @@ a {
 	cursor: pointer !important;
 }
 
+/* Main charts */
+
+.charts {
+	position: absolute;
+	top: 60px;
+	left: 10px;
+	width: 804px;
+}
+
+.charts > .pane {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 788px;
+}
+
+.charts > .pane > .actions {
+	float: right;
+	margin-top: none;
+	text-align: center;
+	font-size: 18px;
+}
+
+.charts > .pane > .actions .fa + .fa {
+	margin-left: 12px;
+}
+
+.charts > .pane > .actions .fa {
+	color: black;
+}
+
+.charts > .pane > .actions .fa-compress,
+.charts > .pane > .actions .fa-expand {
+	-webkit-transform: rotate(45deg); 
+}
+
+.charts > .pane > .actions .fa.disabled {
+	color: #ccc;
+}
+
 /* Readings column */
+
+.readings {
+	position: absolute;
+	top: 60px;
+	left: 824px;
+	width: 190px;
+}
+
+.readings > .pane + .pane {
+	margin-top: 12px;
+}
 
 .readings .unit {
 	color: #666;
@@ -339,3 +358,143 @@ svg {
 	height: 22px;
 }
 
+/* Animation */
+
+@-webkit-keyframes chart-out {
+	0% {
+  		-webkit-transform: none; 
+	}
+	30% { 
+		-webkit-transform: scale(0.95) translateX(10px); 
+	}
+	100% { 
+		-webkit-transform: scale(0.95) translateX(-1000px);
+	}
+}
+
+@-moz-keyframes chart-out {
+	0% {
+  		-moz-transform: none; 
+	}
+	30% { 
+		-moz-transform: scale(0.95) translateX(10px); 
+	}
+	100% { 
+		-moz-transform: scale(0.95) translateX(-1000px);
+	}
+}
+
+@-o-keyframes chart-out {
+	0% {
+  		-o-transform: none; 
+	}
+	30% { 
+		-o-transform: scale(0.95) translateX(10px); 
+	}
+	100% { 
+		-o-transform: scale(0.95) translateX(-1000px);
+	}
+}
+
+@keyframes chart-out {
+	0% {
+  		transform: none; 
+	}
+	30% { 
+		transform: scale(0.95) translateX(10px); 
+	}
+	100% { 
+		transform: scale(0.95) translateX(-1000px);
+	}
+}
+
+@-webkit-keyframes chart-in {
+	0% {
+  		-webkit-transform: scale(1.05) translateX(-1000px);
+	}
+	90% {
+		-webkit-transform: scale(1.05); 
+	}
+	100% { 
+		-webkit-transform: scale(1);
+	}
+}
+
+@-moz-keyframes chart-in {
+	0% {
+  		-moz-transform: scale(1.05) translateX(-1000px);
+	}
+	90% {
+		-moz-transform: scale(1.05); 
+	}
+	100% { 
+		-moz-transform: scale(1);
+	}
+}
+
+@-o-keyframes chart-in {
+	0% {
+  		-o-transform: scale(1.05) translateX(-1000px);
+	}
+	90% {
+		-o-transform: scale(1.05); 
+	}
+	100% { 
+		-o-transform: scale(1);
+	}
+}
+
+@keyframes chart-in {
+	0% {
+  		transform: scale(1.05) translateX(-1000px);
+	}
+	90% {
+		transform: scale(1.05); 
+	}
+	100% { 
+		transform: scale(1);
+	}
+}
+
+.charts > .pane {
+	-webkit-animation-duration: 1.5s;
+	-webkit-animation-iteration-count: 1;
+	-webkit-animation-timing-function: ease-in-out;
+	-webkit-animation-fill-mode: forwards;
+	-moz-animation-duration: 1.5s;
+	-moz-animation-iteration-count: 1;
+	-moz-animation-timing-function: ease-in-out;
+	-moz-animation-fill-mode: forwards;
+	-o-animation-duration: 1.5s;
+	-o-animation-iteration-count: 1;
+	-o-animation-timing-function: ease-in-out;
+	-o-animation-fill-mode: forwards;
+	animation-duration: 1.5s;
+	animation-iteration-count: 1;
+	animation-timing-function: ease-in-out;
+	animation-fill-mode: forwards;
+}
+
+
+.chart-in {
+	-webkit-animation-name: chart-in;
+	-moz-animation-name: chart-in;
+	-o-animation-name: chart-in;
+	animation-name: chart-in;
+	z-index: 10;
+}
+
+.chart-out {
+	-webkit-animation-name: chart-out;
+	-moz-animation-name: chart-out;
+	-o-animation-name: chart-out;
+	animation-name: chart-out;
+	z-index: 0;
+}
+
+.chart-waiting {
+	-webkit-transform: translateX(-1000px);
+	-moz-transform: translateX(-1000px);
+	-o-transform: translateX(-1000px);
+	transform: translateX(-1000px);
+}
