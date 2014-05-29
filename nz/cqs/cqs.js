@@ -344,9 +344,9 @@ function actionToggleSumline() {
 function setupUI() {
 	// setup power gauge
 	sn.runtime.totalPowerGauge = sn.chart.gauge('#total-power-gauge', {
-		size: 174,
-		clipWidth: 174,
-		clipHeight: 100,
+		size: 182,
+		clipWidth: 182,
+		clipHeight: 110,
 		ringWidth: 30,
 		maxValue: sn.env.maxPowerKW,
 		majorTicks: sn.env.powerGaugeTicks,

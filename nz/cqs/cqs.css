@@ -12,9 +12,10 @@ html {
 
 body {
 	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
-	margin: 10px 10px;
+	margin: 20px 10px;
 	background: none;
 	padding: none;
+	width: 1004px;
 }
 
 h1, h2, h3 {
@@ -24,13 +25,12 @@ h1, h2, h3 {
 }
 
 h1 {
-	text-align: left;
+	text-align: center;
 	font-size: 28px;
 	line-height: 28px;
 	font-weight: 400;
 	margin: 0;
 	margin-bottom: 12px;
-	margin-top: -2px;
 	color: rgb(247,200,25);
 	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
 }
@@ -98,8 +98,11 @@ img.header-logo {
 
 div.footer {
 	position: absolute;
-	top: 620px;
-	left: 20px;
+	top: 630px;
+}
+
+div.footer > img {
+	width: 804px;
 }
 
 .literal {
@@ -110,10 +113,6 @@ div.pane {
 	background-color: rgba(100%,100%,100%,1);
 	border-radius: 8px;
 	box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
-	padding: 4px 8px;
-}
-
-div.main div.pane {
 	padding: 8px 12px;
 }
 
@@ -129,7 +128,7 @@ a {
 
 .charts {
 	position: absolute;
-	top: 60px;
+	top: 70px;
 	left: 10px;
 	width: 804px;
 }
@@ -138,12 +137,12 @@ a {
 	position: absolute;
 	top: 0px;
 	left: 0px;
-	width: 788px;
+	width: 780px;
 }
 
 .charts > .pane > .actions {
 	float: right;
-	margin-top: none;
+	margin-right: 4px;
 	text-align: center;
 	font-size: 18px;
 }
@@ -172,7 +171,7 @@ a {
 
 .readings {
 	position: absolute;
-	top: 60px;
+	top: 70px;
 	left: 824px;
 	width: 190px;
 }
@@ -314,6 +313,11 @@ svg {
 }
 
 /* Total Power Gauge */
+
+#total-power-gauge {
+	margin-left: -8px;
+	margin-right: -8px;
+}
 
 #total-power-gauge g.pointer {
 	fill: #e85116;

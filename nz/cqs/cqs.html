@@ -27,7 +27,7 @@
 	    		d3.select('body').style('margin-top', '30px');
 	    		['.charts', '.readings', '.footer'].forEach(function(e) {
 	    			var me = d3.select(e);
-	    			me.style('top', (Number(me.style('top').match(/(\d+)/)[1]) + 20) +'px');
+	    			me.style('top', (Number(me.style('top').match(/(\d+)/)[1]) + 10) +'px');
 	    		});
 	    	}
 			onDocumentReady();
@@ -42,7 +42,8 @@
 	</script>
 </head>
 <body>
-	<img class="header-logo" src="img/header-logo.png" alt="Clyde Quay School"/>
+	<img class="header-logo" src="img/header-logo.png" alt="Clyde Quay School motif" style="float: left;"/> 
+	<img class="header-logo" src="img/header-logo.png" alt="Clyde Quay School motif" style="float: right;"/> 
 	<h1>Clyde Quay School Energy Profile</h1>
 	<div class="charts">
 		<div class="pane chart watt-chart">
