@@ -389,44 +389,47 @@ function setupUI() {
 
 function setupCounters(repInterval) {
 	// Wh counter utility (generation)
-	if ( sn.runtime.wattHourPowerCounter !== undefined ) {
-		sn.runtime.wattHourPowerCounter.stop();
+	if ( sn.runtime.wattHourPowerCounter === undefined ) {
+		sn.runtime.wattHourPowerCounter = sn.util.aggregateCounter({
+			dataType: 'Power',
+			nodeUrlHelper: sn.runtime.urlHelper,
+			startingInterval: {startDate: repInterval.sDate, endDate: repInterval.eDate},
+			callback : function() {
+				var totalKWattHours = this.aggregateValue() / 1000;
+				
+				// using conversion of  0.7685 kg CO2/kWh electricity
+				var totalCO2Kg = Math.round(totalKWattHours * Number(sn.env.CO2Factor));
+				
+				var totalDollars = Math.round(totalKWattHours * Number(sn.env.KWhTarrif));
+				
+				sn.log('{0} total kWh calculated as {1} Kg CO2; ${2}', 
+					totalKWattHours, totalCO2Kg, totalDollars);
+				sn.runtime.flipCounterKWh.update(Math.round(totalKWattHours));
+				//sn.runtime.flipCounterCO2.update(totalCO2Kg);
+				//sn.runtime.flipCounterMoney.update(totalDollars);
+			}
+		});
+		sn.runtime.wattHourPowerCounter.start();
 	}
-	sn.runtime.wattHourPowerCounter = sn.util.aggregateCounter({
-		dataType: 'Power',
-		nodeUrlHelper: sn.runtime.urlHelper,
-		startingInterval: {startDate: repInterval.sDate, endDate: repInterval.eDate},
-		callback : function() {
-			var totalKWattHours = this.aggregateValue() / 1000;
-			
-			// using conversion of  0.7685 kg CO2/kWh electricity
-			var totalCO2Kg = Math.round(totalKWattHours * Number(sn.env.CO2Factor));
-			
-			var totalDollars = Math.round(totalKWattHours * Number(sn.env.KWhTarrif));
-			
-			sn.log('{0} total kWh calculated as {1} Kg CO2; ${2}', 
-				totalKWattHours, totalCO2Kg, totalDollars);
-			sn.runtime.flipCounterKWh.update(Math.round(totalKWattHours));
-			//sn.runtime.flipCounterCO2.update(totalCO2Kg);
-			//sn.runtime.flipCounterMoney.update(totalDollars);
-		}
-	});
-	sn.runtime.wattHourPowerCounter.start();
 
 	// Wh counter utility (consumption)
-	if ( sn.runtime.wattHourConsumptionCounter !== undefined ) {
-		sn.runtime.wattHourConsumptionCounter.stop();
+	if ( sn.runtime.wattHourConsumptionCounter === undefined ) {
+		sn.runtime.wattHourConsumptionCounter = sn.util.aggregateCounter({
+			dataType: 'Consumption',
+			nodeUrlHelper: sn.runtime.consumptionUrlHelper,
+			startingInterval: {startDate: repInterval.sDate, endDate: repInterval.eDate},
+			callback : function() {
+				var totalKWattHours = this.aggregateValue() / 1000;
+				sn.runtime.flipCounterKWhConsumed.update(Math.round(totalKWattHours));
+			}
+		});
+		sn.runtime.wattHourConsumptionCounter.start();
 	}
-	sn.runtime.wattHourConsumptionCounter = sn.util.aggregateCounter({
-		dataType: 'Consumption',
-		nodeUrlHelper: sn.runtime.consumptionUrlHelper,
-		startingInterval: {startDate: repInterval.sDate, endDate: repInterval.eDate},
-		callback : function() {
-			var totalKWattHours = this.aggregateValue() / 1000;
-			sn.runtime.flipCounterKWhConsumed.update(Math.round(totalKWattHours));
-		}
-	});
-	sn.runtime.wattHourConsumptionCounter.start();
+}
+
+function urlHelperForAvailbleDataRange(e, i) {
+	if ( !arguments.length ) return sn.runtime.urlHelper;
+	return (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
 }
 
 function onDocumentReady() {
@@ -445,7 +448,7 @@ function onDocumentReady() {
 		northernHemisphere : 'false',
 		dataTypes: ['Consumption', 'Power']
 	});
-	sn.config.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
+	sn.runtime.refreshMs = sn.env.minutePrecision * 60 * 1000;
 	
 	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', {
 		height : 500,
@@ -465,36 +468,24 @@ function onDocumentReady() {
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				d3.json(sn.runtime.urlHelper.reportableInterval(sn.env.dataTypes), function(error, json) {
-					if ( json.data === undefined || json.data.endDateMillis === undefined ) {
-						sn.log('No data available for node {0}: {1}', sn.runtime.urlHelper.nodeId(), (error ? error : 'unknown reason'));
-						return;
-					}
-					if ( sn.runtime.powerAreaChart !== undefined ) {
-						var jsonEndDate = sn.dateTimeFormatLocal.parse(json.data.endDate);
-						if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
-							sn.runtime.reportableEndDate = jsonEndDate;
+				sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes, function(data) {
+					var jsonEndDate = data.reportableInterval.eLocalDate;
+					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
+						if ( sn.runtime.powerAreaChart !== undefined ) {
 							wattChartSetup(jsonEndDate, sn.runtime.sourceMap);
 						}
-					}
-					if ( sn.runtime.energyBarChart !== undefined ) {
-						var jsonEndDate = sn.dateTimeFormatLocal.parse(json.data.endDate);
-						if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
-							sn.runtime.reportableEndDate = jsonEndDate;
+						if ( sn.runtime.energyBarChart !== undefined ) {
 							wattHourChartSetup(jsonEndDate, sn.runtime.sourceMap);
 						}
 					}
 				});
-			}, sn.config.wChartRefreshMs);
+			}, sn.runtime.refreshMs);
 		}
 	}
 	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
 	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
 	sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
-	sn.availableDataRange(function(e, i) {
-		if ( !arguments.length ) return sn.runtime.urlHelper;
-		return (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-	}, sn.env.dataTypes);
+	sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
 
 	setupUI();
 }
