@@ -20,12 +20,16 @@
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-util-aggcounter.js"></script>
 	<script type="text/javascript" src="cqs.js"></script>
 	<script type="text/javascript">
-    	var updateStatusBar = navigator.userAgent.match(/iphone|ipad|ipod/i) &&
-    		parseInt(navigator.appVersion.match(/OS (\d)/)[1], 10) >= 7;
-    	if ( updateStatusBar ) {
-    		document.body.style.webkitTransform = 'translate3d(0, 20px, 0)';
-    	}
 		function startApp() {
+	    	var updateStatusBar = navigator.userAgent.match(/iphone|ipad|ipod/i)/* &&
+	    		parseInt(navigator.appVersion.match(/OS (\d)/)[1], 10) >= 7*/;
+	    	if ( updateStatusBar ) {
+	    		d3.select('body').style('margin-top', '30px');
+	    		['.charts', '.readings', '.footer'].forEach(function(e) {
+	    			var me = d3.select(e);
+	    			me.style('top', (Number(me.style('top').match(/(\d+)/)[1]) + 20) +'px');
+	    		});
+	    	}
 			onDocumentReady();
 		}
 		if ( !window.isLoaded ) {

@@ -12,8 +12,9 @@ html {
 
 body {
 	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
-	margin: 20px 10px;
+	margin: 10px 10px;
 	background: none;
+	padding: none;
 }
 
 h1, h2, h3 {
@@ -88,7 +89,7 @@ h3 sub {
 }
 
 img.header-logo {
-	margin-top: -5px;
+	margin-top: -3px;
 	margin-right: 10px;
 	height: 36px;
 	width: auto;
