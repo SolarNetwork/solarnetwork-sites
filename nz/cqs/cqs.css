@@ -2,6 +2,8 @@ html {
 	background-color: rgba(34,175,176,1.0);
 	background: -webkit-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
 	background: -moz-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: -o-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: linear-gradient(to bottom, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
 	-webkit-background-size: cover;
 	-moz-background-size: cover;
 	-o-background-size: cover;
