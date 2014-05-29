@@ -304,8 +304,11 @@ sn.powerPerSourceArray = function(rawData, sources) {
  * 
  * @param {sn.nodeUrlHelper|function} helper a URL helper instance, or a function that returns one
  * @param {string[]} dataTypes array of string data types, e.g. 'Power' or 'Consumption'
+ * @param {function} [callback] an optional callback; if provided no event will be generated. The
+ *                              function will be passed the same object as passed on the event's 
+ *                              data property
  */
-sn.availableDataRange = function(helper, dataTypes) {
+sn.availableDataRange = function(helper, dataTypes, callback) {
 	var urlHelperFn = helper;
 	if ( urlHelperFn.reportableInterval !== undefined ) {
 		// just turn into a function that returns helper
@@ -404,7 +407,11 @@ sn.availableDataRange = function(helper, dataTypes) {
 			}
 			evt.data.availableSourcesMap[dataTypes[i-numRangeQueries]] = response.data;
 		}
-		document.dispatchEvent(evt);
+		if ( typeof callback === 'function' ) {
+			callback(evt.data);
+		} else {
+			document.dispatchEvent(evt);
+		}
 	});
 };
 
