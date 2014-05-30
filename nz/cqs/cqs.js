@@ -9,7 +9,6 @@
 sn.config.debug = true;
 sn.config.host = 'data.solarnetwork.net';
 sn.runtime.excludeSources = new sn.Configuration();
-sn.runtime.wattHourAggregate = 'Hour';
 
 //adjust display units as needed (between W and kW, etc)
 function adjustChartDisplayUnits(chartKey, baseUnit, scale) {
@@ -43,12 +42,12 @@ function wattHourChartSetup(endDate, sourceMap) {
 	var timeCount;
 	var timeUnit;
 	// for aggregate time ranges, the 'end' date in inclusive
-	if ( sn.runtime.wattHourAggregate === 'Month' ) {
+	if ( sn.runtime.energyBarParameters.aggregate === 'Month' ) {
 		timeCount = (sn.env.numYears || 1);
 		timeUnit = 'year';
 		end = d3.time.month.utc.floor(endDate);
 		start = d3.time.year.utc.offset(end, -timeCount);
-	} else if ( sn.runtime.wattHourAggregate === 'Day' ) {
+	} else if ( sn.runtime.energyBarParameters.aggregate === 'Day' ) {
 		timeCount = (sn.env.numMonths || 4);
 		timeUnit = 'month';
 		end = d3.time.day.utc.floor(endDate);
@@ -67,7 +66,7 @@ function wattHourChartSetup(endDate, sourceMap) {
 	var q = queue();
 	sn.env.dataTypes.forEach(function(e, i) {
 		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, sn.runtime.wattHourAggregate));
+		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, sn.runtime.energyBarParameters.aggregate));
 	});
 	q.awaitAll(function(error, results) {
 		if ( error ) {
@@ -93,7 +92,7 @@ function wattHourChartSetup(endDate, sourceMap) {
 		}
 		sn.runtime.energyBarChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
 		sn.runtime.energyBarChart.load(combinedData, {
-			aggregate : sn.runtime.wattHourAggregate
+			aggregate : sn.runtime.energyBarParameters.aggregate
 		});
 		sn.log("Energy IO chart watt hour range: {0}", sn.runtime.energyBarChart.yDomain());
 		sn.log("Energy IO chart time range: {0}", sn.runtime.energyBarChart.xDomain());
@@ -193,9 +192,9 @@ function updateReadings() {
 function swapChart() {
 	if ( d3.select('.watthour-chart').classed('chart-in') ) {
 		// swap visible aggregate level... until we've cycled through them all
-		sn.runtime.wattHourAggregate = (sn.runtime.wattHourAggregate === 'Hour' 
-			? 'Day' : sn.runtime.wattHourAggregate === 'Day' ? 'Month' : 'Hour');
-		if ( sn.runtime.wattHourAggregate === 'Hour' ) {
+		sn.runtime.energyBarParameters.aggregate = (sn.runtime.energyBarParameters.aggregate === 'Hour' 
+			? 'Day' : sn.runtime.energyBarParameters.aggregate === 'Day' ? 'Month' : 'Hour');
+		if ( sn.runtime.energyBarParameters.aggregate === 'Hour' ) {
 			// we'll swap to W chart now, but switch this back to Hour for next time it appears
 			setTimeout(function() {
 				wattHourChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
@@ -268,11 +267,11 @@ function resizeProps(parent) {
 	} else {
 		// assume Wh chart
 		chart = sn.runtime.energyBarChart;
-		if ( sn.runtime.wattHourAggregate === 'Month' ) {
+		if ( sn.runtime.energyBarParameters.aggregate === 'Month' ) {
 			propName = 'numYears';
 			min = 1;
 			max = 6;
-		} else if ( sn.runtime.wattHourAggregate === 'Day' ) {
+		} else if ( sn.runtime.energyBarParameters.aggregate === 'Day' ) {
 			propName = 'numMonths';
 			min = 1;
 			max = 8;
@@ -449,17 +448,22 @@ function onDocumentReady() {
 		dataTypes: ['Consumption', 'Power']
 	});
 	sn.runtime.refreshMs = sn.env.minutePrecision * 60 * 1000;
-	
-	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', {
+
+	sn.runtime.energyBarParameters = new sn.Configuration({
 		height : 500,
+		aggregate : 'Hour',
 		excludeSources : sn.runtime.excludeSources,
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
 	});
 
-	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', {
+	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', sn.runtime.energyBarParameters);
+
+	sn.runtime.powerAreaParameters = new sn.Configuration({
 		height : 500,
 		excludeSources: sn.runtime.excludeSources
 	});
+
+	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', sn.runtime.powerAreaParameters);
 	
 	// find our available data range, and then draw our charts!
 	function handleAvailableDataRange(event) {
