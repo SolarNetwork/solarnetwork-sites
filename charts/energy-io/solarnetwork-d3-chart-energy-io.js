@@ -12,7 +12,7 @@ if ( sn === undefined ) {
 
 /**
  * @typedef sn.chart.energyIOBarChartParameters
- * @type {object}
+ * @type {sn.Configuration}
  * @property {number} [width=812] - desired width, in pixels, of the chart
  * @property {number} [height=300] - desired height, in pixels, of the chart
  * @property {number[]} [padding=[30, 0, 30, 30]] - padding to inset the chart by, in top, right, bottom, left order
@@ -36,38 +36,40 @@ if ( sn === undefined ) {
  * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
- * @param {sn.chart.energyIOBarChartParameters} [chartParams] - the chart parameters
+ * @param {sn.chart.energyIOBarChartParameters} [chartConfig] - the chart parameters
  * @returns {sn.chart.energyIOBarChart}
  */
-sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
+sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	var that = {
 		version : "1.0.0"
 	};
 	var sources = undefined;
-	var parameters = (chartParams || {});
+	var config = (chartConfig || new sn.Configuration());
 	
 	// default to container's width, if we can
 	var containerWidth = sn.pixelWidth(containerSelector);
 	
-	var p = (parameters.padding || [20, 0, 40, 30]),
-		w = (parameters.width || containerWidth || 812) - p[1] - p[3],
-		h = (parameters.height || 300) - p[0] - p[2],
+	var p = (config.padding || [20, 0, 40, 30]),
+		w = (config.width || containerWidth || 812) - p[1] - p[3],
+		h = (config.height || 300) - p[0] - p[2],
     	x = d3.time.scale.utc().range([0, w]),
     	xBar = d3.scale.ordinal(),
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
 	
-	var aggregateType = (parameters.aggregate === 'Month' ? 'Month' 
-			: parameters.aggregate === 'Day' ? 'Day' : 'Hour');
+	// String, one of supported SolarNet aggregate types: Month, Day, or Hour
+	var aggregateType = undefined;
 	
-	var transitionMs = (parameters.transitionMs || 600);
+	var transitionMs = undefined;
 	
 	//var ruleOpacity = (parameters.ruleOpacity || 0.1);
-	var vertRuleOpacity = (parameters.vertRuleOpacity || 0.05);
+	var vertRuleOpacity = undefined;
 	
-	// spring, summer, autumn, winter
-	var seasonColors = (parameters.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);//['#8cc63f', '#f7c819', '#d6591c', '#9ddcf9']);
-	var northernHemisphere = (parameters.northernHemisphere === true ? true : false);
+	// Array of string color values representing spring, summer, autumn, winter
+	var seasonColors = undefined;
+	
+	// Boolean, true for northern hemisphere seasons, false for southern.
+	var northernHemisphere = undefined;
 
 	var svgRoot = undefined,
 		svg = undefined,
@@ -84,6 +86,21 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	var aggDisplayFormatter = d3.format(',d');
 	
 	var consumptionLayerCount = 0;
+
+	// Set y-axis  unit label
+	// setup display units in kWh if domain range > 1000
+	var displayFactor = 1;
+	var displayFormatter = d3.format(',d');
+
+	function parseConfiguration() {
+		aggregateType = (config.aggregate === 'Month' ? 'Month' : config.aggregate === 'Day' ? 'Day' : 'Hour');
+		transitionMs = (config.transitionMs || 600);
+		vertRuleOpacity = (config.vertRuleOpacity || 0.05);
+		seasonColors = (config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
+		northernHemisphere = (config.northernHemisphere === true ? true : false);
+	}
+
+	parseConfiguration();
 
 	// create our SVG container structure now
 	svgRoot = d3.select(containerSelector).select('svg');
@@ -127,7 +144,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	aggGroup = svgRoot.append("g")
 		.attr('class', 'agg-gen')
 		.attr("transform", "translate(" + p[3] + ",15)");
-
+	
 	function computeDomainX() {
 		var buckets;
 		// d3.time.X.range has an exclusive end date, so we must add 1
@@ -153,10 +170,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		computeUnitsY();
 	}
 	
-	// Set y-axis  unit label
-	// setup display units in kWh if domain range > 1000
-	var displayFactor = 1;
-	var displayFormatter = d3.format(',d');
 	function computeUnitsY() {
 		var fmt;
 		var aggFmt;
@@ -259,7 +272,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 		// Transpose the data into watt layers by source, e.g.
 		// [ [{x:0,y:0,y0:0},{x:1,y:1,y0:0}...], ... ]
 		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'wattHours')
-			.excludeSources(parameters.excludeSources)
+			.excludeSources(config.excludeSources)
 			.offset(function(data) {
 				minY = 0;
 				var i, j = -1,
@@ -792,16 +805,11 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 	 * passing to {@link sn.energyPerSourceArray}.
 	 * 
 	 * @param {Array} rawData - the raw chart data to load
-	 * @param {Object} [parameters] - parameters to apply to the chart
 	 * @returns this object
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
-	that.load = function(rawData, parameters) {
-		if ( parameters !== undefined ) {
-			if ( parameters.aggregate !== undefined ) {
-				that.aggregate(parameters.aggregate);
-			}
-		}
+	that.load = function(rawData) {
+		parseConfiguration();
 		setup(rawData);
 		adjustAxisX();
 		adjustAxisY();
@@ -821,11 +829,12 @@ sn.chart.energyIOBarChart = function(containerSelector, chartParams) {
 			// did you call load() first?
 			return that;
 		}
+		parseConfiguration();
 		layers = layerGenerator();
 		computeDomainY();
-		redraw();
 		adjustAxisX();
 		adjustAxisY();
+		redraw();
 		return that;
 	};
 	
