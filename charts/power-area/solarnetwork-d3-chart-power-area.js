@@ -404,7 +404,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return plotProperties;
 		var p = {};
 		['Minute', 'Hour', 'Day', 'Month'].forEach(function(e) {
-			p[e] = (value[e] !== undefined ? value[e] : 'watts');
+			p[e] = (value !== undefined && value[e] !== undefined ? value[e] : 'watts');
 		});
 		plotProperties = p;
 		return that;

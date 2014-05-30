@@ -33,6 +33,13 @@ function legendClickHandler(d, i) {
 			adjustChartDisplayUnits('.watt-chart', 'W', sn.runtime.powerAreaChart.yScale());
 		}, sn.runtime.powerAreaChart.transitionMs() * 0.5);
 	}
+	if ( sn.runtime.overviewAreaChart !== undefined ) {
+		// use a slight delay, otherwise transitions can be jittery
+		setTimeout(function() {
+			sn.runtime.overviewAreaChart.regenerate();
+			adjustChartDisplayUnits('.overview-chart', 'Wh', sn.runtime.overviewAreaChart.yScale());
+		}, sn.runtime.overviewAreaChart.transitionMs() * 0.5);
+	}
 }
 
 //Watt hour stacked bar chart
@@ -147,6 +154,49 @@ function wattChartSetup(endDate, sourceMap) {
 	});
 }
 
+// Wh stacked area chart over whole range
+function overviewAreaChartSetup(reportableInterval, sourceMap) {
+	var end = reportableInterval.eLocalDate;
+	var start = reportableInterval.sLocalDate;
+	var precision = (sn.env.minutePrecision || 10);
+	
+	var q = queue();
+	sn.env.dataTypes.forEach(function(e, i) {
+		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
+		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, 
+				(sn.runtime.overviewAreaParameters.aggregate === 'Minute' 
+					? precision
+					: sn.runtime.overviewAreaParameters.aggregate)));
+	});
+	q.awaitAll(function(error, results) {
+		if ( error ) {
+			sn.log('Error requesting data: ' +error);
+			return;
+		}
+		var combinedData = [];
+		var i, iMax, j, jMax, json, datum, mappedSourceId;
+		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
+			json = results[i];
+			if ( json.success !== true || Array.isArray(json.data) !== true ) {
+				sn.log('No data available for node {0} data type {1}', sn.runtime.urlHelper.nodeId(), sn.env.dataTypes[i]);
+				return;
+			}
+			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
+				datum = json.data[j];
+				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
+				if ( mappedSourceId !== undefined ) {
+					datum.sourceId = mappedSourceId;
+				}
+			}
+			combinedData = combinedData.concat(json.data);
+		}
+		sn.runtime.overviewAreaChart.load(combinedData);
+		sn.log("Overview chart Wh range: {0}", sn.runtime.overviewAreaChart.yDomain());
+		sn.log("Overview chart time range: {0}", sn.runtime.overviewAreaChart.xDomain());
+		adjustChartDisplayUnits('.overview-chart', 'Wh', sn.runtime.overviewAreaChart.yScale());
+	});
+}
+
 function setup(repInterval, sourceMap) {
 	sn.runtime.reportableEndDate = repInterval.eLocalDate;
 	sn.runtime.sourceMap = sourceMap;
@@ -174,6 +224,7 @@ function setup(repInterval, sourceMap) {
 
 	wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
 	wattHourChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+	overviewAreaChartSetup(repInterval, sn.runtime.sourceMap);
 }
 
 function updateReadings() {
@@ -450,20 +501,28 @@ function onDocumentReady() {
 	sn.runtime.refreshMs = sn.env.minutePrecision * 60 * 1000;
 
 	sn.runtime.energyBarParameters = new sn.Configuration({
-		height : 500,
+		height : 460,
 		aggregate : 'Hour',
 		excludeSources : sn.runtime.excludeSources,
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
 	});
-
 	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', sn.runtime.energyBarParameters);
 
 	sn.runtime.powerAreaParameters = new sn.Configuration({
-		height : 500,
+		height : 460,
 		excludeSources: sn.runtime.excludeSources
 	});
-
 	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', sn.runtime.powerAreaParameters);
+
+	sn.runtime.overviewAreaParameters = new sn.Configuration({
+		height: 80,
+		padding : [0, 0, 15, 0],
+		excludeSources: sn.runtime.excludeSources,
+		aggregate : 'Month',
+		wiggle : (sn.env.wiggle === 'true'),
+		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+	});
+	sn.runtime.overviewAreaChart = sn.chart.powerAreaChart('#overview-chart', sn.runtime.overviewAreaParameters);
 	
 	// find our available data range, and then draw our charts!
 	function handleAvailableDataRange(event) {
@@ -480,6 +539,9 @@ function onDocumentReady() {
 						}
 						if ( sn.runtime.energyBarChart !== undefined ) {
 							wattHourChartSetup(jsonEndDate, sn.runtime.sourceMap);
+						}
+						if ( sn.runtime.overviewAreaChart !== undefined ) {
+							overviewChartSetup(data.reportableInterval, sn.runtime.sourceMap);
 						}
 					}
 				});

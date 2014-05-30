@@ -16,6 +16,7 @@
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-energy-io.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-gauge.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-power-io.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-power-area.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-ui-flipcounter.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-util-aggcounter.js"></script>
 	<script type="text/javascript" src="cqs.js"></script>
@@ -25,7 +26,7 @@
 	    		parseInt(navigator.appVersion.match(/OS (\d)/)[1], 10) >= 7*/;
 	    	if ( updateStatusBar ) {
 	    		d3.select('body').style('margin-top', '30px');
-	    		['.charts', '.readings', '.footer'].forEach(function(e) {
+	    		['.charts', '.readings', '.overview-chart', '.footer'].forEach(function(e) {
 	    			var me = d3.select(e);
 	    			me.style('top', (Number(me.style('top').match(/(\d+)/)[1]) + 10) +'px');
 	    		});
@@ -60,6 +61,9 @@
 			<h2><span class="time-count"></span> <span class="time-unit">day</span> energy <span class="alt"><span class="unit">(kWh)</span></span></h2>
 			<div id="watthour-chart" class="chart-container"></div>
 		</div>
+	</div>
+	<div class="overview pane chart overview-chart">
+		<div id="overview-chart" class="chart-container"></div>
 	</div>
 	<div class="readings">
 		<div class="pane">

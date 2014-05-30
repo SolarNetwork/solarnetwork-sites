@@ -72,9 +72,6 @@ function powerAreaChartSetup(endDate, sourceMap) {
 		start = d3.time.hour.utc.offset(end, -timeCount);
 	}
 	
-	d3.select('.watthour-chart .time-count').text(timeCount);
-	d3.select('.watthour-chart .time-unit').text(timeUnit);
-
 	d3.select('.power-area-chart .time-count').text(timeCount);
 	d3.select('.power-area-chart .time-unit').text(timeUnit);
 	
@@ -109,8 +106,8 @@ function powerAreaChartSetup(endDate, sourceMap) {
 			combinedData = combinedData.concat(json.data);
 		}
 		sn.runtime.powerAreaChart.load(combinedData);
-		sn.log("Power IO chart watt range: {0}", sn.runtime.powerAreaChart.yDomain());
-		sn.log("Power IO chart time range: {0}", sn.runtime.powerAreaChart.xDomain());
+		sn.log("Power Area chart watt range: {0}", sn.runtime.powerAreaChart.yDomain());
+		sn.log("Power Area chart time range: {0}", sn.runtime.powerAreaChart.xDomain());
 		adjustChartDisplayUnits('.power-area-chart', 
 				(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'W' : 'Wh'), 
 				sn.runtime.powerAreaChart.yScale(),

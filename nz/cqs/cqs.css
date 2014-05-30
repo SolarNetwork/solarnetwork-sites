@@ -98,7 +98,7 @@ img.header-logo {
 
 div.footer {
 	position: absolute;
-	top: 630px;
+	top: 700px;
 	width: 1024px;
 	text-align: center;
 }
@@ -124,6 +124,16 @@ a {
 
 .clickable {
 	cursor: pointer !important;
+}
+
+/* Overview chart */
+
+.overview-chart.pane {
+	position: absolute;
+	top: 590px;
+	left: 10px;
+	width: 780px;
+	padding-bottom: 4px;
 }
 
 /* Main charts */
