@@ -541,7 +541,7 @@ function onDocumentReady() {
 							wattHourChartSetup(jsonEndDate, sn.runtime.sourceMap);
 						}
 						if ( sn.runtime.overviewAreaChart !== undefined ) {
-							overviewChartSetup(data.reportableInterval, sn.runtime.sourceMap);
+							overviewAreaChartSetup(data.reportableInterval, sn.runtime.sourceMap);
 						}
 					}
 				});
