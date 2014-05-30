@@ -99,6 +99,8 @@ img.header-logo {
 div.footer {
 	position: absolute;
 	top: 630px;
+	width: 1024px;
+	text-align: center;
 }
 
 div.footer > img {
