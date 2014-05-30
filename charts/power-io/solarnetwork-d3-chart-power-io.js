@@ -12,7 +12,7 @@ if ( sn === undefined ) {
 
 /**
  * @typedef sn.chart.powerIOAreaChartParameters
- * @type {object}
+ * @type {sn.Configuration}
  * @property {number} [width=812] - desired width, in pixels, of the chart
  * @property {number} [height=300] - desired height, in pixels, of the chart
  * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
@@ -32,27 +32,27 @@ if ( sn === undefined ) {
  * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
- * @param {sn.chart.powerIOAreaChartParameters} [chartParams] - the chart parameters
+ * @param {sn.chart.powerIOAreaChartParameters} [chartConfig] - the chart parameters
  * @returns {sn.chart.powerIOAreaChart}
  */
-sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
+sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 	var that = {
 		version : "1.0.0"
 	};
 	var sources = [];
-	var parameters = (chartParams || {});
+	var config = (chartConfig || new sn.Configuration());
 	
 	// default to container's width, if we can
 	var containerWidth = sn.pixelWidth(containerSelector);
 	
-	var p = (parameters.padding || [10, 0, 20, 30]),
-		w = (parameters.width || containerWidth || 812) - p[1] - p[3],
-		h = (parameters.height || 300) - p[0] - p[2],
+	var p = (config.padding || [10, 0, 20, 30]),
+		w = (config.width || containerWidth || 812) - p[1] - p[3],
+		h = (config.height || 300) - p[0] - p[2],
     	x = d3.time.scale.utc().range([0, w]),
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
 
-	var transitionMs = (parameters.transitionMs || 600);
+	var transitionMs = undefined;
 	
 	var svgRoot = undefined,
 		svg = undefined,
@@ -65,6 +65,12 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	
 	var consumptionLayerCount = 0;
 	
+	function parseConfiguration() {
+		transitionMs = (config.transitionMs || 600);
+	}
+
+	parseConfiguration();
+
 	svgRoot = d3.select(containerSelector).select('svg');
 	if ( svgRoot.empty() ) {
 		svgRoot = d3.select(containerSelector).append('svg:svg')
@@ -137,7 +143,7 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 		// Transpose the data into watt layers by source, e.g.
 		// [ [{x:0,y:0},{x:1,y:1}...], ... ]
 		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'watts')
-			.excludeSources(parameters.excludeSources)
+			.excludeSources(config.excludeSources)
 			.offset(function(data) {
 				minY = 0;
 				var i, j = -1,
@@ -286,6 +292,7 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 	 * @memberOf sn.chart.powerIOAreaChart
 	 */
 	that.load = function(rawData) {
+		parseConfiguration();
 		setup(rawData);
 		adjustAxisX();
 		adjustAxisY();
@@ -305,6 +312,7 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartParams) {
 			// did you call load() first?
 			return that;
 		}
+		parseConfiguration();
 		layers = layerGenerator();
 		computeDomainY();
 		redraw();

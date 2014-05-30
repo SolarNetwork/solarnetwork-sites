@@ -146,12 +146,14 @@ function onDocumentReady() {
 		linkOld : 'false',
 		dataTypes: ['Consumption', 'Power']
 	});
-	sn.config.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
+	
+	sn.runtime.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
 
-	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', {
-		height: 400,
-		excludeSources: sn.runtime.excludeSources
+	sn.runtime.wattParameters = new sn.Configuration({
+		excludeSources : sn.runtime.excludeSources
 	});
+	
+	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', sn.runtime.wattParameters);
 	
 	setupUI();
 
@@ -175,7 +177,7 @@ function onDocumentReady() {
 						}
 					}
 				});
-			}, sn.config.wChartRefreshMs);
+			}, sn.runtime.wChartRefreshMs);
 		}
 	}
 	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
