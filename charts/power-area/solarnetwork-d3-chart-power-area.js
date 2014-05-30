@@ -52,6 +52,9 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		y = d3.scale.linear().range([h, 0]),
 		format = d3.time.format("%H");
 
+	// String, one of supported SolarNet aggregate types: Month, Day, Hour, or Minute
+	var aggregateType = undefined;
+	
 	var transitionMs = undefined;
 
 	// the d3 stack offset method, or function
@@ -67,7 +70,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	var minY = 0;
 
 	function parseConfiguration() {
-		aggregateType = (config.aggregate === 'Month' ? 'Month' : config.aggregate === 'Day' ? 'Day' : 'Hour');
+		that.aggregate(config.aggregate);
 		transitionMs = (config.transitionMs || 600);
 		vertRuleOpacity = (config.vertRuleOpacity || 0.05);
 		seasonColors = (config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
@@ -75,8 +78,6 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		stackOffset = (config.wiggle === true ? 'wiggle' : 'zero');
 	}
 	
-	parseConfiguration();
-
 	svgRoot = d3.select(containerSelector).select('svg');
 	if ( svgRoot.empty() ) {
 		svgRoot = d3.select(containerSelector).append('svg:svg')
@@ -278,6 +279,20 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	that.yScale = function() { return displayFactor; };
 
 	/**
+	 * Get the current {@code aggregate} value in use.
+	 * 
+	 * @param {number} [value] the number of consumption sources to use
+	 * @returns when used as a getter, the count number, otherwise this object
+	 * @returns the {@code aggregate} value
+	 * @memberOf sn.chart.powerAreaChart
+	 */
+	that.aggregate = function(value) { 
+		if ( !arguments.length ) return aggregateType;
+		aggregateType = (value === 'Month' ? 'Month' : value === 'Day' ? 'Day' : value === 'Hour' ? 'Hour' : 'Minute');
+		return that;
+	};
+	
+	/**
 	 * Load data for the chart. The data is expected to be in a form suitable for
 	 * passing to {@link sn.powerPerSourceArray}.
 	 * 
@@ -359,5 +374,6 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		return that.stackOffset(value === true ? 'wiggle' : 'zero');
 	};
 
+	parseConfiguration();
 	return that;
 };
