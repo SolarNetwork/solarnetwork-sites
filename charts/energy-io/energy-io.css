@@ -164,59 +164,15 @@ a {
 	        transition: transform 0.5s;
 }
 
-@-webkit-keyframes rotate {
-  from {
-    -webkit-transform: rotate(0deg);
-  }
-  to { 
-    -webkit-transform: rotate(360deg);
-  }
-}
-
-@-moz-keyframes rotate {
-  from {
-    -moz-transform: rotate(0deg);
-  }
-  to { 
-    -moz-transform: rotate(360deg);
-  }
-}
-
-@-o-keyframes rotate {
-  from {
-    -o-transform: rotate(0deg);
-  }
-  to { 
-    -o-transform: rotate(360deg);
-  }
-}
-
-@keyframes rotate {
-  from {
-  	transform: rotate(0deg);
-  }
-  to { 
-  	transform: rotate(360deg);
-  }
-}
-
 #range-toggle.hit {
-    -webkit-animation-name:             rotate; 
-    -webkit-animation-duration:         0.5s; 
-    -webkit-animation-iteration-count:  1;
-    -webkit-animation-timing-function:  ease-in-out;
-    -moz-animation-name:             	rotate; 
-    -moz-animation-duration:         	0.5s; 
-    -moz-animation-iteration-count:  	1;
-    -moz-animation-timing-function:  	ease-in-out;
-    -o-animation-name:             		rotate; 
-    -o-animation-duration:         		0.5s; 
-    -o-animation-iteration-count:  		1;
-    -o-animation-timing-function:  		ease-in-out;
-	animation-name:             		rotate; 
-    animation-duration:         		0.5s; 
-    animation-iteration-count:  		1;
-    animation-timing-function:  		ease-in-out;
+	-webkit-transform: rotateZ(360deg);
+	-moz-transform: rotateZ(360deg);
+	-o-transform: rotateZ(360deg);
+	transform: rotateZ(360deg);
+    -webkit-transition: -webkit-transform 0.5s; 
+    -moz-transition: -moz-transform 0.5s; 
+    -o-transition: -o-transform 0.5s; 
+    transition: transform 0.5s; 
 }
 
 #details label {
@@ -245,7 +201,12 @@ a {
 }
 
 .button {
+	font-size: 18px;
 	color: black;
+}
+
+.button + .button {
+	margin-left: 8px;
 }
 
 .button.off {

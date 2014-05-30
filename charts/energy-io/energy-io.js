@@ -32,6 +32,8 @@ function updateRangeSelection() {
 	d3.selectAll('#details div.range').style('display', function() {
 		return (d3.select(this).classed(sn.runtime.wattHourParameters.aggregate.toLowerCase()) ? 'block' : 'none');
 	});
+	d3.select('#hemisphere-toggle').transition().duration(sn.runtime.energyBarChart.transitionMs())
+		.style('opacity', (sn.runtime.wattHourParameters.aggregate == 'Month' ? 1 : 0));
 }
 
 // Watt hour stacked bar chart
