@@ -17,6 +17,8 @@ if ( sn === undefined ) {
  * @property {number} [height=300] - desired height, in pixels, of the chart
  * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
  * @property {number} [transitionMs=600] - transition time
+ * @property {object} [plotProperties] - the property to plot for specific aggregation levels; if unspecified 
+ *                                       the {@code watts} property is used
  * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
  */
 
@@ -55,6 +57,9 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	// String, one of supported SolarNet aggregate types: Month, Day, Hour, or Minute
 	var aggregateType = undefined;
 	
+	// mapping of aggregateType keys to associated data property names, e.g. 'watts' or 'wattHours'
+	var plotProperties = undefined;
+	
 	var transitionMs = undefined;
 
 	// the d3 stack offset method, or function
@@ -82,6 +87,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 
 	function parseConfiguration() {
 		that.aggregate(config.aggregate);
+		that.plotProperties(config.plotProperties);
 		transitionMs = (config.transitionMs || 600);
 		vertRuleOpacity = (config.vertRuleOpacity || 0.05);
 		seasonColors = (config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
@@ -150,7 +156,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 
 		// Transpose the data into watt layers by source, e.g.
 		// [ [{x:0,y:0},{x:1,y:1}...], ... ]
-		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'watts')
+		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, plotProperties[aggregateType])
 			.excludeSources(config.excludeSources)
 			.offset(stackOffset)
 			.data(dataArray);
@@ -373,6 +379,35 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	that.wiggle = function(value) {
 		if ( !arguments.length ) return (stackOffset === 'wiggle');
 		return that.stackOffset(value === true ? 'wiggle' : 'zero');
+	};
+	
+	/**
+	 * Get or set the plot property names for all supported aggregate levels.
+	 * 
+	 * When used as a setter, an Object with properties of the following names are supported:
+	 * 
+	 * <ul>
+	 *   <li>Minute</li>
+	 *   <li>Hour</li>
+	 *   <li>Day</li>
+	 *   <li>Month</li>
+	 * </ul>
+	 * 
+	 * Each value should be the string name of the datum property to plot on the y-axis of the chart.
+	 * If an aggregate level is not defined, it will default to {@code watts}.
+	 * 
+	 * @param {object} [value] the aggregate property names to use
+	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
+	 * @memberOf sn.chart.powerAreaChart
+	 */
+	that.plotProperties = function(value) {
+		if ( !arguments.length ) return plotProperties;
+		var p = {};
+		['Minute', 'Hour', 'Day', 'Month'].forEach(function(e) {
+			p[e] = (value[e] !== undefined ? value[e] : 'watts');
+		});
+		plotProperties = p;
+		return that;
 	};
 
 	parseConfiguration();

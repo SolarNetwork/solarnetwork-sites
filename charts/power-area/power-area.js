@@ -10,9 +10,12 @@ sn.config.host = 'data.solarnetwork.net';
 sn.runtime.excludeSources = new sn.Configuration();
 
 //adjust display units as needed (between W and kW, etc)
-function adjustChartDisplayUnits(chartKey, baseUnit, scale) {
+function adjustChartDisplayUnits(chartKey, baseUnit, scale, unitKind) {
 	var unit = (scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
 	d3.selectAll(chartKey +' .unit').text(unit);
+	if ( unitKind !== undefined ) {
+		d3.selectAll(chartKey + ' .unit-kind').text(unitKind);
+	}
 }
 
 //handle clicks on legend handler
@@ -22,7 +25,10 @@ function legendClickHandler(d, i) {
 		// use a slight delay, otherwise transitions can be jittery
 		setTimeout(function() {
 			sn.runtime.powerAreaChart.regenerate();
-			adjustChartDisplayUnits('.power-area-chart', 'W', sn.runtime.powerAreaChart.yScale());
+			adjustChartDisplayUnits('.power-area-chart', 
+					(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'W' : 'Wh'), 
+					sn.runtime.powerAreaChart.yScale(),
+					(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'power' : 'energy'));
 		}, sn.runtime.powerAreaChart.transitionMs() * 0.5);
 	}
 }
@@ -105,7 +111,10 @@ function powerAreaChartSetup(endDate, sourceMap) {
 		sn.runtime.powerAreaChart.load(combinedData);
 		sn.log("Power IO chart watt range: {0}", sn.runtime.powerAreaChart.yDomain());
 		sn.log("Power IO chart time range: {0}", sn.runtime.powerAreaChart.xDomain());
-		adjustChartDisplayUnits('.power-area-chart', 'W', sn.runtime.powerAreaChart.yScale());
+		adjustChartDisplayUnits('.power-area-chart', 
+				(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'W' : 'Wh'), 
+				sn.runtime.powerAreaChart.yScale(),
+				(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'power' : 'energy'));
 	});
 }
 
@@ -217,7 +226,8 @@ function onDocumentReady() {
 		aggregate : 'Minute',
 		excludeSources : sn.runtime.excludeSources,
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false),
-		wiggle : (sn.env.wiggle === 'true')
+		wiggle : (sn.env.wiggle === 'true'),
+		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	
 	sn.runtime.powerAreaChart = sn.chart.powerAreaChart('#power-area-chart', sn.runtime.powerAreaParameters);
