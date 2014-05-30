@@ -568,6 +568,11 @@ sn.nodeUrlHelper = function(nodeId) {
 /**
  * A configuration utility object.
  * 
+ * For any properties passed on {@code initialMap}, getter/setter accessors will be defined
+ * on the returned {@code sn.Configuration} instance, so you can use normal JavaScript
+ * accessor methods to get/set those values. You can always get/set arbitrary values using
+ * the {@link #value(key, newValue)} function.
+ * 
  * @class
  * @constructor
  * @param {Object} initialMap the initial properties to store (optional)
@@ -576,10 +581,20 @@ sn.nodeUrlHelper = function(nodeId) {
 sn.Configuration = function(initialMap) {
 	this.map = {};
 	if ( initialMap !== undefined ) {
+		var me = this;
 		(function() {
+			var createGetter = function(prop) { return function() { return me.map[prop]; }; };
+			var createSetter = function(prop) { return function(value) { me.map[prop] = value; }; };
 			var prop = undefined;
 			for ( prop in initialMap ) {
-				map[prop] = initialMap[prop];
+				if ( !me.hasOwnProperty(prop) ) {
+					Object.defineProperty(me, prop, {
+						enumerable : true,
+						get : createGetter(prop),
+						set : createSetter(prop)
+					});
+				}
+				me.map[prop] = initialMap[prop];
 			}
 		})();
 	}
@@ -623,6 +638,27 @@ sn.Configuration.prototype = {
 		} else {
 			// disable key (via delete)
 			delete this.map[key];
+		}
+		return this;
+	},
+	
+	/**
+	 * Get or set a configuration value.
+	 * 
+	 * @param {String} key The key to get or set the value for 
+	 * @param [newValue] If defined, the new value to set for the given {@code key}.
+	 *                   If {@code null} then the value will be removed.
+	 * @returns If called as a getter, the associated value for the given {@code key},
+	 * otherwise this object.
+	 */
+	value : function(key, newValue) {
+		if ( arguments.length === 1 ) {
+			return this.map[key];
+		}
+		if ( newValue === null ) {
+			delete this.map[key];
+		} else {
+			this.map[key] = newValue;
 		}
 		return this;
 	}
