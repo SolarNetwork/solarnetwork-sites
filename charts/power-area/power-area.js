@@ -22,7 +22,7 @@ function legendClickHandler(d, i) {
 		// use a slight delay, otherwise transitions can be jittery
 		setTimeout(function() {
 			sn.runtime.powerAreaChart.regenerate();
-			adjustChartDisplayUnits('.watt-chart', 'W', sn.runtime.powerAreaChart.yScale());
+			adjustChartDisplayUnits('.power-area-chart', 'W', sn.runtime.powerAreaChart.yScale());
 		}, sn.runtime.powerAreaChart.transitionMs() * 0.5);
 	}
 }
@@ -35,21 +35,50 @@ function updateRangeSelection() {
 }
 
 // Watt stacked area chart
-function wattChartSetup(endDate, sourceMap) {
+function powerAreaChartSetup(endDate, sourceMap) {
+	var end;
+	var start;
+	var timeCount;
+	var timeUnit;
 	var precision = (sn.env.minutePrecision || 10);
-	var timeCount = (sn.env.numHours || 24);
-	var timeUnit = 'hour';
-	var end = d3.time.minute.utc.ceil(endDate);
-	end.setUTCMinutes((end.getUTCMinutes() + precision - (end.getUTCMinutes() % precision)), 0, 0);
-	var start = d3.time.hour.utc.offset(end, -timeCount);
+	// for aggregate time ranges, the 'end' date in inclusive
+	if ( sn.runtime.powerAreaParameters.aggregate === 'Month' ) {
+		timeCount = (sn.env.numYears || 1);
+		timeUnit = 'year';
+		end = d3.time.month.utc.floor(endDate);
+		start = d3.time.year.utc.offset(end, -timeCount);
+	} else if ( sn.runtime.powerAreaParameters.aggregate === 'Day' ) {
+		timeCount = (sn.env.numMonths || 4);
+		timeUnit = 'month';
+		end = d3.time.day.utc.floor(endDate);
+		start = d3.time.month.utc.offset(end, -timeCount);
+	} else if ( sn.runtime.powerAreaParameters.aggregate === 'Hour' ) {
+		timeCount = (sn.env.numDays || 7);
+		timeUnit = 'day';
+		end = d3.time.hour.utc.floor(endDate);
+		start = d3.time.day.utc.offset(end, -timeCount);
+	} else {
+		// assume Minute
+		timeCount = (sn.env.numHours || 24);
+		timeUnit = 'hour';
+		end = d3.time.minute.utc.ceil(endDate);
+		end.setUTCMinutes((end.getUTCMinutes() + precision - (end.getUTCMinutes() % precision)), 0, 0);
+		start = d3.time.hour.utc.offset(end, -timeCount);
+	}
 	
-	d3.select('.watt-chart .time-count').text(timeCount);
-	d3.select('.watt-chart .time-unit').text(timeUnit);
+	d3.select('.watthour-chart .time-count').text(timeCount);
+	d3.select('.watthour-chart .time-unit').text(timeUnit);
+
+	d3.select('.power-area-chart .time-count').text(timeCount);
+	d3.select('.power-area-chart .time-unit').text(timeUnit);
 	
 	var q = queue();
 	sn.env.dataTypes.forEach(function(e, i) {
 		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, sn.env.minutePrecision));
+		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, 
+				(sn.runtime.powerAreaParameters.aggregate === 'Minute' 
+					? precision 
+					: sn.runtime.powerAreaParameters.aggregate)));
 	});
 	q.awaitAll(function(error, results) {
 		if ( error ) {
@@ -76,7 +105,7 @@ function wattChartSetup(endDate, sourceMap) {
 		sn.runtime.powerAreaChart.load(combinedData);
 		sn.log("Power IO chart watt range: {0}", sn.runtime.powerAreaChart.yDomain());
 		sn.log("Power IO chart time range: {0}", sn.runtime.powerAreaChart.xDomain());
-		adjustChartDisplayUnits('.watt-chart', 'W', sn.runtime.powerAreaChart.yScale());
+		adjustChartDisplayUnits('.power-area-chart', 'W', sn.runtime.powerAreaChart.yScale());
 	});
 }
 
@@ -107,7 +136,7 @@ function setup(repInterval, sourceMap) {
 
 	updateRangeSelection();
 
-	wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+	powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
 }
 
 function urlHelperForAvailbleDataRange(e, i) {
@@ -132,7 +161,7 @@ function setupUI() {
 		me.classed('hit', true);
 		var currAgg = sn.runtime.powerAreaChart.aggregate();
 		sn.runtime.powerAreaParameters.aggregate = (currAgg === 'Minute' ? 'Hour' : currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Minute');
-		wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
 		setTimeout(function() {
 			me.classed('hit', false);
 		}, 500);
@@ -163,7 +192,7 @@ function setupUI() {
 		if ( getAvailable ) {
 			sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
 		} else {
-			wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+			powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
 		}
 	});
 }
@@ -174,6 +203,9 @@ function onDocumentReady() {
 		consumptionNodeId : 108,
 		minutePrecision : 10,
 		numHours : 24,
+		numDays : 7,
+		numMonths : 4,
+		numYears : 2,
 		wiggle : 'true',
 		linkOld : 'false',
 		dataTypes: ['Consumption', 'Power']
@@ -188,27 +220,21 @@ function onDocumentReady() {
 		wiggle : (sn.env.wiggle === 'true')
 	});
 	
-	sn.runtime.powerAreaChart = sn.chart.powerAreaChart('#watt-chart', sn.runtime.powerAreaParameters);
+	sn.runtime.powerAreaChart = sn.chart.powerAreaChart('#power-area-chart', sn.runtime.powerAreaParameters);
 	
 	setupUI();
 
 	// find our available data range, and then draw our charts!
 	function handleAvailableDataRange(event) {
 		setup(event.data.reportableInterval, event.data.availableSourcesMap);
-		
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				d3.json(sn.runtime.urlHelper.reportableInterval(sn.env.dataTypes), function(error, json) {
-					if ( json.data === undefined || json.data.endDateMillis === undefined ) {
-						sn.log('No data available for node {0}: {1}', sn.runtime.urlHelper.nodeId(), (error ? error : 'unknown reason'));
-						return;
-					}
-					if ( sn.runtime.powerAreaChart !== undefined ) {
-						var jsonEndDate = sn.dateTimeFormatLocal.parse(json.data.endDate);
-						if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
-							sn.runtime.reportableEndDate = jsonEndDate;
-							wattChartSetup(jsonEndDate, sn.runtime.sourceMap);
+				sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes, function(data) {
+					var jsonEndDate = data.reportableInterval.eLocalDate;
+					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
+						if ( sn.runtime.powerAreaChart !== undefined ) {
+							powerAreaChartSetup(jsonEndDate, sn.runtime.sourceMap);
 						}
 					}
 				});

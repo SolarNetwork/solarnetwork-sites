@@ -69,6 +69,17 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	var layers = undefined;
 	var minY = 0;
 
+	// Set y-axis  unit label
+	// setup display units in kW if domain range > 1000
+	var displayFactor = 1;
+	var displayFormatter = d3.format(',d');
+
+	var areaPathGenerator = d3.svg.area()
+		.interpolate("monotone")
+		.x(function(d) { return x(d.x); })
+		.y0(function(d) { return y(d.y0); })
+		.y1(function(d) { return y(d.y0 + d.y); });
+
 	function parseConfiguration() {
 		that.aggregate(config.aggregate);
 		transitionMs = (config.transitionMs || 600);
@@ -102,12 +113,6 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 
 	function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
 
-	var areaPathGenerator = d3.svg.area()
-		.interpolate("monotone")
-		.x(function(d) { return x(d.x); })
-		.y0(function(d) { return y(d.y0); })
-		.y1(function(d) { return y(d.y0 + d.y); });
-	
 	function computeDomainX() {
 		x.domain(layers.domainX);
 	}
@@ -117,13 +122,9 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		computeUnitsY();
 	}
 	
-	// Set y-axis  unit label
-	// setup display units in kW if domain range > 1000
-	var displayFactor = 1;
-	var displayFormatter = d3.format(',d');
 	function computeUnitsY() {
 		var fmt;
-		var maxY = d3.max(y.domain() ,function(v) { return Math.abs(v); });
+		var maxY = d3.max(y.domain(), function(v) { return Math.abs(v); });
 		if ( maxY >= 100000 ) {
 			displayFactor = 1000000;
 			fmt = ',g';
