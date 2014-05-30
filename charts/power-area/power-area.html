@@ -6,7 +6,10 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 	<title>SolarNetwork Chart - Power I/O</title>
+	
+	<link type="text/css" rel="stylesheet" href="../css/font-awesome.min.css">
 	<link type="text/css" rel="stylesheet" href="power-area.css" />
+	
 	<script type="text/javascript" src="../js-lib/d3-3.min.js"></script>
 	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
 	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
@@ -52,7 +55,7 @@
 						<label for="wiggle">Wiggle</label>
 						<input type="checkbox" name="wiggle" value="true" checked="checked"/>
 					</div>
-					<div class="range hour">
+					<div class="range minute">
 						<label for="hours">Hours</label>
 						<input type="number" name="numHours" value="24" min="1" max="36"/>
 					</div>
@@ -69,6 +72,11 @@
 						<input type="number" name="numYears" value="2" min="1" max="5"/>
 					</div>
 				</form>
+				<div class="actions">
+					<i id="range-toggle" class="fa fa-wrench button"></i>
+					<i id="sumline-toggle" class="fa fa-bolt button"></i>
+					<i id="hemisphere-toggle" class="fa fa-globe button south"></i>
+				</div>
 			</div>
 		</div>
 	</div>

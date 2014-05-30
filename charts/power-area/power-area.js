@@ -27,6 +27,13 @@ function legendClickHandler(d, i) {
 	}
 }
 
+//show/hide the proper range selection based on the current aggregate level
+function updateRangeSelection() {
+	d3.selectAll('#details div.range').style('display', function() {
+		return (d3.select(this).classed(sn.runtime.powerAreaParameters.aggregate.toLowerCase()) ? 'block' : 'none');
+	});
+}
+
 // Watt stacked area chart
 function wattChartSetup(endDate, sourceMap) {
 	var precision = (sn.env.minutePrecision || 10);
@@ -98,6 +105,8 @@ function setup(repInterval, sourceMap) {
 		}
 	});
 
+	updateRangeSelection();
+
 	wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
 }
 
@@ -117,6 +126,19 @@ function setupUI() {
 		return (sn.env.wiggle === 'true' ? 'checked' : null);
 	});
 
+	// toggle between supported aggregate levels
+	d3.select('#range-toggle').classed('clickable', true).on('click', function(d, i) {
+		var me = d3.select(this);
+		me.classed('hit', true);
+		var currAgg = sn.runtime.powerAreaChart.aggregate();
+		sn.runtime.powerAreaParameters.aggregate = (currAgg === 'Minute' ? 'Hour' : currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Minute');
+		wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		setTimeout(function() {
+			me.classed('hit', false);
+		}, 500);
+		updateRangeSelection();
+	});
+	
 	// update the chart details
 	d3.selectAll('#details input').on('change', function(e) {
 		var me = d3.select(this);
@@ -148,7 +170,7 @@ function setupUI() {
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 111,
+		nodeId : 30,
 		consumptionNodeId : 108,
 		minutePrecision : 10,
 		numHours : 24,
@@ -160,7 +182,7 @@ function onDocumentReady() {
 	sn.runtime.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
 
 	sn.runtime.powerAreaParameters = new sn.Configuration({
-		aggregate : 'Hour',
+		aggregate : 'Minute',
 		excludeSources : sn.runtime.excludeSources,
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false),
 		wiggle : (sn.env.wiggle === 'true')
