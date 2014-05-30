@@ -197,7 +197,6 @@ function onDocumentReady() {
 		numDays : 7,
 		numMonths : 4,
 		numYears : 2,
-		maxPowerKW : 3,
 		northernHemisphere : 'false',
 		dataTypes: ['Consumption', 'Power']
 	});
