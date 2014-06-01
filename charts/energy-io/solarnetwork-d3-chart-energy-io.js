@@ -459,6 +459,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 				}
 				aggBandTicks.push(date);
 			}
+			if ( ticks.length > 0 && ticks[ticks.length - 1].getUTCMonth() % 3 !== 2 ) {
+				// insert a tick for the band to show the last partial season
+				aggBandTicks.push(x.domain()[1]);
+			}
 			aggTicks = ticks;
 		} else if ( aggregateType === 'Day' ) {
 			ticks = firstAndMidMonthDates(x.domain());
