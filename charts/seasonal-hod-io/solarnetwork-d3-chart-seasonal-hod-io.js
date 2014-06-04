@@ -81,6 +81,7 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		svgTickGroupX = undefined,
 		svgSumLineGroup = undefined;
 	
+	var rawData = undefined;
 	var lineData = undefined;
 	
 	var consumptionLayerCount = 0;
@@ -148,7 +149,7 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		return displayFormatter(d / displayFactor);
 	}
 	
-	function seasonConsumptionPowerMap(rawData, outSourceArray) {
+	function seasonConsumptionPowerMap(dataArray, outSourceArray) {
 		// first empty out the source array, so we can re-build it
 		outSourceArray.splice(0, outSourceArray.length);
 		var sourceMap = {};
@@ -169,8 +170,8 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		var date = undefined;
 		var prop = undefined;
 		var hour, layerName;
-		for ( i = 0, len = rawData.length; i < len; ++i ) {
-			el = rawData[i];
+		for ( i = 0, len = dataArray.length; i < len; ++i ) {
+			el = dataArray[i];
 			if ( sourceMap[el.sourceId] === undefined ) {
 				outSourceArray.push(el.sourceId);
 				sourceMap[el.sourceId] = 1;
@@ -218,7 +219,7 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 				}
 				
 				// compute y extents while iterating through array
-				if ( i === 0 ) {
+				if ( domainY[prop] === undefined ) {
 					domainY[prop] = [obj[prop], obj[prop]];
 				} else {
 					if ( obj[prop] < domainY[prop][0] ) {
@@ -234,7 +235,8 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		return {seasonMap: seasonMap, domainY:domainY};
 	}
 
-	function setup(rawData) {
+	function setup(inputData) {
+		rawData = inputData;
 		var layerMap = seasonConsumptionPowerMap(rawData, sources);
 		var seasonMap = layerMap.seasonMap;
 		
@@ -444,13 +446,13 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	 * Load data for the chart. The data is expected to be in a form suitable for
 	 * passing to {@link sn.energyPerSourceArray}.
 	 * 
-	 * @param {Array} rawData - the raw chart data to load
+	 * @param {Array} inputData - the raw chart data to load
 	 * @returns this object
 	 * @memberOf sn.chart.seasonalHourOfDayLineChart
 	 */
-	that.load = function(rawData) {
+	that.load = function(inputData) {
 		parseConfiguration();
-		setup(rawData);
+		setup(inputData);
 		adjustAxisX();
 		adjustAxisY();
 		redraw();
@@ -459,22 +461,13 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	
 	/**
 	 * Regenerate the chart, using the current data. This can be called after disabling a
-	 * source 
+	 * source, for example.
 	 * 
 	 * @returns this object
 	 * @memberOf sn.chart.seasonalHourOfDayLineChart
 	 */
 	that.regenerate = function() {
-		if ( layerGenerator === undefined ) {
-			// did you call load() first?
-			return that;
-		}
-		parseConfiguration();
-		layers = layerGenerator();
-		computeDomainY();
-		adjustAxisX();
-		adjustAxisY();
-		redraw();
+		that.load(rawData);
 		return that;
 	};
 	
