@@ -525,13 +525,13 @@ function setupUI() {
 			// left arrow, go to previous chart
 			swapChart(-1);
 			if ( isAutomaticSwapChartEnabled() ) {
-				resetAutomaticaSwapChart();
+				resetAutomaticSwapChart();
 			}
 		} else if ( d3.event.keyCode === 39 ) {
 			// right arrow, go to next chart
 			swapChart();
 			if ( isAutomaticSwapChartEnabled() ) {
-				resetAutomaticaSwapChart();
+				resetAutomaticSwapChart();
 			}
 		}
 	});
