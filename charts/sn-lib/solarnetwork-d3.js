@@ -501,8 +501,8 @@ sn.nodeUrlHelper = function(nodeId) {
 		 * Generate a SolarNet {@code /datum/query} URL.
 		 * 
 		 * @param type {String} a single supported datum type, or an Array of datum types, to query for
-		 * @param startDate {Date} the starting date for the query
-		 * @param endDate {Date} the ending date for the query
+		 * @param startDate {Date} the starting date for the query, or <em>null</em> to omit
+		 * @param endDate {Date} the ending date for the query, or <em>null</em> to omit
 		 * @param agg {String} a supported aggregate type
 		 * @return {String} a URL string
 		 */
@@ -511,9 +511,13 @@ sn.nodeUrlHelper = function(nodeId) {
 			types.sort();
 			var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.utc.offset(endDate, -1) : endDate);
 			var dataURL = (baseURL() +'/datum/query?nodeId=' +nodeId 
-                    		+'&type=' +encodeURIComponent(type.toLowerCase())
-                    		+'&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate))
-							+'&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate)));
+                    		+'&type=' +encodeURIComponent(type.toLowerCase()));
+			if ( startDate ) {
+				dataURL += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
+			}
+			if ( endDate ) {
+				dataURL += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate));
+			}
 			var aggNum = Number(agg);
 			if ( !isNaN(agg) ) {
 				dataURL += '&precision=' +aggNum.toFixed(0);
