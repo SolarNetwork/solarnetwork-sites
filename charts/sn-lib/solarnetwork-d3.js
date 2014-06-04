@@ -552,6 +552,33 @@ sn.nodeUrlHelper = function(nodeId) {
 			return dataURL;
 		},
 		
+		/**
+		 * Generate a SolarNet {@code /datum/list} URL.
+		 * 
+		 * @param type {String} a single supported datum type, or an Array of datum types, to query for
+		 * @param startDate {Date} the starting date for the query, or <em>null</em> to omit
+		 * @param endDate {Date} the ending date for the query, or <em>null</em> to omit
+		 * @param agg {String} a supported aggregate type
+		 * @return {String} a URL string
+		 */
+		dateTimeList : function(type, startDate, endDate, agg, opts) {
+			var types = (Array.isArray(type) ? type : [type]);
+			types.sort();
+			var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.utc.offset(endDate, -1) : endDate);
+			var dataURL = (baseURL() +'/datum/list?nodeId=' +nodeId 
+                    		+'&type=' +encodeURIComponent(type.toLowerCase()));
+			if ( startDate ) {
+				dataURL += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
+			}
+			if ( endDate ) {
+				dataURL += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate));
+			}
+			if ( typeof agg === 'string' && agg.length > 0 ) {
+				dataURL += '&aggregate=' + encodeURIComponent(agg);
+			}
+			return dataURL;
+		},
+		
 		mostRecentQuery : function(type) {
 			type = (type === undefined ? 'power' : type.toLowerCase());
 			var url;
