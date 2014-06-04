@@ -292,11 +292,16 @@ function updateReadings() {
 	});
 }
 
-function swapChart() {
+function swapChart(direction) {
 	if ( d3.select('.watthour-chart').classed('chart-in') ) {
 		// swap visible aggregate level... until we've cycled through them all
-		sn.runtime.energyBarParameters.aggregate = (sn.runtime.energyBarParameters.aggregate === 'Hour' 
-			? 'Day' : sn.runtime.energyBarParameters.aggregate === 'Day' ? 'Month' : 'Hour');
+		if ( direction !== undefined && direction < 0 ) {
+			sn.runtime.energyBarParameters.aggregate = (sn.runtime.energyBarParameters.aggregate === 'Hour' 
+				? 'Month' : sn.runtime.energyBarParameters.aggregate === 'Month' ? 'Day' : 'Hour');
+		} else {
+			sn.runtime.energyBarParameters.aggregate = (sn.runtime.energyBarParameters.aggregate === 'Hour' 
+				? 'Day' : sn.runtime.energyBarParameters.aggregate === 'Day' ? 'Month' : 'Hour');
+		}
 		if ( sn.runtime.energyBarParameters.aggregate === 'Hour' ) {
 			// we'll swap to W chart now, but switch this back to Hour for next time it appears
 			setTimeout(function() {
@@ -318,7 +323,7 @@ function swapChart() {
 			currIn = i;
 		}
 	});
-	var nextIn = ((currIn + 1) % charts.size());
+	var nextIn = ((currIn + (direction !== undefined && direction < 0 ? (charts.size() - 1) : 1)) % charts.size());
 	charts.each(function(d, i) {
 		var chart = d3.select(this);
 		if ( i === currIn ) {
@@ -330,6 +335,10 @@ function swapChart() {
 				.style('opacity', 1);
 		}
 	});
+}
+
+function isAutomaticSwapChartEnabled() {
+	return (sn.runtime.swapChartTimer !== undefined);
 }
 
 function enableAutomaticSwapChart() {
@@ -354,7 +363,7 @@ function resetAutomaticSwapChart() {
 
 function actionToggleAutomaticSwapChart() {
 	var me = d3.select(this);
-	var currEnabled = (sn.runtime.swapChartTimer !== undefined);
+	var currEnabled = isAutomaticSwapChartEnabled();
 	me.classed({'fa-pause' : !currEnabled, 'fa-play' : currEnabled});
 	if ( currEnabled ) {
 		disableAutomaticSwapChart();
@@ -508,6 +517,24 @@ function setupUI() {
 	d3.select('.actions .toggle-chartswap').classed('clickable', true).on('click', actionToggleAutomaticSwapChart);
 
 	// allow space key to toggle animations on/off
+	d3.select("body").on("keydown", function(event) {
+		if ( d3.event.keyCode === 32 ) {
+			// spacebar
+			actionToggleAutomaticSwapChart.call(d3.select('.actions .toggle-chartswap').node());
+		} else if ( d3.event.keyCode === 37 ) {
+			// left arrow, go to previous chart
+			swapChart(-1);
+			if ( isAutomaticSwapChartEnabled() ) {
+				resetAutomaticaSwapChart();
+			}
+		} else if ( d3.event.keyCode === 39 ) {
+			// right arrow, go to next chart
+			swapChart();
+			if ( isAutomaticSwapChartEnabled() ) {
+				resetAutomaticaSwapChart();
+			}
+		}
+	});
 }
 
 function setupCounters(repInterval) {
