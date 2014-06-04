@@ -171,6 +171,35 @@ var sn = {
 };
 
 /**
+ * Comparator function that sorts Objects with {@code date} properties
+ * of Date objects in ascending order.
+ * 
+ * @param {Object} left the left object with a {@code date} Date property
+ * @param {Object} right the right object with a {@code date} Date property
+ * @return {@code -1} if left is less than right, {@code 1} if greater,
+ *         and {@code 0} if equal
+ */
+sn.datePropAscending = function(left, right) {
+	var a = left.date.getTime();
+	var b = right.date.getTime(); 
+	return (a < b ? -1 : a > b ? 1 : 0);
+};
+
+/**
+ * Comparator function that sorts Date objects in ascending order.
+ * 
+ * @param {Date} left the left Date
+ * @param {Date} right the right Date
+ * @return {@code -1} if left is less than right, {@code 1} if greater,
+ *         and {@code 0} if equal
+ */
+sn.dateAscending = function(left, right) {
+	var a = left.getTime();
+	var b = right.getTime(); 
+	return (a < b ? -1 : a > b ? 1 : 0);
+};
+
+/**
  * Take SolarNetwork raw JSON data result and return a d3-friendly normalized array of data.
  * The 'sources' parameter can be either undefined or an empty Array, which will be populated
  * with the list of found {@code sourceId} values from the raw JSON data. 
@@ -263,11 +292,7 @@ sn.powerPerSourceArray = function(rawData, sources) {
 	for ( prop in filteredData ) {
 		a.push(filteredData[prop]);
 	}
-	return a.sort(function(left,right) {
-		var a = left.date.getTime();
-		var b = right.date.getTime(); 
-		return (a < b ? -1 : a > b ? 1 : 0);
-	});
+	return a.sort(sn.datePropAscending);
 };
 
 /**
