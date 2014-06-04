@@ -188,7 +188,8 @@ a {
 	width: 190px;
 }
 
-.readings > .pane + .pane {
+.readings > .pane + .pane,
+.readings > .pane + .actions {
 	margin-top: 12px;
 }
 
@@ -199,6 +200,12 @@ a {
 
 .readings .pane div + h3 {
 	margin-top: 1em;
+}
+
+.readings > .actions {
+	color: #154D6E;
+	text-align: center;
+	font-size: 18px;
 }
 
 /* Source labels */

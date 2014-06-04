@@ -352,6 +352,17 @@ function resetAutomaticSwapChart() {
 	enableAutomaticSwapChart();
 }
 
+function actionToggleAutomaticSwapChart() {
+	var me = d3.select(this);
+	var currEnabled = (sn.runtime.swapChartTimer !== undefined);
+	me.classed({'fa-pause' : !currEnabled, 'fa-play' : currEnabled});
+	if ( currEnabled ) {
+		disableAutomaticSwapChart();
+	} else {
+		enableAutomaticSwapChart();
+	}
+}
+
 function resizeProps(parent) {
 	var chartEl = undefined;
 	while ( parent.parentNode ) {
@@ -492,6 +503,11 @@ function setupUI() {
 	
 	// animate between charts every few seconds
 	enableAutomaticSwapChart();
+	
+	// toggle auto-swap on/off
+	d3.select('.actions .toggle-chartswap').classed('clickable', true).on('click', actionToggleAutomaticSwapChart);
+
+	// allow space key to toggle animations on/off
 }
 
 function setupCounters(repInterval) {
