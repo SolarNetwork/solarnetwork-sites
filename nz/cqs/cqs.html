@@ -17,6 +17,7 @@
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-gauge.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-power-io.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-power-area.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-seasonal-hod-io.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-ui-flipcounter.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-util-aggcounter.js"></script>
 	<script type="text/javascript" src="cqs.js"></script>
@@ -60,6 +61,10 @@
 			</div>
 			<h2><span class="time-count"></span> <span class="time-unit">day</span> energy <span class="alt"><span class="unit">(kWh)</span></span></h2>
 			<div id="watthour-chart" class="chart-container"></div>
+		</div>
+		<div class="pane chart seasonal-hod-chart chart-waiting">
+			<h2>Seasonal hourly energy <span class="alt"><span class="unit">(kWh)</span></span></h2>
+			<div id="seasonal-hod-chart" class="chart-container"></div>
 		</div>
 	</div>
 	<div class="overview pane chart overview-chart">

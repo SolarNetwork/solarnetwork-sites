@@ -154,6 +154,44 @@ function wattChartSetup(endDate, sourceMap) {
 	});
 }
 
+//seasonal hour-of-day line chart
+function seasonalHourOfDayChartSetup(sourceMap) {
+	var q = queue();
+	sn.env.dataTypes.forEach(function(e, i) {
+		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
+		q.defer(d3.json, urlHelper.dateTimeList(e, null, null, 'SeasonalHourOfDay'));
+	});
+	q.awaitAll(function(error, results) {
+		if ( error ) {
+			sn.log('Error requesting data: ' +error);
+			return;
+		}
+		var combinedData = [];
+		var i, iMax, j, jMax, json, datum, mappedSourceId;
+		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
+			json = results[i];
+			if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
+				sn.log('No data available for node {0} data type {1}', urlHelperForAvailbleDataRange(null, i).nodeId(), sn.env.dataTypes[i]);
+				return;
+			}
+			for ( j = 0, jMax = json.data.results.length; j < jMax; j++ ) {
+				datum = json.data.results[j];
+				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
+				if ( mappedSourceId !== undefined ) {
+					datum.sourceId = mappedSourceId;
+				}
+			}
+			combinedData = combinedData.concat(json.data.results);
+		}
+		
+		sn.runtime.seasonalHourOfDayChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
+		sn.runtime.seasonalHourOfDayChart.load(combinedData, sn.runtime.seasonalHourOfDayParameters);
+		sn.log("Seasonal HOD IO chart watt hour range: {0}", sn.runtime.seasonalHourOfDayChart.yDomain());
+		sn.log("Seasonal HOD IO chart time range: {0}", sn.runtime.seasonalHourOfDayChart.xDomain());
+		adjustChartDisplayUnits('.seasonal-hod-chart', 'Wh', sn.runtime.seasonalHourOfDayChart.yScale());
+	});
+}
+
 // Wh stacked area chart over whole range
 function overviewAreaChartSetup(reportableInterval, sourceMap) {
 	var end = reportableInterval.eLocalDate;
@@ -222,9 +260,23 @@ function setup(repInterval, sourceMap) {
 		}
 	});
 
+	// pass our source mapping to the seasonal chart, to know what source IDs are consumption vs generation
+	var dataType = undefined;
+	var sourceId = undefined;
+	var sourceIdLayerNameMap = {};
+	for ( dataType in sn.runtime.sourceColorMap.displaySourceMap ) {
+		sourceIdLayerNameMap[dataType] = {};
+		for ( sourceId in sn.runtime.sourceColorMap.displaySourceMap[dataType] ) {
+			sourceIdLayerNameMap[sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId]] = dataType;
+		}
+	}
+	sn.runtime.seasonalHourOfDayChart.sourceIdLayerNameMap(sourceIdLayerNameMap);
+
+	overviewAreaChartSetup(repInterval, sn.runtime.sourceMap);
+
 	wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
 	wattHourChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
-	overviewAreaChartSetup(repInterval, sn.runtime.sourceMap);
+	seasonalHourOfDayChartSetup(sn.runtime.sourceMap);
 }
 
 function updateReadings() {
@@ -257,21 +309,26 @@ function swapChart() {
 			return;
 		}
 	}
-	d3.selectAll('.charts .pane').each(function() {
-		var me = d3.select(this);
-		var currOut = (me.classed('chart-out') || me.classed('chart-waiting'));
-		var newClasses = (currOut 
-			? {'chart-out':false, 'chart-in':true, 'chart-waiting':false} 
-			: {'chart-out':true, 'chart-in':false, 'chart-waiting':false});
-		if ( currOut ) {
-			// set opacity to 0 to start
-			me.style('opacity', 1e-6);
+	var currIn = undefined;
+	var charts = d3.selectAll('.charts > .chart');
+	charts.each(function(d, i) {
+		var chart = d3.select(this);
+		var currOut =  (chart.classed('chart-out') || chart.classed('chart-waiting'));
+		if ( !currOut && currIn === undefined ) {
+			currIn = i;
 		}
-		me.classed(newClasses);
-		// this small delay in changing the opacity prevents a flicker of seeing the charts swap as their classes are updated
-		setTimeout(function() {
-			me.style('opacity', null);
-		}, 200);
+	});
+	var nextIn = ((currIn + 1) % charts.size());
+	charts.each(function(d, i) {
+		var chart = d3.select(this);
+		if ( i === currIn ) {
+			chart.classed({'chart-out':true, 'chart-in':false, 'chart-waiting':false});
+		} else if ( i === nextIn ) {
+			chart.style('opacity', 1e-6)
+				.classed({'chart-out':false, 'chart-in':true, 'chart-waiting':false})
+			.transition().duration(200)
+				.style('opacity', 1);
+		}
 	});
 }
 
@@ -279,7 +336,7 @@ function enableAutomaticSwapChart() {
 	if ( sn.runtime.swapChartTimer !== undefined ) {
 		return;
 	}
-	sn.runtime.swapChartTimer = setInterval(swapChart, 20 * 1000);
+	sn.runtime.swapChartTimer = setInterval(swapChart,  sn.env.swapSeconds * 1000);
 }
 
 function disableAutomaticSwapChart() {
@@ -484,7 +541,7 @@ function urlHelperForAvailbleDataRange(e, i) {
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 30,
+		nodeId : 108,
 		consumptionNodeId : 108,
 		minutePrecision : 10,
 		numHours : 24,
@@ -495,24 +552,11 @@ function onDocumentReady() {
 		linkOld : 'false',
 		maxPowerKW : 8,
 		powerGaugeTicks : 8,
+		swapSeconds : 20,
 		northernHemisphere : 'false',
 		dataTypes: ['Consumption', 'Power']
 	});
 	sn.runtime.refreshMs = sn.env.minutePrecision * 60 * 1000;
-
-	sn.runtime.energyBarParameters = new sn.Configuration({
-		height : 460,
-		aggregate : 'Hour',
-		excludeSources : sn.runtime.excludeSources,
-		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
-	});
-	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', sn.runtime.energyBarParameters);
-
-	sn.runtime.powerAreaParameters = new sn.Configuration({
-		height : 460,
-		excludeSources: sn.runtime.excludeSources
-	});
-	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', sn.runtime.powerAreaParameters);
 
 	sn.runtime.overviewAreaParameters = new sn.Configuration({
 		height: 80,
@@ -524,6 +568,30 @@ function onDocumentReady() {
 	});
 	sn.runtime.overviewAreaChart = sn.chart.powerAreaChart('#overview-chart', sn.runtime.overviewAreaParameters);
 	
+	var mainChartHeight = 460;
+	
+	sn.runtime.energyBarParameters = new sn.Configuration({
+		height : mainChartHeight,
+		aggregate : 'Hour',
+		excludeSources : sn.runtime.excludeSources,
+		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
+	});
+	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', sn.runtime.energyBarParameters);
+
+	sn.runtime.powerAreaParameters = new sn.Configuration({
+		height : mainChartHeight,
+		excludeSources: sn.runtime.excludeSources
+	});
+	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', sn.runtime.powerAreaParameters);
+
+	sn.runtime.seasonalHourOfDayParameters = new sn.Configuration({
+		height : mainChartHeight,
+		excludeSources : sn.runtime.excludeSources,
+		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
+	});
+
+	sn.runtime.seasonalHourOfDayChart = sn.chart.seasonalHourOfDayLineChart('#seasonal-hod-chart', sn.runtime.seasonalHourOfDayParameters);
+
 	// find our available data range, and then draw our charts!
 	function handleAvailableDataRange(event) {
 		setup(event.data.reportableInterval, event.data.availableSourcesMap);
@@ -542,6 +610,9 @@ function onDocumentReady() {
 						}
 						if ( sn.runtime.overviewAreaChart !== undefined ) {
 							overviewAreaChartSetup(data.reportableInterval, sn.runtime.sourceMap);
+						}
+						if ( sn.runtime.seasonalHourOfDayChart !== undefined ) {
+							seasonalHourOfDayChartSetup(sn.runtime.sourceMap);
 						}
 					}
 				});
