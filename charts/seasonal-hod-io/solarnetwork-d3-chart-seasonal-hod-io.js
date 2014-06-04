@@ -535,13 +535,11 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 			return;
 		}
 		northernHemisphere = (value === true);
-		// FIXME: adjust line colors
-		/*
-		svgAggBandGroup.selectAll("line").transition().duration(transitionMs)
-			.style('stroke', seasonColor);
-		aggGroup.selectAll("text").transition().duration(transitionMs)
-			.style("fill", labelSeasonColors);
-		*/
+		
+		// immediately update path colors
+		svg.selectAll('path.line').transition().duration(transitionMs)
+			.style('stroke', seasonalLineColor);
+
 		return that;
 	};
 	
