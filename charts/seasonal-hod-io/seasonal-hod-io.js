@@ -167,13 +167,12 @@ function onDocumentReady() {
 		northernHemisphere : 'false',
 		dataTypes: ['Consumption', 'Power']
 	});
+	sn.runtime.wChartRefreshMs = 30 * 60 * 1000;
+
 	sn.runtime.seasonalHourOfDayParameters = new sn.Configuration({
-		aggregate : 'Hour',
 		excludeSources : sn.runtime.excludeSources,
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
 	});
-
-	sn.runtime.wChartRefreshMs = 30 * 60 * 1000;
 
 	sn.runtime.seasonalHourOfDayChart = sn.chart.seasonalHourOfDayLineChart('#seasonal-hod-chart', sn.runtime.seasonalHourOfDayParameters);
 	
