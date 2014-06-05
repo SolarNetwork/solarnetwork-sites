@@ -27,8 +27,8 @@ function legendClickHandler(d, i) {
 	}
 }
 
-// seasonal hour-of-day line chart
-function seasonalDayOfWeekChartSetup(endDate, sourceMap) { // FIXME: endDate unused
+// seasonal day of week line chart
+function seasonalDayOfWeekChartSetup(sourceMap) {
 	var q = queue();
 	sn.env.dataTypes.forEach(function(e, i) {
 		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
@@ -57,10 +57,9 @@ function seasonalDayOfWeekChartSetup(endDate, sourceMap) { // FIXME: endDate unu
 			combinedData = combinedData.concat(json.data.results);
 		}
 		
-		
 		sn.runtime.seasonalDayOfWeekChart.load(combinedData, sn.runtime.seasonalDayOfWeekParameters);
-		sn.log("Seasonal HOD IO chart watt hour range: {0}", sn.runtime.seasonalDayOfWeekChart.yDomain());
-		sn.log("Seasonal HOD IO chart time range: {0}", sn.runtime.seasonalDayOfWeekChart.xDomain());
+		sn.log("Seasonal DOW IO chart watt hour range: {0}", sn.runtime.seasonalDayOfWeekChart.yDomain());
+		sn.log("Seasonal DOW IO chart time range: {0}", sn.runtime.seasonalDayOfWeekChart.xDomain());
 		adjustChartDisplayUnits('.seasonal-dow-chart', 'Wh', sn.runtime.seasonalDayOfWeekChart.yScale());
 	});
 }
@@ -103,7 +102,7 @@ function setup(repInterval, sourceMap) {
 		}
 	});
 	
-	seasonalDayOfWeekChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+	seasonalDayOfWeekChartSetup(sn.runtime.sourceMap);
 }
 
 function urlHelperForAvailbleDataRange(e, i) {
@@ -135,7 +134,7 @@ function setupUI() {
 		if ( getAvailable ) {
 			sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
 		} else {
-			seasonalDayOfWeekChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+			seasonalDayOfWeekChartSetup(sn.runtime.sourceMap);
 		}
 	});
 
@@ -194,7 +193,7 @@ function onDocumentReady() {
 						var jsonEndDate = sn.dateTimeFormatLocal.parse(json.data.endDate);
 						if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 							sn.runtime.reportableEndDate = jsonEndDate;
-							seasonalDayOfWeekChartSetup(jsonEndDate, sn.runtime.sourceMap);
+							seasonalDayOfWeekChartSetup(sn.runtime.sourceMap);
 						}
 					}
 				});
