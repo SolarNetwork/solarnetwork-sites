@@ -500,29 +500,6 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	};
 	
 	/**
-	 * Toggle showing the sum line, or get the current setting.
-	 * 
-	 * @param {boolean} [value] <em>true</em> to show the sum line, <em>false</em> to hide it
-	 * @returns when used as a getter, the current setting
-	 * @memberOf sn.chart.seasonalHourOfDayLineChart
-	 */
-	that.showSumLine = function(value) {
-		if ( !arguments.length ) return !svgSumLineGroup.classed('off');
-		svgSumLineGroup
-			.style("opacity", (value ? 1e-6 : 1))
-			.classed('off', false)
-		.transition().duration(transitionMs)
-			.style("opacity", (value ? 1 : 1e-6))
-			.each('end', function() {
-				// remove the opacity style
-				d3.select(this)
-					.style("opacity", null)
-					.classed('off', !value);
-			});
-		return that;
-	};
-	
-	/**
 	 * Toggle between nothern/southern hemisphere seasons, or get the current setting.
 	 * 
 	 * @param {boolean} [value] <em>true</em> for northern hemisphere seasons, <em>false</em> for sothern hemisphere
@@ -562,7 +539,7 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get or set the mapping of source ID values to layer names.
 	 * 
-	 * The default value is: <code>{Consumption : 'Consumption', Generation : 'Generation'}</code>.
+	 * The default value is: <code>['Consumption', 'Generation']</code>.
 	 * 
 	 * @param {Object} [value] object with source ID value property names and associated layer name values
 	 * @returns when used as a getter, the current value, otherwise this object
