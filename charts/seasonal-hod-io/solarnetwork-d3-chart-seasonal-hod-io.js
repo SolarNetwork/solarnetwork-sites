@@ -58,12 +58,10 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	// x-domain is static as hours
 	x.domain([0,23]);
 
-	var yProps = {watts:1, wattHours:1};
-	
 	// one name for consumption, one for generation
 	var layerNames = ['Consumption', 'Generation'];
 	
-	var sourceIdLayerNameMap = {Consumption : 'Consumption', Generation : 'Power'};
+	var sourceIdDataTypeMap = {Consumption : 'Consumption', Power : 'Generation'};
 	
 	var transitionMs = undefined;
 	
@@ -146,100 +144,10 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		return displayFormatter(d / displayFactor);
 	}
 	
-	function seasonConsumptionPowerMap(dataArray) {
-		var sources = [];
-		var sourceMap = {};
-		var seasonMap = (function() {
-			var result = {};
-			var i = -1;
-			while ( ++i < 4 ) {
-				result[String(i)] = {'Consumption':[], 'Power':[]};
-			}
-			return result;
-		})();
-		var dataType = undefined;
-		var dateKey = undefined;
-		var dateMap = {Consumption:{}, Power:{}};
-		var domainY = {};
-		var i, len;
-		var el, obj;
-		var date = undefined;
-		var prop = undefined;
-		var hour, layerName;
-		var lines = [];
-		for ( i = 0, len = dataArray.length; i < len; ++i ) {
-			el = dataArray[i];
-			if ( sourceMap[el.sourceId] === undefined ) {
-				sources.push(el.sourceId);
-				sourceMap[el.sourceId] = 1;
-			}
-			
-			if ( config.excludeSources !== undefined && config.excludeSources.enabled(el.sourceId) ) {
-				continue;
-			}
-
-			dateKey = el.localDate +' ' +el.localTime;
-			date = sn.dateTimeFormat.parse(dateKey);
-			hour = date.getUTCHours();
-			dataType = sourceIdLayerNameMap[el.sourceId];
-			layerName = (dataType === 'Consumption' ? layerNames[0]: layerNames[1]);
-			if ( dateMap[dataType][dateKey] === undefined ) {
-				obj = {
-						hour : hour,
-						name : layerName,
-				};
-				// seasons are (northern hemi) [Spring, Summer, Autumn, Winter]
-				// set the "season" to an index, 0-3, where 0 -> Dec,Jan,Feb, 1-> Mar,Apr,May, etc
-				if ( date.getUTCMonth() < 2 || date.getUTCMonth() == 11 ) {
-					obj.season = 3;
-				} else if ( date.getUTCMonth() < 5 ) {
-					obj.season = 0;
-				} else if ( date.getUTCMonth() < 8 ) {
-					obj.season = 1;
-				} else {
-					obj.season = 2;
-				}
-				
-				dateMap[dataType][dateKey] = obj;
-				seasonMap[String(obj.season)][dataType].push(obj);
-			} else {
-				obj = dateMap[dataType][dateKey];
-			}
-			
-			for ( prop in yProps ) {
-				if ( obj[prop] === undefined ) {
-					obj[prop] = null;
-				}
-				if ( el[prop] >= 0 ) {
-					// map Y value as negative if this source is a consumption source
-					obj[prop] += (dataType === 'Consumption' ? -el[prop] : el[prop]);
-				}
-				
-				// compute y extents while iterating through array
-				if ( domainY[prop] === undefined ) {
-					domainY[prop] = [obj[prop], obj[prop]];
-				} else {
-					if ( obj[prop] < domainY[prop][0] ) {
-						domainY[prop][0] = obj[prop];
-					}
-					if ( obj[prop] > domainY[prop][1] ) {
-						domainY[prop][1] = obj[prop];
-					}
-				}
-			}
-		}
-
-		for ( prop in seasonMap ) {
-			lines.push(seasonMap[prop].Consumption);
-			lines.push(seasonMap[prop].Power);
-		}
-
-		return {seasonMap: seasonMap, domainY:domainY, lineData:lines, sources:sources};
-	}
-
+	
 	function setup(inputData) {
 		rawData = inputData;
-		var layerMap = seasonConsumptionPowerMap(rawData);
+		var layerMap = sn.seasonConsumptionPowerMap(rawData, sourceIdDataTypeMap, config.excludeSources, ['wattHours']);
 		lineData = layerMap.lineData;
 		sources = layerMap.sources;
 
@@ -503,7 +411,7 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get or set the layer names.
 	 * 
-	 * The default value is: <code>{Consumption : 'Consumption', Generation : 'Generation'}</code>.
+	 * The default value is: <code>['Consumption', 'Generation']</code>.
 	 * 
 	 * @param {Array} [value] an array with two values, the first the name for "consumption" data
 	 *                        and the second for "generation" data
@@ -517,17 +425,17 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	};
 
 	/**
-	 * Get or set the mapping of source ID values to layer names.
+	 * Get or set the mapping of SolarNet DataType values to layer names.
 	 * 
-	 * The default value is: <code>['Consumption', 'Generation']</code>.
+	 * The default value is: <code>{Consumption : 'Consumption', Power : 'Generation'}</code>.
 	 * 
 	 * @param {Object} [value] object with source ID value property names and associated layer name values
 	 * @returns when used as a getter, the current value, otherwise this object
 	 * @memberOf sn.chart.seasonalHourOfDayLineChart
 	 */
-	that.sourceIdLayerNameMap = function(value) {
-		if ( !arguments.length ) return sourceIdLayerNameMap;
-		sourceIdLayerNameMap = value;
+	that.sourceIdDataTypeMap = function(value) {
+		if ( !arguments.length ) return sourceIdDataTypeMap;
+		sourceIdDataTypeMap = value;
 		return that;
 	};
 

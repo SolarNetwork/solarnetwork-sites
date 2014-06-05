@@ -996,6 +996,108 @@ sn.pixelWidth = function(selector) {
 	return result;
 };
 
+/**
+ * Generate a seasonal data set, suitable for line and bar charts.
+ * 
+ * @param {Object[]} dataArray the raw input data
+ * @param {Object} sourceIdDataTypeMap object with source ID property names with associated SolarNet DataType
+ *                 values, to use to map each raw source ID into its associated data type
+ * @param {sn.Configuration} [excludeSources] the source IDs to exclude
+ * @param {String[]} [yAxisProperties] the raw input data properties to include in the output data objects,
+ *                                     defaults to {@code ['wattHours']}
+ */
+sn.seasonConsumptionPowerMap = function (dataArray, sourceIdDataTypeMap, excludeSources, yAxisProperties) {
+	var yProps = (Array.isArray(yAxisProperties) ? yAxisProperties : ['wattHours']);
+	var sources = [];
+	var sourceMap = {};
+	var seasonMap = (function() {
+		var result = {};
+		var i = -1;
+		while ( ++i < 4 ) {
+			result[String(i)] = {'Consumption':[], 'Power':[]};
+		}
+		return result;
+	})();
+	var dataType = undefined;
+	var dateKey = undefined;
+	var dateMap = {Consumption:{}, Power:{}};
+	var domainY = {};
+	var i, iMax;
+	var p, pMax = yProps.length;
+	var el, obj;
+	var date = undefined;
+	var prop = undefined;
+	var lines = [];
+	for ( i = 0, iMax = dataArray.length; i < iMax; ++i ) {
+		el = dataArray[i];
+		if ( sourceMap[el.sourceId] === undefined ) {
+			sources.push(el.sourceId);
+			sourceMap[el.sourceId] = 1;
+		}
+		
+		if ( excludeSources !== undefined && excludeSources.enabled(el.sourceId) ) {
+			continue;
+		}
+
+		dateKey = el.localDate +' ' +el.localTime;
+		date = sn.dateTimeFormat.parse(dateKey);
+		dataType = sourceIdDataTypeMap[el.sourceId];
+		if ( dateMap[dataType][dateKey] === undefined ) {
+			obj = {
+					date : date,
+					hour : date.getUTCHours(),
+					day : date.getUTCDay(),
+					type : dataType,
+			};
+			// seasons are (northern hemi) [Spring, Summer, Autumn, Winter]
+			// set the "season" to an index, 0-3, where 0 -> Dec,Jan,Feb, 1-> Mar,Apr,May, etc
+			if ( date.getUTCMonth() < 2 || date.getUTCMonth() == 11 ) {
+				obj.season = 3;
+			} else if ( date.getUTCMonth() < 5 ) {
+				obj.season = 0;
+			} else if ( date.getUTCMonth() < 8 ) {
+				obj.season = 1;
+			} else {
+				obj.season = 2;
+			}
+			
+			dateMap[dataType][dateKey] = obj;
+			seasonMap[String(obj.season)][dataType].push(obj);
+		} else {
+			obj = dateMap[dataType][dateKey];
+		}
+		
+		for ( p = 0; p < pMax; ++p ) {
+			prop = yProps[p];
+			if ( obj[prop] === undefined ) {
+				obj[prop] = null;
+			}
+			if ( el[prop] >= 0 ) {
+				// map Y value as negative if this source is a consumption source
+				obj[prop] += (dataType === 'Consumption' ? -el[prop] : el[prop]);
+			}
+			
+			// compute y extents while iterating through array
+			if ( domainY[prop] === undefined ) {
+				domainY[prop] = [obj[prop], obj[prop]];
+			} else {
+				if ( obj[prop] < domainY[prop][0] ) {
+					domainY[prop][0] = obj[prop];
+				}
+				if ( obj[prop] > domainY[prop][1] ) {
+					domainY[prop][1] = obj[prop];
+				}
+			}
+		}
+	}
+
+	for ( prop in seasonMap ) {
+		lines.push(seasonMap[prop].Consumption);
+		lines.push(seasonMap[prop].Power);
+	}
+
+	return {seasonMap: seasonMap, domainY:domainY, lineData:lines, sources:sources};
+};
 
 
 /**

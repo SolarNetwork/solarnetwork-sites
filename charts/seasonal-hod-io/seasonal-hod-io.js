@@ -76,14 +76,14 @@ function setup(repInterval, sourceMap) {
 	// pass our source mapping to the chart, to know what source IDs are consumption vs generation
 	var dataType = undefined;
 	var sourceId = undefined;
-	var sourceIdLayerNameMap = {};
+	var sourceIdDataTypeMap = {};
 	for ( dataType in sn.runtime.sourceColorMap.displaySourceMap ) {
-		sourceIdLayerNameMap[dataType] = {};
+		sourceIdDataTypeMap[dataType] = {};
 		for ( sourceId in sn.runtime.sourceColorMap.displaySourceMap[dataType] ) {
-			sourceIdLayerNameMap[sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId]] = dataType;
+			sourceIdDataTypeMap[sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId]] = dataType;
 		}
 	}
-	sn.runtime.seasonalHourOfDayChart.sourceIdLayerNameMap(sourceIdLayerNameMap);
+	sn.runtime.seasonalHourOfDayChart.sourceIdDataTypeMap(sourceIdDataTypeMap);
 
 
 	// set up form-based details
