@@ -78,13 +78,10 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 
 	var svgRoot = undefined,
 		svg = undefined,
-		svgTickGroupX = undefined,
-		svgSumLineGroup = undefined;
+		svgTickGroupX = undefined;
 	
 	var rawData = undefined;
 	var lineData = undefined;
-	
-	var consumptionLayerCount = 0;
 
 	// Set y-axis  unit label
 	// setup display units in kWh if domain range > 1000
@@ -471,21 +468,6 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		return that;
 	};
 	
-	/**
-	 * Get or set the consumption source count. Set this to the number of sources that 
-	 * are considered "consumption" and should show up <em>under</em> the y-axis origin.
-	 * The sources are assumed to already be ordered with consumption before generation.
-	 * 
-	 * @param {number} [value] the number of consumption sources to use
-	 * @returns when used as a getter, the count number, otherwise this object
-	 * @memberOf sn.chart.seasonalHourOfDayLineChart
-	 */
-	that.consumptionSourceCount = function(value) {
-		if ( !arguments.length ) return consumptionLayerCount;
-		consumptionLayerCount = +value; // the + used to make sure we have a Number
-		return that;
-	};
-
 	/**
 	 * Get or set the animation transition time, in milliseconds.
 	 * 
