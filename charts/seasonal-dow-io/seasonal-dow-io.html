@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1024" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<title>SolarNetwork Chart - Seasonal Day of Week I/O</title>
+	
+	<link type="text/css" rel="stylesheet" href="../css/font-awesome.min.css">
+	<link type="text/css" rel="stylesheet" href="seasonal-dow-io.css" />
+	
+	<script type="text/javascript" src="../js-lib/d3-3.js"></script>
+	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
+	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3.js"></script>
+	<script type="text/javascript" src="solarnetwork-d3-chart-seasonal-dow-io.js"></script>
+	<script type="text/javascript" src="seasonal-dow-io.js"></script>
+	<script type="text/javascript">
+		function startApp() {
+			onDocumentReady();
+		}
+		if ( !window.isLoaded ) {
+			window.addEventListener("load", function() {
+				startApp();
+			}, false);
+		} else {
+			startApp();
+		}
+	</script>
+</head>
+<body>
+	<h1>SolarNetwork Chart - Seasonal Day of Week I/O</h1>
+	<div class="hbox">
+		<div class="vbox main">
+			<div class="pane seasonal-dow-chart">
+				<h2>Seasonal daily energy <span class="alt"><span class="unit">(kWh)</span></span></h2>
+				<div id="seasonal-dow-chart" class="chart-container"></div>
+			</div>
+		</div>
+		<div class="vbox sub">
+			<div class="pane">
+				<div id="source-labels"></div>
+			</div>
+			<div class="pane">
+				<form id="details">
+					<label for="nodeId" class="generation">Node</label>
+					<input type="number" name="nodeId" value=""/>
+					<label for="consumptionNodeId" class="consumption">Node</label>
+					<input type="number" name="consumptionNodeId" value=""/>
+				</form>
+				<div class="actions">
+					<i id="hemisphere-toggle" class="fa fa-globe button south"></i>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
