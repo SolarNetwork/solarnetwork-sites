@@ -543,7 +543,7 @@ function setupCounters(repInterval) {
 		sn.runtime.wattHourPowerCounter = sn.util.aggregateCounter({
 			dataType: 'Power',
 			nodeUrlHelper: sn.runtime.urlHelper,
-			startingInterval: {startDate: repInterval.sDate, endDate: repInterval.eDate},
+			startingInterval: {startDate: repInterval.sLocalDate, endDate: repInterval.eLocalDate},
 			callback : function() {
 				var totalKWattHours = this.aggregateValue() / 1000;
 				
@@ -567,7 +567,7 @@ function setupCounters(repInterval) {
 		sn.runtime.wattHourConsumptionCounter = sn.util.aggregateCounter({
 			dataType: 'Consumption',
 			nodeUrlHelper: sn.runtime.consumptionUrlHelper,
-			startingInterval: {startDate: repInterval.sDate, endDate: repInterval.eDate},
+			startingInterval: {startDate: repInterval.sLocalDate, endDate: repInterval.eLocalDate},
 			callback : function() {
 				var totalKWattHours = this.aggregateValue() / 1000;
 				sn.runtime.flipCounterKWhConsumed.update(Math.round(totalKWattHours));
