@@ -108,10 +108,6 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		.attr('class', 'data')
 		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 	
-	svgSumLineGroup = svgRoot.append("g")
-		.attr('class', 'agg-sum')
-		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-
 	svgTickGroupX = svgRoot.append("g")
 		.attr("class", "ticks")
 		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
