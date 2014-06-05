@@ -204,6 +204,43 @@ function seasonalHourOfDayChartSetup(sourceMap) {
 	});
 }
 
+//seasonal day of week line chart
+function seasonalDayOfWeekChartSetup(sourceMap) {
+	var q = queue();
+	sn.env.dataTypes.forEach(function(e, i) {
+		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
+		q.defer(d3.json, urlHelper.dateTimeList(e, null, null, 'SeasonalDayOfWeek'));
+	});
+	q.awaitAll(function(error, results) {
+		if ( error ) {
+			sn.log('Error requesting data: ' +error);
+			return;
+		}
+		var combinedData = [];
+		var i, iMax, j, jMax, json, datum, mappedSourceId;
+		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
+			json = results[i];
+			if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
+				sn.log('No data available for node {0} data type {1}', urlHelperForAvailbleDataRange(null, i).nodeId(), sn.env.dataTypes[i]);
+				return;
+			}
+			for ( j = 0, jMax = json.data.results.length; j < jMax; j++ ) {
+				datum = json.data.results[j];
+				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
+				if ( mappedSourceId !== undefined ) {
+					datum.sourceId = mappedSourceId;
+				}
+			}
+			combinedData = combinedData.concat(json.data.results);
+		}
+		
+		sn.runtime.seasonalDayOfWeekChart.load(combinedData, sn.runtime.seasonalDayOfWeekParameters);
+		sn.log("Seasonal DOW IO chart watt hour range: {0}", sn.runtime.seasonalDayOfWeekChart.yDomain());
+		sn.log("Seasonal DOW IO chart time range: {0}", sn.runtime.seasonalDayOfWeekChart.xDomain());
+		adjustChartDisplayUnits('.seasonal-dow-chart', 'Wh', sn.runtime.seasonalDayOfWeekChart.yScale());
+	});
+}
+
 // Wh stacked area chart over whole range
 function overviewAreaChartSetup(reportableInterval, sourceMap) {
 	var end = reportableInterval.eLocalDate;
@@ -287,12 +324,14 @@ function setup(repInterval, sourceMap) {
 		}
 	}
 	sn.runtime.seasonalHourOfDayChart.sourceIdDataTypeMap(sourceIdDataTypeMap);
+	sn.runtime.seasonalDayOfWeekChart.sourceIdDataTypeMap(sourceIdDataTypeMap);
 
 	overviewAreaChartSetup(repInterval, sn.runtime.sourceMap);
 
 	wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
 	wattHourChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
 	seasonalHourOfDayChartSetup(sn.runtime.sourceMap);
+	seasonalDayOfWeekChartSetup(sn.runtime.sourceMap);
 }
 
 function updateReadings() {
@@ -651,6 +690,14 @@ function onDocumentReady() {
 
 	sn.runtime.seasonalHourOfDayChart = sn.chart.seasonalHourOfDayLineChart('#seasonal-hod-chart', sn.runtime.seasonalHourOfDayParameters);
 
+	sn.runtime.seasonalDayOfWeekParameters = new sn.Configuration({
+		height : mainChartHeight,
+		excludeSources : sn.runtime.excludeSources,
+		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
+	});
+
+	sn.runtime.seasonalDayOfWeekChart = sn.chart.seasonalDayOfWeekLineChart('#seasonal-dow-chart', sn.runtime.seasonalDayOfWeekParameters);
+
 	// find our available data range, and then draw our charts!
 	function handleAvailableDataRange(event) {
 		setup(event.data.reportableInterval, event.data.availableSourcesMap);
@@ -672,6 +719,9 @@ function onDocumentReady() {
 						}
 						if ( sn.runtime.seasonalHourOfDayChart !== undefined ) {
 							seasonalHourOfDayChartSetup(sn.runtime.sourceMap);
+						}
+						if ( sn.runtime.seasonalDayOfWeekChart !== undefined ) {
+							seasonalDayOfWeekChartSetup(sn.runtime.sourceMap);
 						}
 					}
 				});
