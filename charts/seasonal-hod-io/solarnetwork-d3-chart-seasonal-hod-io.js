@@ -48,7 +48,7 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	// default to container's width, if we can
 	var containerWidth = sn.pixelWidth(containerSelector);
 	
-	var p = (config.padding || [20, 0, 40, 30]),
+	var p = (config.padding || [0, 10, 40, 30]),
 		w = (config.width || containerWidth || 812) - p[1] - p[3],
 		h = (config.height || 300) - p[0] - p[2],
     	x = d3.scale.linear().range([0, w]),
