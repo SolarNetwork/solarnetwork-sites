@@ -58,7 +58,6 @@ function seasonalHourOfDayChartSetup(endDate, sourceMap) { // FIXME: endDate unu
 		}
 		
 		
-		sn.runtime.seasonalHourOfDayChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
 		sn.runtime.seasonalHourOfDayChart.load(combinedData, sn.runtime.seasonalHourOfDayParameters);
 		sn.log("Seasonal HOD IO chart watt hour range: {0}", sn.runtime.seasonalHourOfDayChart.yDomain());
 		sn.log("Seasonal HOD IO chart time range: {0}", sn.runtime.seasonalHourOfDayChart.xDomain());
