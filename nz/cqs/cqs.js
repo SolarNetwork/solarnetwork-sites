@@ -90,14 +90,14 @@ function wattHourChartSetup(endDate, sourceMap) {
 			}
 			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
 				datum = json.data[j];
-				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
+				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
 				if ( mappedSourceId !== undefined ) {
 					datum.sourceId = mappedSourceId;
 				}
 			}
 			combinedData = combinedData.concat(json.data);
 		}
-		sn.runtime.energyBarChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
+		sn.runtime.energyBarChart.consumptionSourceCount(consumptionSourceCount(sourceMap));
 		sn.runtime.energyBarChart.load(combinedData, {
 			aggregate : sn.runtime.energyBarParameters.aggregate
 		});
@@ -105,6 +105,19 @@ function wattHourChartSetup(endDate, sourceMap) {
 		sn.log("Energy IO chart time range: {0}", sn.runtime.energyBarChart.xDomain());
 		adjustChartDisplayUnits('.watthour-chart', 'Wh', sn.runtime.energyBarChart.yScale());
 	});
+}
+
+function consumptionSourceCount(sourceMap) {
+	var array = sourceMap[sn.env.dataTypes[0]];
+	return ( array !== undefined ? array.length : 0);
+}
+
+function mappedSourceIdForDataType(i, sourceId) {
+	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]];
+	if ( mappedSourceId !== undefined ) {
+		mappedSourceId = mappedSourceId[sourceId];
+	}
+	return mappedSourceId;
 }
 
 //Watt stacked area chart
@@ -139,14 +152,14 @@ function wattChartSetup(endDate, sourceMap) {
 			}
 			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
 				datum = json.data[j];
-				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
+				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
 				if ( mappedSourceId !== undefined ) {
 					datum.sourceId = mappedSourceId;
 				}
 			}
 			combinedData = combinedData.concat(json.data);
 		}
-		sn.runtime.powerAreaChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
+		sn.runtime.powerAreaChart.consumptionSourceCount(consumptionSourceCount(sourceMap));
 		sn.runtime.powerAreaChart.load(combinedData);
 		sn.log("Power IO chart watt range: {0}", sn.runtime.powerAreaChart.yDomain());
 		sn.log("Power IO chart time range: {0}", sn.runtime.powerAreaChart.xDomain());
@@ -176,7 +189,7 @@ function seasonalHourOfDayChartSetup(sourceMap) {
 			}
 			for ( j = 0, jMax = json.data.results.length; j < jMax; j++ ) {
 				datum = json.data.results[j];
-				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
+				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
 				if ( mappedSourceId !== undefined ) {
 					datum.sourceId = mappedSourceId;
 				}
@@ -184,7 +197,6 @@ function seasonalHourOfDayChartSetup(sourceMap) {
 			combinedData = combinedData.concat(json.data.results);
 		}
 		
-		sn.runtime.seasonalHourOfDayChart.consumptionSourceCount(sourceMap[sn.env.dataTypes[0]].length);
 		sn.runtime.seasonalHourOfDayChart.load(combinedData, sn.runtime.seasonalHourOfDayParameters);
 		sn.log("Seasonal HOD IO chart watt hour range: {0}", sn.runtime.seasonalHourOfDayChart.yDomain());
 		sn.log("Seasonal HOD IO chart time range: {0}", sn.runtime.seasonalHourOfDayChart.xDomain());
@@ -221,7 +233,7 @@ function overviewAreaChartSetup(reportableInterval, sourceMap) {
 			}
 			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
 				datum = json.data[j];
-				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
+				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
 				if ( mappedSourceId !== undefined ) {
 					datum.sourceId = mappedSourceId;
 				}
@@ -244,11 +256,15 @@ function setup(repInterval, sourceMap) {
 	sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
 
 	// set up form-based details
-	d3.select('#details .consumption').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sourceMap['Consumption'][0]]]);
-	d3.select('#details .generation').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Power'][sourceMap['Power'][0]]]);
-
+	if ( sourceMap.Consumption !== undefined ) {
+		d3.select('#details .consumption').style('color', 
+			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap.Consumption[sourceMap.Consumption[0]]]);
+	}
+	if ( sourceMap.Power !== undefined ) {
+		d3.select('#details .generation').style('color', 
+			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap.Power[sourceMap.Power[0]]]);
+	}
+	
 	// create copy of color data for reverse ordering so labels vertically match chart layers
 	sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
 		if ( sn.env.linkOld === 'true' ) {
