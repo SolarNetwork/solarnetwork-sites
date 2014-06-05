@@ -78,13 +78,10 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 
 	var svgRoot = undefined,
 		svg = undefined,
-		svgTickGroupX = undefined,
-		svgSumLineGroup = undefined;
+		svgTickGroupX = undefined;
 	
 	var rawData = undefined;
 	var lineData = undefined;
-	
-	var consumptionLayerCount = 0;
 
 	// Set y-axis  unit label
 	// setup display units in kWh if domain range > 1000
@@ -149,9 +146,8 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		return displayFormatter(d / displayFactor);
 	}
 	
-	function seasonConsumptionPowerMap(dataArray, outSourceArray) {
-		// first empty out the source array, so we can re-build it
-		outSourceArray.splice(0, outSourceArray.length);
+	function seasonConsumptionPowerMap(dataArray) {
+		var sources = [];
 		var sourceMap = {};
 		var seasonMap = (function() {
 			var result = {};
@@ -170,10 +166,11 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		var date = undefined;
 		var prop = undefined;
 		var hour, layerName;
+		var lines = [];
 		for ( i = 0, len = dataArray.length; i < len; ++i ) {
 			el = dataArray[i];
 			if ( sourceMap[el.sourceId] === undefined ) {
-				outSourceArray.push(el.sourceId);
+				sources.push(el.sourceId);
 				sourceMap[el.sourceId] = 1;
 			}
 			
@@ -231,22 +228,20 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 				}
 			}
 		}
-		
-		return {seasonMap: seasonMap, domainY:domainY};
+
+		for ( prop in seasonMap ) {
+			lines.push(seasonMap[prop].Consumption);
+			lines.push(seasonMap[prop].Power);
+		}
+
+		return {seasonMap: seasonMap, domainY:domainY, lineData:lines, sources:sources};
 	}
 
 	function setup(inputData) {
 		rawData = inputData;
-		var layerMap = seasonConsumptionPowerMap(rawData, sources);
-		var seasonMap = layerMap.seasonMap;
-		
-		// we will group all consumption sources together, and generation sources together as well
-		var seasonOrder = ['1', '2', '3', '0']; // TODO: adjust based on current month
-		lineData = [];
-		seasonOrder.forEach(function(e) {
-			lineData.push(seasonMap[e].Consumption);
-			lineData.push(seasonMap[e].Power);
-		});
+		var layerMap = seasonConsumptionPowerMap(rawData);
+		lineData = layerMap.lineData;
+		sources = layerMap.sources;
 
 		// y-domain has been computed for us by seasonMap()
 		y.domain(layerMap.domainY.wattHours).nice();
@@ -471,21 +466,6 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		return that;
 	};
 	
-	/**
-	 * Get or set the consumption source count. Set this to the number of sources that 
-	 * are considered "consumption" and should show up <em>under</em> the y-axis origin.
-	 * The sources are assumed to already be ordered with consumption before generation.
-	 * 
-	 * @param {number} [value] the number of consumption sources to use
-	 * @returns when used as a getter, the count number, otherwise this object
-	 * @memberOf sn.chart.seasonalHourOfDayLineChart
-	 */
-	that.consumptionSourceCount = function(value) {
-		if ( !arguments.length ) return consumptionLayerCount;
-		consumptionLayerCount = +value; // the + used to make sure we have a Number
-		return that;
-	};
-
 	/**
 	 * Get or set the animation transition time, in milliseconds.
 	 * 
