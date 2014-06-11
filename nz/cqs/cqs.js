@@ -648,8 +648,8 @@ function onDocumentReady() {
 		numYears : 1,
 		wiggle : 'true',
 		linkOld : 'false',
-		maxPowerKW : 8,
-		powerGaugeTicks : 8,
+		maxPowerKW : 4,
+		powerGaugeTicks : 4,
 		swapSeconds : 20,
 		northernHemisphere : 'false',
 		dataTypes: ['Consumption', 'Power']
