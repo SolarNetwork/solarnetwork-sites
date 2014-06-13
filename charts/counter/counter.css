@@ -1,0 +1,200 @@
+html {
+	background-color: rgba(34,175,176,1.0);
+	background: -webkit-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: -moz-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
+}
+
+body {
+	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	margin: 10px;
+	background: none;
+}
+
+h1, h2, h3 {
+    color: inherit;
+    font-family: inherit;
+    text-rendering: optimizelegibility;
+}
+
+h1 {
+	text-align: left;
+	font-size: 42px;
+	line-height: 42px;
+	font-weight: 200;
+	margin: 0;
+	margin-bottom: 12px;
+	color: rgb(247,200,25);
+	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
+}
+
+h2 {
+	font-size: 24px;
+	line-height: 24px;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+h2 .alt {
+	color: gray;
+}
+
+h2 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+h2 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+h3 {
+	font-size: 14px;
+	line-height: 14px;
+	font-weight: 500;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+h3 .alt {
+	color: gray;
+}
+
+h3 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+h3 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+.literal {
+	text-transform: none;
+}
+
+div.pane {
+	background-color: rgba(100%,100%,100%,1);
+	border-radius: 8px;
+	box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
+	padding: 10px 10px;
+}
+
+div.main div.pane {
+	padding: 20px 20px;
+}
+
+div.hbox {
+	display: -webkit-box;
+	-webkit-box-orient: horizontal;
+	display: -moz-box;
+	-moz-box-orient: horizontal;
+	display: box;
+	box-orient: horizontal;
+}
+
+div.vbox {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	display: -moz-box;
+	-moz-box-orient: vertical;
+	display: box;
+	box-orient: vertical;
+}
+
+div.hbox > .main {
+	width: 864px;
+}
+
+div.hbox > .sub {
+	width: 130px;
+}
+
+div.vbox + div.vbox {
+	margin-left: 10px;
+}
+
+div.vbox > div + div {
+	margin-top: 12px;
+}
+
+a {
+	color: inherit;
+}
+
+.clickable {
+	cursor: pointer !important;
+}
+
+#readings > div {
+	margin-bottom: 2px;
+}
+
+#readings span.unit {
+	color: #666;
+}
+
+/* Source labels */
+
+#source-labels a:visited {
+	color: inherit;
+}
+
+#source-labels table {
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin-left: -4px;
+}
+
+#source-labels td.swatch {
+	margin: 2px;
+	width: 10px;
+	height: 10px;
+}
+
+#source-labels td.desc {
+	font-size: 10px;
+	line-height: 10px;
+	margin: 2px;
+}
+
+#details label {
+	font-weight: bold;
+	font-size: 12px;
+	line-height: 24px;
+	margin-right: 4px;
+}
+
+#details input[type=number] {
+	width: 4em;
+	font-size: 12px;
+}
+
+#details .range {
+	display: none;
+}
+
+#details .range input {
+	width: 3em;
+}
+
+/* Specific */
+
+div.flipCounter + * {
+	margin-top: 24px;
+}

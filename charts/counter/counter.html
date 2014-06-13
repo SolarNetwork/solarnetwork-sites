@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1024" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<title>SolarNetwork Chart - Counter</title>
+	
+	<link type="text/css" rel="stylesheet" href="../css/font-awesome.min.css">
+	<link type="text/css" rel="stylesheet" href="../css/solarnetwork-d3-ui-flipcounter.css" />
+	<link type="text/css" rel="stylesheet" href="counter.css" />
+	
+	<script type="text/javascript" src="../js-lib/d3-3.js"></script>
+	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
+	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
+	<script type="text/javascript" src="../js-lib/hmac-sha1-3.min.js"></script>
+	<script type="text/javascript" src="../js-lib/enc-base64-3.min.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-sec.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-util-aggcounter.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-ui-flipcounter.js"></script>
+	<script type="text/javascript" src="counter.js"></script>
+	<script type="text/javascript">
+		function startApp() {
+			onDocumentReady();
+		}
+		if ( !window.isLoaded ) {
+			window.addEventListener("load", startApp, false);
+		} else {
+			startApp();
+		}
+	</script>
+</head>
+<body>
+	<h1>SolarNetwork Chart - Counter</h1>
+	<div class="hbox">
+		<div class="vbox main">
+			<div class="pane counter agg-kwh">
+				<h2><span class="literal">kWh</span> <span class="alt"><span class="dataType">generated</span></span></h2>
+				<div id="counter-kwh"></div>
+	
+				<h2><span class="literal">kWh</span> <span class="alt"><span class="dataType">consumed</span></span></h2>
+				<div id="counter-kwh-consume"></div>
+			</div>
+		</div>
+		<div class="vbox sub">
+			<div class="pane">
+				<div id="source-labels"></div>
+			</div>
+			<div class="pane">
+				<form id="details">
+					<label for="nodeId" class="generation">Node</label>
+					<input type="number" name="nodeId" value=""/>
+					<label for="consumptionNodeId" class="consumption">Node</label>
+					<input type="number" name="consumptionNodeId" value=""/>
+				</form>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
