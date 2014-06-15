@@ -348,7 +348,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	function adjustAxisXAggregateGeneration(aggTicks) {
-		var aggLabels = aggGroup.selectAll("text").data(aggTicks);
+		var aggLabels = aggGroup.selectAll("text").data(aggTicks, Object);
 		
 		aggLabels.transition().duration(transitionMs)
 				.attr("x", axisXMidBarValue)
@@ -508,7 +508,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		}
 
 		// Add date labels, centered within associated band
-		var labels = svgTickGroupX.selectAll("text").data(ticks)
+		var labels = svgTickGroupX.selectAll("text").data(ticks, Object)
 			.classed({
 				agg : tickClassAgg,
 				neg : tickClassNeg
@@ -540,7 +540,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	function adjustAxisXRules(aggVertRuleTicks) {
-		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggVertRuleTicks);
+		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggVertRuleTicks, Object);
 		axisLines.transition().duration(transitionMs)
 	  		.attr("x1", axisXVertRule)
 	  		.attr("x2", axisXVertRule);
@@ -569,7 +569,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			? (xBar(xBar.domain()[1]) - xBar(xBar.domain()[0])) 
 			: barWidth);
 		var barPadding = (barSpacing - barWidth) / 2;
-		var aggBands = svgRoot.select("g.agg-band").selectAll("line").data(bandTicks);
+		var aggBands = svgRoot.select("g.agg-band").selectAll("line").data(bandTicks, Object);
 		var bandPosition = function(s) {
 				s.attr("x1", function(d) {
 					return xBar(d) - barPadding;
@@ -604,7 +604,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			.style("opacity", 1e-6)
 			.remove();
 		
-		var aggBandLabels = svgRoot.select("g.agg-band-ticks").selectAll("text").data(labelTicks);
+		var aggBandLabels = svgRoot.select("g.agg-band-ticks").selectAll("text").data(labelTicks, Object);
 		aggBandLabels.transition().duration(transitionMs)
 		  	.attr("x", axisXMidBarValue)
 		  	.text(axisXAggSumTextFn);
