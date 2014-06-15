@@ -692,7 +692,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			return y(d.y0) - y(d.y0 + d.y);
 		}
 		
-		var bars = sourceGroups.selectAll("rect").data(Object);
+		var bars = sourceGroups.selectAll("rect").data(Object, function(d) {
+			return d.x;
+		});
 		bars.transition().duration(transitionMs)
 			.attr("x", valueX)
 			.attr("y", valueY)
