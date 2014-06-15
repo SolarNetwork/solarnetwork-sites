@@ -313,6 +313,9 @@ function setup(repInterval, sourceMap) {
 		}
 	});
 
+	// hide/show the data most-recent date
+	setupOutdatedMessage(new Date(repInterval.endDateMillis));
+
 	// pass our source mapping to the seasonal chart, to know what source IDs are consumption vs generation
 	var dataType = undefined;
 	var sourceId = undefined;
@@ -637,6 +640,17 @@ function urlHelperForAvailbleDataRange(e, i) {
 	return (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
 }
 
+function setupOutdatedMessage(endDate) {
+	// if the data is stale by an hour or more, display the "outdated" message
+	var format;
+	if ( new Date().getTime() - endDate.getTime() >= (1000 * 60 * 60) ) {
+		format = d3.time.format('%d %b %Y %H:%M');
+		d3.select('#outdated-msg').style('display', 'block').select('.value').text(format(endDate));
+	} else {
+		d3.select('#outdated-msg').style('display', 'none');
+	}
+}
+
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 108,
@@ -707,6 +721,9 @@ function onDocumentReady() {
 			sn.runtime.refreshTimer = setInterval(function() {
 				sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes, function(data) {
 					var jsonEndDate = data.reportableInterval.eLocalDate;
+					
+					setupOutdatedMessage(new Date(data.reportableInterval.endDateMillis));
+
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 						if ( sn.runtime.powerAreaChart !== undefined ) {
 							wattChartSetup(jsonEndDate, sn.runtime.sourceMap);

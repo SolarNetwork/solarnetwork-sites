@@ -189,7 +189,7 @@ a {
 }
 
 .readings > .pane + .pane,
-.readings > .pane + .actions {
+.readings > .pane + .actions{
 	margin-top: 12px;
 }
 
@@ -206,6 +206,17 @@ a {
 	color: #154D6E;
 	text-align: center;
 	font-size: 18px;
+}
+
+/* Messages */
+
+.readings > .msg {
+	display: none;
+	color: #154D6E;
+	font-size: 10px;
+	font-style: italic;
+	margin-top: 12px;
+	text-align: center;
 }
 
 /* Source labels */
