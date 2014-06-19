@@ -604,17 +604,8 @@ function setupCounters(repInterval) {
 			startingInterval: {startDate: repInterval.sLocalDate, endDate: repInterval.eLocalDate},
 			callback : function() {
 				var totalKWattHours = this.aggregateValue() / 1000;
-				
-				// using conversion of  0.7685 kg CO2/kWh electricity
-				var totalCO2Kg = Math.round(totalKWattHours * Number(sn.env.CO2Factor));
-				
-				var totalDollars = Math.round(totalKWattHours * Number(sn.env.KWhTarrif));
-				
-				sn.log('{0} total kWh calculated as {1} Kg CO2; ${2}', 
-					totalKWattHours, totalCO2Kg, totalDollars);
+				sn.log('{0} total kWh', totalKWattHours);
 				sn.runtime.flipCounterKWh.update(Math.round(totalKWattHours));
-				//sn.runtime.flipCounterCO2.update(totalCO2Kg);
-				//sn.runtime.flipCounterMoney.update(totalDollars);
 			}
 		});
 		sn.runtime.wattHourPowerCounter.start();
