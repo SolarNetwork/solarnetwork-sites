@@ -576,13 +576,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 					return xBar(d) - barPadding;
 				})
 				.attr("x2", function(d, i) {
-					// for all bands but last, x2 set to start of next band
+					// for all bands but last, set to start of next band
 					if ( i + 1 < bandTicks.length ) {
-						return xBar(bandTicks[i+1]) + barPadding;
+						return xBar(bandTicks[i+1]) - barPadding;
 					}
-					// for last band, x2 set to end of last bar
+					// for last band, set to end of last bar
 					if ( bandTicks.length > 1 ) {
-						return (xBar(x.domain()[1]) + barWidth +  barPadding);
+						return (xBar(x.domain()[1]) + barWidth + barPadding);
 					}
 					return xBar(d) + barPadding;
 				})
