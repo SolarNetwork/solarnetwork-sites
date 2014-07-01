@@ -397,9 +397,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		var end = domain[domain.length - 1].getTime();
 		var month = d3.time.month.utc.ceil(domain[0]);
 		var result = [];
-		while ( month.getTime() < end ) {
+		while ( month.getTime() <= end ) {
 			if ( result.length === 0 ) {
-				month = d3.time.month.utc.offset(month, 3 - (month.getUTCMonth() % 3)); // not month + 1 because here we want Jan
+				// round up to nearest quarter...
+				month = d3.time.month.utc.offset(month, Math.ceil(month.getUTCMonth() / 3) * 3 - month.getUTCMonth()); // not month + 1 because here we want Jan
 			}
 			result.push(month);
 			month = d3.time.month.utc.offset(month, 3);
