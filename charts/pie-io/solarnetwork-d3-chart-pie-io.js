@@ -49,9 +49,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var p = (config.padding || [10, 0, 20, 30]),
 		w = (config.width || containerWidth || 300) - p[1] - p[3],
 		h = (config.height || 300) - p[0] - p[2],
-		r = d3.min([w, h]) / 2,
-    	x = d3.time.scale.utc().range([0, w]),
-		y = d3.scale.linear().range([h, 0]);
+		r = d3.min([w, h]) / 2;
 
 	var transitionMs = undefined;
 	
