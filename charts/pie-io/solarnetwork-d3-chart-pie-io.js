@@ -93,7 +93,9 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var displayFormatter = d3.format(',d');
 	function computeUnits() {
 		var fmt;
-		var maxValue = that.totalValue();
+		var maxValue = d3.max(pieSlices, function(d) {
+			return d.value;
+		});
 		if ( maxValue >= 100000 ) {
 			displayFactor = 1000000;
 			fmt = ',g';
