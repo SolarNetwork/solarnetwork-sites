@@ -125,6 +125,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.entries(rawData);
 		
 		var pie = d3.layout.pie()
+			.sort(null)
 			.value(function(d) {
 				return d.values;
 			});
