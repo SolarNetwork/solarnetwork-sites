@@ -164,6 +164,25 @@ function setupUI() {
 		}, 500);
 		updateRangeSelection();
 	});
+
+	// toggle percentages on/off
+	d3.select('#label-percent-toggle').classed('clickable', true).on('click', function(d) {
+		var me = d3.select(this);
+		var off = me.classed('off');
+		me.classed('off', !off);
+		sn.runtime.energyPieParameters.toggle('hidePercentages', !off);
+		sn.runtime.energyPieChart.regenerate();
+	});
+	
+	// toggle labels on/off
+	d3.select('#label-toggle').classed('clickable', true).on('click', function(d) {
+		var me = d3.select(this);
+		var off = me.classed('off');
+		me.classed('off', !off);
+		sn.runtime.energyPieParameters.toggle('hideValues', !off);
+		sn.runtime.energyPieChart.regenerate();
+	});
+	
 }
 
 //show/hide the proper range selection based on the current aggregate level
