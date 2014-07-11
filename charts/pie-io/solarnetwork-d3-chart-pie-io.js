@@ -18,6 +18,8 @@ if ( sn === undefined ) {
  * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
  * @property {number} [transitionMs=600] - transition time
  * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
+ * @property {boolean} [hidePercentages=false] - if false, show percentages represented by each slice
+ * @property {boolean} [hideValues=false] - if false, show the actual values represented by each slice
  */
 
 /**
@@ -46,7 +48,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	// default to container's width, if we can
 	var containerWidth = sn.pixelWidth(containerSelector);
 	
-	var p = (config.padding || [10, 0, 20, 30]),
+	var p = (config.padding || [20, 20, 20, 20]),
 		w = (config.width || containerWidth || 300) - p[1] - p[3],
 		h = (config.height || 300) - p[0] - p[2],
 		r = d3.min([w, h]) / 2;
@@ -61,7 +63,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.innerRadius(0)
 			.outerRadius(r);
 
-	var percentFormatter = d3.format('p');
+	var percentFormatter = d3.format('.0%');
 
 	var originalData = undefined;
 	var pieSlices = undefined;
@@ -297,41 +299,67 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.style("opacity", 1e-6)
 			.remove();
 		
-		var outerLabels = chartLabels.selectAll("text.outer").data(pieSlices, pieSliceKey);
-		
-		outerLabels.transition().duration(transitionMs)
-			.attr("text-anchor", outerTextAnchor)
-			.attr("dy", outerTextDY)
-			.attr("x", function(d) { return halfWayAngleX(d, r + 15); })
-			.attr("y", function(d) { return halfWayAngleY(d, r + 15); })
-			.attrTween("x", function(d) { return halfWayAngleXTween.call(this, d, r + 15); })
-			.attrTween("y", function(d) { return halfWayAngleYTween.call(this, d, r + 15); });
-		
-		outerLabels.enter().append("text")
-			.classed("outer", true)
-			.attr("x", function(d) { return halfWayAngleX(d, r + 15); })
-			.attr("y", function(d) { return halfWayAngleY(d, r + 15); })
-			.attr("text-anchor", outerTextAnchor)
-			.attr("dy", outerTextDY)
-			.style("opacity", 1e-6)
-			.text(outerText)
-			.each(function(d) { 
-				this._data_start_x = d;
-				this._data_start_y = d;
-			}) // to support transitions
-		.transition().duration(transitionMs)
-			.style("opacity", 1)
-			.each("end", clearOpacity);
-
-		outerLabels.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-			.remove();
+		// show outer labels of actual values
+		var outerLabels;
+		if ( config.enabled('hideValues') === false ) {		
+			outerLabels = chartLabels.selectAll("text.outer").data(pieSlices, pieSliceKey);
+			
+			outerLabels.transition().duration(transitionMs)
+				.attr("text-anchor", outerTextAnchor)
+				.attr("dy", outerTextDY)
+				.attr("x", function(d) { return halfWayAngleX(d, r + 15); })
+				.attr("y", function(d) { return halfWayAngleY(d, r + 15); })
+				.attrTween("x", function(d) { return halfWayAngleXTween.call(this, d, r + 15); })
+				.attrTween("y", function(d) { return halfWayAngleYTween.call(this, d, r + 15); });
+			
+			outerLabels.enter().append("text")
+				.classed("outer", true)
+				.attr("x", function(d) { return halfWayAngleX(d, r + 15); })
+				.attr("y", function(d) { return halfWayAngleY(d, r + 15); })
+				.attr("text-anchor", outerTextAnchor)
+				.attr("dy", outerTextDY)
+				.style("opacity", 1e-6)
+				.text(outerText)
+				.each(function(d) { 
+					this._data_start_x = d;
+					this._data_start_y = d;
+				}) // to support transitions
+			.transition().duration(transitionMs)
+				.style("opacity", 1)
+				.each("end", clearOpacity);
 	
-
-		var innerLabels = chartLabels.selectAll("text.inner").data(pieSlices, pieSliceKey);
-		
-		//innerLabels.enter()
+			outerLabels.exit().transition().duration(transitionMs)
+				.style("opacity", 1e-6)
+				.remove();
+		}
 	
+		// inner labels, showing percentage
+		var innerLabels;
+		if ( config.enabled('hidePercentages') === false ) {
+			innerLabels = chartLabels.selectAll("text.inner").data(pieSlices, pieSliceKey);
+			
+			innerLabels.transition().duration(transitionMs)
+				.attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+				.text(innerText)
+				/*.attrTween("x", function(d) { return halfWayAngleXTween.call(this, d, r + 15); })
+				.attrTween("y", function(d) { return halfWayAngleYTween.call(this, d, r + 15); })*/;
+			
+			innerLabels.enter().append("text")
+				.classed("inner", true)
+				.attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+				.attr("text-anchor", "middle")
+				.attr("dy", "-0.35em")
+				.style("opacity", 1e-6)
+				.text(innerText)
+				.each(function(d) { this._data_start = d; }) // to support transitions
+			.transition().duration(transitionMs)
+				.style("opacity", 1)
+				.each("end", clearOpacity);
+		
+			innerLabels.exit().transition().duration(transitionMs)
+				.style("opacity", 1e-6)
+				.remove();
+		}
 	}
 
 	that.sources = sources;

@@ -169,6 +169,10 @@ a {
 	color: black;
 }
 
+.button + .button {
+	margin-left: 8px;
+}
+
 .button.off {
 	color: #ccc;
 }
@@ -233,4 +237,9 @@ svg {
 .chart g.label line {
 	stroke: black;
 	opacity: 1;
+}
+
+.chart g.label text.inner {
+	fill: white;
+	font-weight: 500;
 }
