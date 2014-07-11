@@ -138,21 +138,43 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	function pieSliceColorFn(d) {
 		return sn.colorFn({source:d.data.key});
 	}
+	
+	function clearOpacity() {
+		d3.select(this).style("opacity", null);
+	}
+	
+	function arcTween(d) {
+		var iStart = d3.interpolate(this._data_start.startAngle, d.startAngle);
+		var iEnd = d3.interpolate(this._data_start.endAngle, d.endAngle);
+		this._data_start = d;
+		return function(t) {
+			var td = {startAngle:iStart(t), endAngle:iEnd(t)};
+			return arc(td);
+		};
+	}
 
 	function redraw() {	
 		// draw data areas
 		var pie = svg.selectAll("path").data(pieSlices);
 		
-		pie.transition().duration(transitionMs).delay(200)
-				.attr("d", arc)
-				.style("fill", pieSliceColorFn);
-		
+		pie.transition().duration(transitionMs)
+			.attr("d", arc)
+			.style("fill", pieSliceColorFn)
+			.attrTween("d", arcTween);
+
 		pie.enter().append("path")
-				.attr("class", "area")
-				.style("fill", pieSliceColorFn)
-				.attr("d", arc);
-		
-		pie.exit().remove();
+			.attr("class", "area")
+			.style("fill", pieSliceColorFn)
+			.style("opacity", 1e-6)
+			.attr("d", arc)
+			.each(function(d) { this._data_start = d; }) // to support transitions
+		.transition().duration(transitionMs)
+			.style("opacity", 1)
+			.each('end', clearOpacity);
+
+		pie.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
 	}
 
 	that.sources = sources;
@@ -205,7 +227,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			// did you call load() first?
 			return that;
 		}
-		load(originalData);
+		that.load(originalData);
 		return that;
 	};
 	
