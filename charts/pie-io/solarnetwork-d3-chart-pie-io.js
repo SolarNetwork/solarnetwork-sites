@@ -61,9 +61,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.innerRadius(0)
 			.outerRadius(r);
 
+	var percentFormatter = d3.format('p');
+
 	var originalData = undefined;
 	var pieSlices = undefined;
 	var consumptionLayerCount = 0;
+	var totalValue = 0;
 	
 	function parseConfiguration() {
 		transitionMs = (config.transitionMs || 600);
@@ -99,17 +102,21 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		var maxValue = d3.max(pieSlices, function(d) {
 			return d.value;
 		});
-		if ( maxValue >= 100000 ) {
+		if ( maxValue >= 1000000 ) {
 			displayFactor = 1000000;
-			fmt = ',g';
+			fmt = ',.2f';
 		} else if ( maxValue >= 1000 ) {
 			displayFactor = 1000;
-			fmt = ',g';
+			fmt = ',.1f';
 		} else {
 			displayFactor = 1;
 			fmt = ',d';
 		}
 		displayFormatter = d3.format(fmt);
+		
+		totalValue = d3.sum(pieSlices, function(d) {
+			return d.value;
+		});
 	}
 	
 	function displayFormat(d) {
@@ -195,10 +202,76 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		redrawLabels();
 	}
 	
+	function halfAngle(d) {
+		return (d.startAngle + (d.endAngle - d.startAngle) / 2);
+	}
+	
+	function halfAngleForLabel(d) {
+		return halfAngle(d) - Math.PI / 2;
+	}
+	
 	function halfWayRotation(d) {
-		var halfAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
-		var degrees = sn.rad2deg(halfAngle);
+		var a = halfAngle(d);
+		var degrees = sn.rad2deg(a);
 		return ('rotate(' +degrees +')');
+	}
+	
+	function halfWayAngleXTween(d, r) {
+		var i = d3.interpolate(halfAngle(this._data_start_x), halfAngle(d));
+		this._data_start_x = d;
+		return function(t) {
+			var a = i(t);
+			return Math.cos(a - Math.PI / 2) * r;
+		};
+	}
+	
+	function halfWayAngleYTween(d, r) {
+		var i = d3.interpolate(halfAngle(this._data_start_y), halfAngle(d));
+		this._data_start_y = d;
+		return function(t) {
+			var a = i(t);
+			return Math.sin(a - Math.PI / 2) * r;
+		};
+	}
+	
+	function halfWayAngleX(d, r) {
+		var a = halfAngleForLabel(d);
+		return Math.cos(a) * r;
+	}
+	
+	function halfWayAngleY(d, r) {
+		var a = halfAngleForLabel(d);
+		return Math.sin(a) * r;
+	}
+	
+	// format the data's actual value
+	function outerText(d) {
+		return displayFormatter(d.value / displayFactor);
+	}
+	
+	// format the data's value as a percentage of the overall pie value
+	function innerText(d) {
+		return percentFormatter(d.value / totalValue);
+	}
+	
+	function outerTextAnchor(d) {
+		var a = halfAngle(d);
+		if ( a < Math.PI * 2 * (1/8) || a > Math.PI * 2 * (7/8) ) {
+			return 'middle';
+		} else if ( a < Math.PI * 2 * (3/8) ) {
+			return 'start';
+		} else if ( a < Math.PI * 2 * (5/8) ) {
+			return 'middle';
+		}
+		return 'end';
+	}
+	
+	function outerTextDY(d) {
+		var a = halfAngle(d);
+		if ( a >= Math.PI * 2 * (3/8) && a < Math.PI * 2 * (5/8) ) {
+			return '0.5em';
+		}
+		return 0;
 	}
 	
 	function redrawLabels() {
@@ -218,12 +291,43 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.attr('transform', halfWayRotation)
 		.transition().duration(transitionMs)
 			.style("opacity", 1)
-			.each('end', clearOpacity);
+			.each("end", clearOpacity);
 		
 		lines.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
 		
+		var outerLabels = chartLabels.selectAll("text.outer").data(pieSlices, pieSliceKey);
+		
+		outerLabels.transition().duration(transitionMs)
+			.attr("text-anchor", outerTextAnchor)
+			.attr("dy", outerTextDY)
+			.attr("x", function(d) { return halfWayAngleX(d, r + 15); })
+			.attr("y", function(d) { return halfWayAngleY(d, r + 15); })
+			.attrTween("x", function(d) { return halfWayAngleXTween.call(this, d, r + 15); })
+			.attrTween("y", function(d) { return halfWayAngleYTween.call(this, d, r + 15); });
+		
+		outerLabels.enter().append("text")
+			.classed("outer", true)
+			.attr("x", function(d) { return halfWayAngleX(d, r + 15); })
+			.attr("y", function(d) { return halfWayAngleY(d, r + 15); })
+			.attr("text-anchor", outerTextAnchor)
+			.attr("dy", outerTextDY)
+			.style("opacity", 1e-6)
+			.text(outerText)
+			.each(function(d) { 
+				this._data_start_x = d;
+				this._data_start_y = d;
+			}) // to support transitions
+		.transition().duration(transitionMs)
+			.style("opacity", 1)
+			.each("end", clearOpacity);
+
+		outerLabels.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+	
+
 		var innerLabels = chartLabels.selectAll("text.inner").data(pieSlices, pieSliceKey);
 		
 		//innerLabels.enter()
@@ -249,11 +353,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return the sum total energy value, in watt hours
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.totalValue = function() {
-		return d3.sum(pieSlices, function(d) {
-			return d.value;
-		});
-	};
+	that.totalValue = function() { return totalValue; };
 	
 	/**
 	 * Load data for the chart.
