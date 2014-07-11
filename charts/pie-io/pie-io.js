@@ -21,7 +21,7 @@ function legendClickHandler(d, i) {
 		// use a slight delay, otherwise transitions can be jittery
 		setTimeout(function() {
 			sn.runtime.energyPieChart.regenerate();
-			adjustChartDisplayUnits('.watthour-chart', 'Wh', sn.runtime.energyPieChart.yScale());
+			adjustChartDisplayUnits('.watthour-chart', 'Wh', sn.runtime.energyPieChart.scale());
 		}, sn.runtime.energyPieChart.transitionMs() * 0.5);
 	}
 }
