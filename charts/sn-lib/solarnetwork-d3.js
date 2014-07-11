@@ -971,6 +971,16 @@ sn.deg2rad = function(deg) {
 };
 
 /**
+ * Convert radians to degrees.
+ * 
+ * @param {number} rad - the radians value to convert to degrees
+ * @returns {number} the degrees
+ */
+sn.rad2deg = function(rad) {
+	return rad * 180 / Math.PI;
+};
+
+/**
  * Get the width of an element based on a selector, in pixels.
  * 
  * @param {string} selector - a selector to an element to get the width of

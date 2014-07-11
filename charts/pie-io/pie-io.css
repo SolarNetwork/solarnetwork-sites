@@ -227,3 +227,10 @@ svg {
 .chart line.axis {
 	stroke: black;
 }
+
+/* Pie support */
+
+.chart g.label line {
+	stroke: black;
+	opacity: 1;
+}

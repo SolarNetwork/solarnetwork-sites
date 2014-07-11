@@ -54,7 +54,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var transitionMs = undefined;
 	
 	var svgRoot = undefined,
-		svg = undefined;
+		chartData = undefined,
+		chartLabels = undefined;
 	
 	var arc = d3.svg.arc()
 			.innerRadius(0)
@@ -80,10 +81,14 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		svgRoot.selectAll('*').remove();
 	}
 
-	svg = svgRoot.append("g")
+	chartData = svgRoot.append("g")
 		.attr('class', 'data')
 		.attr("transform", "translate(" + ((w + p[1] + p[3]) / 2) + "," + ((h + p[0] + p[2]) / 2) + ")");
 	
+	chartLabels = svgRoot.append("g")
+		.attr('class', 'label')
+		.attr("transform", "translate(" + ((w + p[1] + p[3]) / 2) + "," + ((h + p[0] + p[2]) / 2) + ")");
+
 	function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
 
 	// setup display units in kW if domain range > 1000
@@ -124,6 +129,13 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			})
 			.entries(rawData);
 		
+		// filter out excluded sources
+		if ( config.excludeSources !== undefined ) {
+			rollup = rollup.filter(function(e, i) {
+				return !config.excludeSources.enabled(e.key);
+			});
+		}
+		
 		var pie = d3.layout.pie()
 			.sort(null)
 			.value(function(d) {
@@ -152,10 +164,14 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			return arc(td);
 		};
 	}
+	
+	function pieSliceKey(d) {
+		return d.data.key;
+	}
 
 	function redraw() {	
 		// draw data areas
-		var pie = svg.selectAll("path").data(pieSlices);
+		var pie = chartData.selectAll("path").data(pieSlices, pieSliceKey);
 		
 		pie.transition().duration(transitionMs)
 			.attr("d", arc)
@@ -175,6 +191,43 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		pie.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
+		
+		redrawLabels();
+	}
+	
+	function halfWayRotation(d) {
+		var halfAngle = d.startAngle + (d.endAngle - d.startAngle) / 2;
+		var degrees = sn.rad2deg(halfAngle);
+		return ('rotate(' +degrees +')');
+	}
+	
+	function redrawLabels() {
+		// draw data labels
+		var lines = chartLabels.selectAll("line").data(pieSlices, pieSliceKey);
+		
+		lines.transition().duration(transitionMs)
+			.attr('transform', halfWayRotation);
+		
+		// we'll draw vertical lines, and then rotate them to match the half way angle
+		// between the start/end angles defined on our data elements
+		lines.enter().append("line")
+			.attr("class", "tick")
+			.attr("y1", -Math.floor(r - 10))
+			.attr("y2", -Math.floor(r + 10))
+			.style("opacity", 1e-6)
+			.attr('transform', halfWayRotation)
+		.transition().duration(transitionMs)
+			.style("opacity", 1)
+			.each('end', clearOpacity);
+		
+		lines.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+		
+		var innerLabels = chartLabels.selectAll("text.inner").data(pieSlices, pieSliceKey);
+		
+		//innerLabels.enter()
+	
 	}
 
 	that.sources = sources;
