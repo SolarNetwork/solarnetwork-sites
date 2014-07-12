@@ -324,14 +324,13 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 				(config.enabled('hidePercentages') ? [] : pieSlices), pieSliceKey);
 			
 		innerLabels.transition().duration(transitionMs)
-			.attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
 			.text(innerText)
-			/*.attrTween("x", function(d) { return halfWayAngleXTween.call(this, d, r + 15); })
-			.attrTween("y", function(d) { return halfWayAngleYTween.call(this, d, r + 15); })*/;
+			.attr("transform", function(d) { return halfWayAngleTransform(d, r / 2); })
+			.attrTween("transform", function(d) { return halfWayAngleTransformTween.call(this, d, r / 2); });
 		
 		innerLabels.enter().append("text")
 			.classed("inner", true)
-			.attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+			.attr("transform", function(d) { return halfWayAngleTransform(d, r / 2); })
 			.attr("text-anchor", "middle")
 			.style("opacity", 1e-6)
 			.text(innerText)
