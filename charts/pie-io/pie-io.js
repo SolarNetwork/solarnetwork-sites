@@ -183,6 +183,18 @@ function setupUI() {
 		sn.runtime.energyPieChart.regenerate();
 	});
 	
+	// toggle pie/donut modes
+	d3.select('#donut-toggle').classed('clickable', true).on('click', function(d) {
+		var me = d3.select(this);
+		var isPie = me.classed('fa-circle-o');
+		me.classed({
+			'fa-circle-o' : !isPie,
+			'fa-circle' : isPie
+		});
+		sn.runtime.energyPieParameters.value('innerRadius', (isPie ? 60 : 0));
+		sn.runtime.energyPieChart.regenerate();
+	});
+	
 }
 
 //show/hide the proper range selection based on the current aggregate level

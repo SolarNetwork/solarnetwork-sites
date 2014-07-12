@@ -20,6 +20,7 @@ if ( sn === undefined ) {
  * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
  * @property {boolean} [hidePercentages=false] - if false, show percentages represented by each slice
  * @property {boolean} [hideValues=false] - if false, show the actual values represented by each slice
+ * @property {number} [innerRadius=0] - an inner radius for the chart, in pixels
  */
 
 /**
@@ -59,19 +60,20 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		chartData = undefined,
 		chartLabels = undefined;
 	
-	var arc = d3.svg.arc()
-			.innerRadius(0)
-			.outerRadius(r);
-
 	var percentFormatter = d3.format('.0%');
 
 	var originalData = undefined;
 	var pieSlices = undefined;
 	var consumptionLayerCount = 0;
 	var totalValue = 0;
+	var innerRadius = 0;
+	var arc = d3.svg.arc();
 	
 	function parseConfiguration() {
-		transitionMs = (config.transitionMs || 600);
+		transitionMs = (config.value('transitionMs') || 600);
+		innerRadius = (config.value('innerRadius') || 0);
+		arc.innerRadius(innerRadius)
+			.outerRadius(r);
 	}
 
 	parseConfiguration();
@@ -322,15 +324,17 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		// inner labels, showing percentage
 		var innerLabels = chartLabels.selectAll("text.inner").data(
 				(config.enabled('hidePercentages') ? [] : pieSlices), pieSliceKey);
+		
+		var labelRadius = (r - innerRadius) / 2 + innerRadius;
 			
 		innerLabels.transition().duration(transitionMs)
 			.text(innerText)
-			.attr("transform", function(d) { return halfWayAngleTransform(d, r / 2); })
-			.attrTween("transform", function(d) { return halfWayAngleTransformTween.call(this, d, r / 2); });
+			.attr("transform", function(d) { return halfWayAngleTransform(d, labelRadius); })
+			.attrTween("transform", function(d) { return halfWayAngleTransformTween.call(this, d, labelRadius); });
 		
 		innerLabels.enter().append("text")
 			.classed("inner", true)
-			.attr("transform", function(d) { return halfWayAngleTransform(d, r / 2); })
+			.attr("transform", function(d) { return halfWayAngleTransform(d, labelRadius); })
 			.attr("text-anchor", "middle")
 			.style("opacity", 1e-6)
 			.text(innerText)
