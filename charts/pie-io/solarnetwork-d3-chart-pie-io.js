@@ -218,32 +218,18 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		return ('rotate(' +degrees +')');
 	}
 	
-	function halfWayAngleXTween(d, r) {
-		var i = d3.interpolate(halfAngle(this._data_start_x), halfAngle(d));
-		this._data_start_x = d;
+	function halfWayAngleTransformTween(d, r) {
+		var i = d3.interpolate(halfAngle(this._data_start), halfAngle(d));
+		this._data_start = d;
 		return function(t) {
-			var a = i(t);
-			return Math.cos(a - Math.PI / 2) * r;
+			var a = i(t) - Math.PI / 2;
+			return "translate(" + (Math.cos(a) * r) + "," +(Math.sin(a) * r) +")";
 		};
 	}
 	
-	function halfWayAngleYTween(d, r) {
-		var i = d3.interpolate(halfAngle(this._data_start_y), halfAngle(d));
-		this._data_start_y = d;
-		return function(t) {
-			var a = i(t);
-			return Math.sin(a - Math.PI / 2) * r;
-		};
-	}
-	
-	function halfWayAngleX(d, r) {
+	function halfWayAngleTransform(d, r) {
 		var a = halfAngleForLabel(d);
-		return Math.cos(a) * r;
-	}
-	
-	function halfWayAngleY(d, r) {
-		var a = halfAngleForLabel(d);
-		return Math.sin(a) * r;
+		return "translate(" + (Math.cos(a) * r) + "," +(Math.sin(a) * r) +")";
 	}
 	
 	// format the data's actual value
@@ -312,23 +298,17 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.text(outerText)
 			.attr("text-anchor", outerTextAnchor)
 			.attr("dy", outerTextDY)
-			.attr("x", function(d) { return halfWayAngleX(d, r + 15); })
-			.attr("y", function(d) { return halfWayAngleY(d, r + 15); })
-			.attrTween("x", function(d) { return halfWayAngleXTween.call(this, d, r + 15); })
-			.attrTween("y", function(d) { return halfWayAngleYTween.call(this, d, r + 15); });
+			.attr("transform", function(d) { return halfWayAngleTransform(d, r + 15); })
+			.attrTween("transform", function(d) { return halfWayAngleTransformTween.call(this, d, r + 15); });
 		
 		outerLabels.enter().append("text")
 			.classed("outer", true)
-			.attr("x", function(d) { return halfWayAngleX(d, r + 15); })
-			.attr("y", function(d) { return halfWayAngleY(d, r + 15); })
+			.attr("transform", function(d) { return halfWayAngleTransform(d, r + 15); })
 			.attr("text-anchor", outerTextAnchor)
 			.attr("dy", outerTextDY)
 			.style("opacity", 1e-6)
 			.text(outerText)
-			.each(function(d) { 
-				this._data_start_x = d;
-				this._data_start_y = d;
-			}) // to support transitions
+			.each(function(d) { this._data_start = d; }) // to support transitions
 		.transition().duration(transitionMs)
 			.style("opacity", 1)
 			.each("end", clearOpacity);
@@ -337,6 +317,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.style("opacity", 1e-6)
 			.remove();
 	
+		// TODO: remove lables if pie slice too small to hold text for it
+		
 		// inner labels, showing percentage
 		var innerLabels = chartLabels.selectAll("text.inner").data(
 				(config.enabled('hidePercentages') ? [] : pieSlices), pieSliceKey);
