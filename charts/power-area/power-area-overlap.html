@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1024" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<title>SolarNetwork Chart - Power I/O</title>
+	
+	<link type="text/css" rel="stylesheet" href="../css/font-awesome.min.css">
+	<link type="text/css" rel="stylesheet" href="power-area.css" />
+	
+	<script type="text/javascript" src="../js-lib/d3-3.min.js"></script>
+	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
+	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
+	<script type="text/javascript" src="../js-lib/hmac-sha1-3.min.js"></script>
+	<script type="text/javascript" src="../js-lib/enc-base64-3.min.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-sec.js"></script>
+	<script type="text/javascript" src="solarnetwork-d3-chart-power-area-overlap.js"></script>
+	<script type="text/javascript" src="power-area-overlap.js"></script>
+	<script type="text/javascript">
+		function startApp() {
+			onDocumentReady();
+		}
+		if ( !window.isLoaded ) {
+			window.addEventListener("load", function() {
+				startApp();
+			}, false);
+		} else {
+			startApp();
+		}
+	</script>
+</head>
+<body>
+	<h1>SolarNetwork Chart - Power Area</h1>
+	<div class="hbox">
+		<div class="vbox main">
+			<div class="pane power-area-chart">
+				<h2><span class="time-count"></span> <span class="time-unit">hour</span> <span class="unit-kind">power</span> <span class="alt"><span class="unit">(kW)</span></span></h2>
+				<div id="power-area-chart" class="chart-container"></div>
+			</div>
+		</div>
+		<div class="vbox sub">
+			<div class="pane">
+				<div id="source-labels"></div>
+			</div>
+			<div class="pane">
+				<form id="details">
+					<label for="nodeId" class="generation">Node</label>
+					<input type="number" name="nodeId" value=""/>
+					<label for="consumptionNodeId" class="consumption">Node</label>
+					<input type="number" name="consumptionNodeId" value=""/>
+					<div class="wiggle">
+						<label for="wiggle">Wiggle</label>
+						<input type="checkbox" name="wiggle" value="true" checked="checked"/>
+					</div>
+					<div class="range minute">
+						<label for="hours">Hours</label>
+						<input type="number" name="numHours" value="24" min="1" max="36"/>
+					</div>
+					<div class="range hour">
+						<label for="days">Days</label>
+						<input type="number" name="numDays" value="7" min="1" max="11"/>
+					</div>
+					<div class="range day">
+						<label for="months">Months</label>
+						<input type="number" name="numMonths" value="4" min="1" max="8"/>
+					</div>
+					<div class="range month">
+						<label for="years">Years</label>
+						<input type="number" name="numYears" value="2" min="1" max="5"/>
+					</div>
+				</form>
+				<div class="actions">
+					<i id="range-toggle" class="fa fa-wrench button"></i>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>
