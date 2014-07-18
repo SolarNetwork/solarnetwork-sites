@@ -21,6 +21,8 @@ if ( sn === undefined ) {
  * @property {boolean} [hidePercentages=false] - if false, show percentages represented by each slice
  * @property {boolean} [hideValues=false] - if false, show the actual values represented by each slice
  * @property {number} [innerRadius=0] - an inner radius for the chart, in pixels
+ * @property {number} [percentageLabelMinimumPercent=5] - the minimum percentage necessary for a percentage label to appear
+ * @property {number} [valueLabelMinimumPercent=5] - the minimum percentage necessary for a value label to appear
  */
 
 /**
@@ -264,6 +266,16 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		return 0;
 	}
 	
+	function innerLabelMinValue() {
+		var m = Number(config.value('percentageLabelMinimumPercent'));
+		return (isNaN(m) ? 5 : m) / 100 * totalValue;
+	}
+	
+	function outerLabelMinValue() {
+		var m = Number(config.value('valueLabelMinimumPercent'));
+		return (isNaN(m) ? 5 : m) / 100 * totalValue;
+	}
+	
 	function redrawLabels() {
 		/* TODO: the idea for drawing lines would be if the pie slice is too small to 
 		 * show a value inside. We'd draw a line out from the slice, using the same
@@ -293,8 +305,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		*/
 		
 		// show outer labels of actual values
-		var outerLabels = chartLabels.selectAll("text.outer").data(
-				(config.enabled('hideValues') ? [] : pieSlices), pieSliceKey);
+		var outerMinValue = outerLabelMinValue();
+		var outerLabelData = (config.enabled('hideValues') 
+			? []
+			: pieSlices.filter(function(e) { return e.value > outerMinValue; }));
+		
+		var outerLabels = chartLabels.selectAll("text.outer").data(outerLabelData, pieSliceKey);
 			
 		outerLabels.transition().duration(transitionMs)
 			.text(outerText)
@@ -322,8 +338,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		// TODO: remove lables if pie slice too small to hold text for it
 		
 		// inner labels, showing percentage
-		var innerLabels = chartLabels.selectAll("text.inner").data(
-				(config.enabled('hidePercentages') ? [] : pieSlices), pieSliceKey);
+		var innerMinValue = innerLabelMinValue();
+		var innerLabelData = (config.enabled('hideValues') 
+			? []
+			: pieSlices.filter(function(e) { return e.value > innerMinValue; }));
+
+		var innerLabels = chartLabels.selectAll("text.inner").data(innerLabelData, pieSliceKey);
 		
 		var labelRadius = (r - innerRadius) / 2 + innerRadius;
 			
