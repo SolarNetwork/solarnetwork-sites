@@ -90,8 +90,6 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		that.plotProperties(config.plotProperties);
 		transitionMs = (config.transitionMs || 600);
 		vertRuleOpacity = (config.vertRuleOpacity || 0.05);
-		seasonColors = (config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
-		northernHemisphere = (config.northernHemisphere === true ? true : false);
 		stackOffset = (config.wiggle === true ? 'wiggle' : 'zero');
 	}
 	
