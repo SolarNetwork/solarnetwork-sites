@@ -1,7 +1,7 @@
 /**
  * @require d3 3.0
  * @require queue 1.0
- * @require solarnetwork-d3 0.0.3
+ * @require solarnetwork-d3 0.0.4
  * @require solarnetwork-d3-chart-power-area-overlap 1.0.0
  */
 
@@ -35,6 +35,197 @@ function updateRangeSelection() {
 	d3.selectAll('#details div.range').style('display', function() {
 		return (d3.select(this).classed(sn.runtime.powerAreaOverlapParameters.aggregate.toLowerCase()) ? 'block' : 'none');
 	});
+}
+
+function colorDataTypeSourceMapper(e, i, sourceId) {
+	if ( sourceId === '' ) {
+		sourceId = 'Main';
+	}
+	return sn.runtime.sourceColorMap.displaySourceMap[e][sourceId];
+}
+
+function colorForDataTypeSource(dataType, sourceId) {
+	if ( sourceId === '' ) {
+		sourceId = 'Main';
+	}
+	return sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
+}
+
+/**
+ * An power stacked area chart that overlaps two or more data sets.
+ * 
+ * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
+ * in the chart. After changing the configuration call {@link sn.chart.powerAreaOverlapChart#regenerate()}
+ * to re-draw the chart.
+ * 
+ * Note that the global {@link sn.colorFn} function is used to map sources to colors, so that
+ * must be set up previously.
+ * 
+ * @class
+ * @param {string[]} dataTypes - array of data types to load data for
+ * @param {function} dataTypeUrlHelperProvider - function that returns a {@link sn.nodeUrlHelper} for a given data type
+ * @param {date} start - the start date
+ * @param {date} end - the end date
+ * @param {string} aggregate - optional aggregate level
+ * @param {number} precision - optional precision level (for Minute level aggregation only)
+ * @returns {sn.datumLoader}
+ */
+sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, aggregate, precision) {
+	
+	var that = {
+			version : '1.0.0'
+	};
+
+	//var dataTypeSourceMapper = undefined;
+	var requestOptions = undefined;
+	var finishedCallback = undefined;
+
+	var state = {}; // keys are data types, values are 1:loading, 2:done
+	var results = {};
+	
+	function aggregateValue() {
+		return (aggregate === undefined ? 'Hour'  : aggregate);
+	}
+	
+	function precisionValue() {
+		return (precision === undefined ? 10 : precision);
+	}
+	
+	function requestCompletionHandler(dataType) {
+		state[dataType] = 2; // done
+		
+		// check if we're all done loading, and if so call our callback function
+		if ( dataTypes.every(function(e) { return state[e] == 2; }) && finishedCallback ) {
+			finishedCallback.call(that, results);
+		}
+	}
+
+	function loadForDataType(dataType, dataTypeIndex, offset) {
+		var urlHelper = dataTypeUrlHelperProvider(dataType, dataTypeIndex);
+		var opts = {};
+		var key = undefined;
+		if ( requestOptions ) {
+			for ( key in requestOptions ) {
+				opts[key] = requestOptions[key];
+			}
+		}
+		if ( offset ) {
+			opts.offset = offset;
+		}
+		var url;
+		var dataExtractor;
+		var offsetExtractor;
+		if ( aggregateValue() === 'Minute' ) {
+			// use /query to normalize minutes
+			url = urlHelper.dateTimeQuery(dataType, start, end, precisionValue(), opts);
+			dataExtractor = function(json) {
+				if ( json.success !== true || Array.isArray(json.data) !== true ) {
+					return undefined;
+				}
+				return json.data;
+			};
+			offsetExtractor = function() { return 0; };
+		} else {
+			// use /list for faster access
+			url = urlHelper.dateTimeList(dataType, start, end, aggregateValue(), opts);
+			dataExtractor = function(json) {
+				if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
+					return undefined;
+				}
+				return json.data.results;
+			};
+			offsetExtractor = function(json) { 
+				return (json.data.returnedResultCount + json.data.startingOffset < json.data.totalResults 
+						? (json.data.returnedResultCount + json.data.startingOffset)
+						: 0);
+			};
+		}
+		d3.json(url, function(error, json) {
+			var dataArray = dataExtractor(json);
+			var nextOffset;
+			if ( dataArray === undefined ) {
+				sn.log('No data available for node {0} data type {1}', urlHelper.nodeId(), dataType);
+				requestCompletionHandler(dataType);
+				return;
+			}
+			if ( results[dataType] === undefined ) {
+				results[dataType] = dataArray;
+			} else {
+				results[dataType] = results[dataType].concat(dataArray);
+			}
+			
+			// see if we need to load more results
+			nextOffset = offsetExtractor(json);
+			if ( nextOffset > 0 ) {
+				loadForDataType(dataType, dataTypeIndex, nextOffset);
+			} else {
+				requestCompletionHandler(dataType);
+			}
+		});
+	}
+	
+	/**
+	 * Get or set the request options object.
+	 * 
+	 * @param {object} [value] the options to use
+	 * @return when used as a getter, the current request options, otherwise this object
+	 * @memberOf sn.datumLoader
+	 */
+	that.requestOptions = function(value) {
+		if ( !arguments.length ) return requestOptions;
+		requestOptions = value;
+		return that;
+	};
+
+	/**
+	 * Get or set the callback function, invoked after all data has been loaded.
+	 * 
+	 * @param {function} [value] the callback function to use
+	 * @return when used as a getter, the current callback function, otherwise this object
+	 * @memberOf sn.datumLoader
+	 */
+	that.callback = function(value) {
+		if ( !arguments.length ) return finishedCallback;
+		if ( typeof value === 'function' ) {
+			finishedCallback = value;
+		}
+		return that;
+	};
+	
+	/**
+	 * Initiate loading the data.
+	 * 
+	 * @memberOf sn.datumLoader
+	 */
+	that.load = function() {
+		dataTypes.forEach(function(e) {
+			state[e] = 1; // loading
+		});
+		dataTypes.forEach(function(e, i) {
+			loadForDataType(e, i);
+		});
+		return that;
+	};
+
+	return that;
+};
+
+function chartDataCallback(dataType, datum) {
+	// create date property
+	if ( datum.localDate ) {
+		datum.date = sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
+	} else if ( datum.created ) {
+		datum.date = sn.timestampFormat.parse(datum.created);
+	} else {
+		datum.date = null;
+	}
+
+	/* map source ID
+	var mappedSourceId = colorDataTypeSourceMapper(dataType, null, datum.sourceId);
+	if ( mappedSourceId !== undefined ) {
+		datum.sourceId = mappedSourceId;
+	}
+	*/
 }
 
 // Watt stacked area chart
@@ -72,46 +263,21 @@ function powerAreaOverlapChartSetup(endDate, sourceMap) {
 	d3.select('.power-area-chart .time-count').text(timeCount);
 	d3.select('.power-area-chart .time-unit').text(timeUnit);
 	
-	var q = queue();
-	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, 
-				(sn.runtime.powerAreaOverlapParameters.aggregate === 'Minute' 
-					? precision 
-					: sn.runtime.powerAreaOverlapParameters.aggregate)));
-	});
-	q.awaitAll(function(error, results) {
-		if ( error ) {
-			sn.log('Error requesting data: ' +error);
-			return;
-		}
-		var i, iMax, j, jMax, json, datum, mappedSourceId;
-		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-			json = results[i];
-			if ( json.success !== true || Array.isArray(json.data) !== true ) {
-				sn.log('No data available for node {0} data type {1}', sn.runtime.urlHelper.nodeId(), sn.env.dataTypes[i]);
-				return;
-			}
-			
-			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
-				datum = json.data[j];
-				datum.date = sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
-
-				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
-				if ( mappedSourceId !== undefined ) {
-					datum.sourceId = mappedSourceId;
-				}
-			}
-			sn.runtime.powerAreaOverlapChart.load(json.data, (i === 0 ? 'Consumption' : 'Generation'));
-		}
-		sn.runtime.powerAreaOverlapChart.regenerate();
-		sn.log("Power Area chart watt range: {0}", sn.runtime.powerAreaOverlapChart.yDomain());
-		sn.log("Power Area chart time range: {0}", sn.runtime.powerAreaOverlapChart.xDomain());
-		adjustChartDisplayUnits('.power-area-chart', 
-				(sn.runtime.powerAreaOverlapChart.aggregate() === 'Minute' ? 'W' : 'Wh'), 
-				sn.runtime.powerAreaOverlapChart.yScale(),
-				(sn.runtime.powerAreaOverlapChart.aggregate() === 'Minute' ? 'power' : 'energy'));
-	});
+	sn.datumLoader(sn.env.dataTypes, urlHelperForAvailbleDataRange, 
+			start, end, sn.runtime.powerAreaOverlapParameters.aggregate)
+		.callback(function(results) {
+			sn.env.dataTypes.forEach(function(e, i) {
+				var dataTypeResults = results[e];
+				sn.runtime.powerAreaOverlapChart.load(dataTypeResults, e);
+			});
+			sn.runtime.powerAreaOverlapChart.regenerate();
+			sn.log("Power Area chart watt range: {0}", sn.runtime.powerAreaOverlapChart.yDomain());
+			sn.log("Power Area chart time range: {0}", sn.runtime.powerAreaOverlapChart.xDomain());
+			adjustChartDisplayUnits('.power-area-chart', 
+					(sn.runtime.powerAreaOverlapChart.aggregate() === 'Minute' ? 'W' : 'Wh'), 
+					sn.runtime.powerAreaOverlapChart.yScale(),
+					(sn.runtime.powerAreaOverlapChart.aggregate() === 'Minute' ? 'power' : 'energy'));
+		}).load();
 }
 
 function setup(repInterval, sourceMap) {
@@ -226,7 +392,9 @@ function onDocumentReady() {
 		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	
-	sn.runtime.powerAreaOverlapChart = sn.chart.powerAreaOverlapChart('#power-area-chart', sn.runtime.powerAreaOverlapParameters);
+	sn.runtime.powerAreaOverlapChart = sn.chart.powerAreaOverlapChart('#power-area-chart', sn.runtime.powerAreaOverlapParameters)
+		.dataCallback(chartDataCallback)
+		.colorCallback(colorForDataTypeSource);
 	
 	setupUI();
 

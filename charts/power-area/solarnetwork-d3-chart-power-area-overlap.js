@@ -29,9 +29,6 @@ if ( sn === undefined ) {
  * in the chart. After changing the configuration call {@link sn.chart.powerAreaOverlapChart#regenerate()}
  * to re-draw the chart.
  * 
- * Note that the global {@link sn.colorFn} function is used to map sources to colors, so that
- * must be set up previously.
- * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.powerAreaOverlapChartParameters} [chartConfig] - the chart parameters
@@ -69,13 +66,16 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	var stackOffset = undefined;
 
 	var svgRoot = undefined,
-		svg = undefined,
 		svgTickGroupX = undefined;
 	
-	// our layer data, and generator function
+	var dataCallback = undefined;
+	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
+	
+	// our layer data
+	var groupIds = [];
 	var groupData = {};
-	var layerGenerator = undefined;
-	var layers = undefined;
+	var groupSvg = {};
+	var groupLayers = {};
 	var minY = 0;
 
 	// Set y-axis  unit label
@@ -85,10 +85,10 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 
 	var areaPathGenerator = d3.svg.area()
 		.interpolate("monotone")
-		.x(function(d) { return x(d.x); })
+		.x(function(d) { return x(d.date); })
 		.y0(function(d) { return y(d.y0); })
 		.y1(function(d) { return y(d.y0 + d.y); });
-
+	
 	function parseConfiguration() {
 		that.aggregate(config.aggregate);
 		that.plotProperties(config.plotProperties);
@@ -107,10 +107,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		svgRoot.selectAll('*').remove();
 	}
 
-	svg = svgRoot.append("g")
-		.attr('class', 'data')
-		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-	
 	svgTickGroupX = svgRoot.append("g")
 		.attr("class", "ticks")
 		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
@@ -121,15 +117,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 
 	//function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
 
-	function computeDomainX() {
-		x.domain(layers.domainX);
-	}
-
-	function computeDomainY() {
-		y.domain([minY, layers.maxY]).nice();
-		computeUnitsY();
-	}
-	
 	function computeUnitsY() {
 		var fmt;
 		var maxY = d3.max(y.domain(), function(v) { return Math.abs(v); });
@@ -151,22 +138,28 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	}
 
 	function setup() {
-		var groupId = undefined;
-		var rawGroupData = undefined;
 		var plotPropName = plotProperties[aggregateType];
-		var i, j, jMax, k, dummy;
-		for ( groupId in originalData ) {
-			rawGroupData = originalData[groupId];
+		var minX = undefined, maxX = undefined;
+		var maxY = undefined;
+		groupIds.forEach(function(groupId) {
+			var i, j, jMax, k, dummy;
+			var layerData;
+			var rawGroupData = originalData[groupId];
 			if ( !rawGroupData || !rawGroupData.length > 1 ) {
-				continue;
+				return;
 			}
-			var layerData = d3.nest()
-				.key(function(d) { return d.sourceId; })
+			layerData = d3.nest()
+				.key(function(d) {
+					if ( dataCallback ) {
+						dataCallback.call(that, groupId, d);
+					}
+					return d.sourceId;
+				})
 				.entries(rawGroupData);
 			
 			// fill in "holes" for each stack, if more than one stack. we assume data already sorted by date
 			jMax = layerData.length - 1;
-			if ( jMax > 1 ) {
+			if ( jMax > 0 ) {
 				i = 0;
 				while ( i < layerData[0].values.length ) {
 					dummy = undefined;
@@ -176,7 +169,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 						} else {
 							k = 0;
 						}
-						if ( layerData[j].values[i].date.getTime() < layerData[k].values[i].date.getTime() ) {
+						if ( layerData[k].values.length <= i || layerData[j].values[i].date.getTime() < layerData[k].values[i].date.getTime() ) {
 							dummy = {date : layerData[j].values[i].date};
 							dummy[plotProperties[aggregateType]] = null;
 							layerData[k].values.splice(i, 0, dummy);
@@ -187,18 +180,53 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 					}
 				}
 			}
+			var stack = d3.layout.stack()
+				.offset(stackOffset)
+				.values(function(d) { 
+					return d.values;
+				})
+				.x(function(d) { 
+					return d.date; 
+				})
+				.y(function(d) { 
+					var y = d[plotPropName];
+					if ( y === undefined || y < 0 || y === null ) {
+						y = 0;
+					}
+					return y;
+				});
+			var rangeX = [rawGroupData[0].date, rawGroupData[rawGroupData.length - 1].date];
+			if ( minX === undefined || rangeX[0].getTime() < minX.getTime() ) {
+				minX = rangeX[0];
+			}
+			if ( maxX === undefined || rangeX[1].getTime() > maxX.getTime() ) {
+				maxX = rangeX[1];
+			}
 			groupData[groupId] = {
-					stack : d3.layout.stack()
-						.offset(stackOffset)
-						.values(function(d) { return d.values; })
-						.x(function(d) { return d.date; })
-						.y(function(d) { return d[plotPropName];} ),
+					stack : stack,
 					layerData : layerData,
-					xRange : [rawGroupData[0].date, rawGroupData[rawGroupData.length - 1].date]
+					xRange : rangeX
 			};
+			var layers = stack(layerData);
+			groupLayers[groupId] = layers;
+			var rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
+			if ( maxY === undefined || rangeY[1] > maxY ) {
+				maxY = rangeY[1];
+			}
+			groupData[groupId].yRange = rangeY;
+		});
+		
+		// setup X domain
+		if ( minX !== undefined && maxX !== undefined ) {
+			x.domain([minX, maxX]);
 		}
 		
-		// fill in "holes" for each stack
+		// setup Y domain
+		if ( maxY !== undefined ) {
+			y.domain([0, maxY]).nice();
+		}
+		
+		computeUnitsY();
 		
 		return;
 		// turn filteredData object into proper array, sorted by date
@@ -218,21 +246,34 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		computeDomainX();
 		computeDomainY();
 	}
+	
+	function fillColor(groupId, d, i) {
+		if ( colorCallback === undefined ) {
+			return 'black';
+		}
+		return colorCallback(groupId, d.key);
+	}
 
 	function draw() {	
 		// draw data areas
-		var area = svg.selectAll("path.area").data(layers);
-		
-		area.transition().duration(transitionMs).delay(200)
+		groupIds.forEach(function(groupId) {
+			var layers = groupLayers[groupId].map(function(e) { return e.values; });
+			var svg = groupSvg[groupId];
+			var area = svg.selectAll("path.area").data(layers);
+			var fillFn = function(d, i) {
+				return fillColor(groupId, d, i);
+			};
+			area.transition().duration(transitionMs).delay(200)
 				.attr("d", areaPathGenerator)
-				.style("fill", sn.colorFn);
-		
-		area.enter().append("path")
-				.attr("class", "area")
-				.style("fill", sn.colorFn)
-				.attr("d", areaPathGenerator);
-		
-		area.exit().remove();
+				.style("fill", fillFn);
+	
+			area.enter().append("path")
+					.attr("class", "area")
+					.style("fill", fillFn)
+					.attr("d", areaPathGenerator);
+			
+			area.exit().remove();
+		});
 	}
 
 	function axisYTransform(d) {
@@ -360,11 +401,14 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	that.reset = function() {
 		originalData = {};
 		groupData = {};
+		// TODO: delete svg groups
+		groupSvg = {};
 		return that;
 	};
 	
 	/**
-	 * Load data for a single group in the chart. This does not redraw the chart. 
+	 * Add data for a single group in the chart. The data is appended if data has 
+	 * already been loaded for the given groupId. This does not redraw the chart. 
 	 * Once all groups have been loaded, call {@link #regenerate()} to redraw.
 	 * 
 	 * @param {Array} rawData - the raw chart data to load
@@ -372,8 +416,16 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * @return this object
 	 * @memberOf sn.chart.powerAreaOverlapChart
 	 */
-	that.load = function(rawData, stackId) {
-		originalData[stackId] = rawData;
+	that.load = function(rawData, groupId) {
+		if ( originalData[groupId] === undefined ) {
+			groupIds.push(groupId);
+			originalData[groupId] = rawData;
+			groupSvg[groupId] = svgRoot.append("g")
+				.attr('class', 'data')
+				.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+		} else {
+			originalData[groupId].concat(rawData);
+		}
 		return that;
 	};
 	
@@ -464,6 +516,39 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			p[e] = (value !== undefined && value[e] !== undefined ? value[e] : 'watts');
 		});
 		plotProperties = p;
+		return that;
+	};
+
+	/**
+	 * Get or set the data callback function. This function will be called as the
+	 * chart iterates over the raw input data as it performs grouping and normalization
+	 * operations. The callback will be passed the group ID and the data as arguments.
+	 * 
+	 * @param {function} [value] the data callback
+	 * @return when used as a getter, the current data callback function, otherwise this object
+	 * @memberOf sn.chart.powerAreaOverlapChart
+	 */
+	that.dataCallback = function(value) {
+		if ( !arguments.length ) return dataCallback;
+		if ( typeof value === 'function' ) {
+			dataCallback = value;
+		}
+		return that;
+	};
+
+	/**
+	 * Get or set the color callback function. The callback will be passed the group ID 
+	 * and a source ID as arguments.
+	 * 
+	 * @param {function} [value] the color callback
+	 * @return when used as a getter, the current color callback function, otherwise this object
+	 * @memberOf sn.chart.powerAreaOverlapChart
+	 */
+	that.colorCallback = function(value) {
+		if ( !arguments.length ) return colorCallback;
+		if ( typeof value === 'function' ) {
+			colorCallback = value;
+		}
 		return that;
 	};
 
