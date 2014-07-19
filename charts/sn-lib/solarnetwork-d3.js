@@ -4,7 +4,7 @@
  * @require queue 1.0
  */
 var sn = {
-	version : '0.0.3',
+	version : '0.0.4',
 	
 	config : {
 		debug : false,
@@ -69,6 +69,8 @@ var sn = {
 	runtime : {},
 	
 	dateTimeFormat : d3.time.format.utc("%Y-%m-%d %H:%M"),
+
+	timestampFormat : d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ"),
 
 	dateTimeFormatLocal : d3.time.format("%Y-%m-%d %H:%M"),
 
@@ -549,6 +551,13 @@ sn.nodeUrlHelper = function(nodeId) {
 			} else if ( typeof agg === 'string' && agg.length > 0 ) {
 				dataURL += '&aggregate=' + encodeURIComponent(agg);
 			}
+			if ( opts !== undefined ) {
+				if ( Array.isArray(opts.sourceIds) ) {
+					opts.sourceIds.forEach(function(e) {
+						dataURL += '&sourceIds=' + encodeURIComponent(e);
+					});
+				}
+			}
 			return dataURL;
 		},
 		
@@ -575,6 +584,16 @@ sn.nodeUrlHelper = function(nodeId) {
 			}
 			if ( typeof agg === 'string' && agg.length > 0 ) {
 				dataURL += '&aggregate=' + encodeURIComponent(agg);
+			}
+			if ( opts !== undefined ) {
+				if ( Array.isArray(opts.sourceIds) ) {
+					opts.sourceIds.forEach(function(e) {
+						dataURL += '&sourceIds=' + encodeURIComponent(e);
+					});
+				}
+				if ( opts.offset > 0 ) {
+					dataURL += '&offset=' + encodeURIComponent(opts.offset);
+				}
 			}
 			return dataURL;
 		},
