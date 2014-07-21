@@ -97,10 +97,10 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	
 	function parseConfiguration() {
 		that.aggregate(config.aggregate);
-		that.plotProperties(config.plotProperties);
-		transitionMs = (config.transitionMs || 600);
-		vertRuleOpacity = (config.vertRuleOpacity || 0.05);
-		stackOffset = (config.wiggle === true ? 'wiggle' : 'zero');
+		that.plotProperties(config.value('plotProperties'));
+		transitionMs = (config.value('transitionMs') || 600);
+		vertRuleOpacity = (config.value('vertRuleOpacity') || 0.05);
+		stackOffset = (config.value('wiggle') === true ? 'wiggle' : 'zero');
 	}
 	
 	svgRoot = d3.select(containerSelector).select('svg');
@@ -447,6 +447,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			// did you call load() first?
 			return that;
 		}
+		parseConfiguration();
 		setup();
 		draw();
 		return that;
