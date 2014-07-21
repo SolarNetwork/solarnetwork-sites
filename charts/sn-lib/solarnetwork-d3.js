@@ -1,3 +1,6 @@
+/*global colorbrewer,console,d3,queue */
+(function() {
+'use strict';
 /**
  * @namespace the SolarNetwork namespace
  * @require d3 3.0
@@ -6,6 +9,11 @@
 var sn = {
 	version : '0.0.4',
 	
+	/**
+	 * @namespace the SolarNetwork chart namespace.
+	 */
+	chart : {},
+	
 	config : {
 		debug : false,
 		host : 'data.solarnetwork.net',
@@ -13,7 +21,7 @@ var sn = {
 			return (window !== undefined 
 				&& window.location.protocol !== undefined 
 				&& window.location.protocol.toLowerCase().indexOf('https') === 0 ? true : false);
-		})(),
+		}()),
 		path : '/solarquery',
 		solarUserPath : '/solaruser',
 		secureQuery : false
@@ -41,28 +49,32 @@ var sn = {
 				var i;
 				var keyValue;
 				if ( match !== null ) {
-					for ( i = 0; i < match.length; i++ ) {
+					for ( i = 0; i < match.length; i += 1 ) {
 						keyValue = match[i].split('=', 2);
 						env[keyValue[0]] = keyValue[1];
 					}
 				}
 			}
 			return env;
-		})(),
+		}()),
 		
 	setDefaultEnv : function(defaults) {
-		var prop = undefined;
+		var prop;
 		for ( prop in defaults ) {
-			if ( sn.env[prop] === undefined ) {
-				sn.env[prop] = defaults[prop];
+			if ( defaults.hasOwnProperty(prop) ) {
+				if ( sn.env[prop] === undefined ) {
+					sn.env[prop] = defaults[prop];
+				}
 			}
 		}
 	},
 	
 	setEnv : function(env) {
-		var prop = undefined;
+		var prop;
 		for ( prop in env ) {
-			sn.env[prop] = env[prop];
+			if ( env.hasOwnProperty(prop) ) {
+				sn.env[prop] = env[prop];
+			}
 		}
 	},
 
@@ -80,10 +92,16 @@ var sn = {
 	
 	// fmt(string, args...): helper to be able to use placeholders even on iOS, where console.log doesn't support them
 	fmt : function() {
-		var formatted = arguments[0];
-		for (var i = 1; i < arguments.length; i++) {
-			var regexp = new RegExp('\\{'+(i-1)+'\\}', 'gi');
-			var replaceValue = arguments[i];
+		if ( !arguments.length ) {
+			return;
+		}
+		var i = 0,
+			formatted = arguments[i],
+			regexp,
+			replaceValue;
+		for ( i = 1; i < arguments.length; i += 1 ) {
+			regexp = new RegExp('\\{'+(i-1)+'\\}', 'gi');
+			replaceValue = arguments[i];
 			if ( replaceValue instanceof Date ) {
 				replaceValue = (replaceValue.getUTCHours() === 0 && replaceValue.getMinutes() === 0 
 					? sn.dateFormat(replaceValue) : sn.dateTimeFormat(replaceValue));
@@ -115,7 +133,7 @@ var sn = {
 			return c;
 		};
 		obj.incrementAndGet = function() {
-			c++;
+			c += 1;
 			return c;
 		};
 		return obj;
@@ -134,11 +152,11 @@ var sn = {
 		var colorData = keys.map(function(el, i) { return {source:el, color:colorRange(i)}; });
 		
 		// also provide a mapping of sources to corresponding colors
-		var i, len;
-		for ( i = 0, len = colorData.length; i < len; i++ ) {
+		var i, len, sourceName;
+		for ( i = 0, len = colorData.length; i < len; i += 1 ) {
 			// a source value might actually be a number string, which JavaScript will treat 
 			// as an array index so only set non-numbers here
-			var sourceName = colorData[i].source;
+			sourceName = colorData[i].source;
 			if ( sourceName === '' ) {
 				// default to Main if source not provided
 				sourceName = 'Main';
@@ -158,10 +176,9 @@ var sn = {
 	 * as returned by {@link sn.colorMap}.
 	 * 
 	 * @param {object} d the data element, expected to contain a {@code source} property
-	 * @param {number} i the data index
 	 * @returns {string} color value
 	 */
-	colorFn : function(d, i) {
+	colorFn : function(d) {
 		var s = Number(d.source);
 		if ( isNaN(s) ) {
 			return sn.runtime.colorData[d.source];
@@ -251,11 +268,11 @@ sn.powerPerSourceArray = function(rawData, sources) {
 		return filteredData;
 	}
 	var i, len;
-	var el;
-	for ( i = 0, len = rawData.length; i < len; i++ ) {
+	var el, dateStr, d, sourceName;
+	for ( i = 0, len = rawData.length; i < len; i += 1 ) {
 		el = rawData[i];
-		var dateStr = el.localDate +' ' +el.localTime;
-		var d = filteredData[dateStr];
+		dateStr = el.localDate +' ' +el.localTime;
+		d = filteredData[dateStr];
 		if ( d === undefined ) {
 			d = {date:sn.dateTimeFormat.parse(dateStr)};
 			filteredData[dateStr] = d;
@@ -263,7 +280,7 @@ sn.powerPerSourceArray = function(rawData, sources) {
 		
 		// if there is no data for the allotted sample, watts === -1, so don't treat
 		// that sample as a valid source ID
-		var sourceName = el.sourceId;
+		sourceName = el.sourceId;
 		if ( sourceName === undefined || sourceName === '' ) {
 			// default to Main if source not provided
 			sourceName = 'Main';
@@ -289,10 +306,12 @@ sn.powerPerSourceArray = function(rawData, sources) {
 		sources.sort();
 	}
 	
-	var prop = undefined;
+	var prop;
 	var a = [];
 	for ( prop in filteredData ) {
-		a.push(filteredData[prop]);
+		if ( filteredData.hasOwnProperty(prop) ) {
+			a.push(filteredData[prop]);
+		}
 	}
 	return a.sort(sn.datePropAscending);
 };
@@ -343,17 +362,18 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 	}
 	
 	// if nodeId same for all data types, we can issue a single query, otherwise one query per node ID
-	var numRangeQueries = 0;
-	var lastNodeId = undefined;
+	var numRangeQueries = 0,
+		lastNodeId,
+		q = queue(),
+		sourcesRequests = [],
+		urlHelper;
 	
-	var q = queue();
-	var sourcesRequests = [];
 	dataTypes.forEach(function(e, i) {
-		var urlHelper = urlHelperFn(e, i);
+		urlHelper = urlHelperFn(e, i);
 		if ( urlHelper.nodeId() !== lastNodeId ) {
 			q.defer(d3.json, urlHelper.reportableInterval(dataTypes));
 			lastNodeId = urlHelper.nodeId();
-			numRangeQueries++;
+			numRangeQueries += 1;
 		}
 		sourcesRequests.push(urlHelperFn(e, i).availableSources(e));
 	});
@@ -362,12 +382,13 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 	});
 	
 	function extractReportableInterval(results) {
-		var result = undefined;
-		var i = -1;
-		while ( ++i < numRangeQueries ) {
-			var repInterval = results[i];
+		var result, 
+			i = 0,
+			repInterval;
+		for ( i = 0; i < numRangeQueries; i += 1 ) {
+			repInterval = results[i];
 			if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
-				sn.log('No data available for node {0}: {1}', urlHelperFn(dataTypes[i], i).nodeId(), (error ? error : 'unknown reason'));
+				sn.log('No data available for node {0}', urlHelperFn(dataTypes[i], i).nodeId());
 				continue;
 			}
 			repInterval = repInterval.data;
@@ -391,12 +412,6 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 			sn.log('Error requesting available data range: ' +error);
 			return;
 		}
-		/*var repInterval = results[0];
-		if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
-			sn.log('No data available for node {0}: {1}', sn.runtime.urlHelper.nodeId(), (error ? error : 'unknown reason'));
-			return;
-		}*/
-
 		// turn start/end date strings into actual Date objects;
 		// NOTE: we use the date strings here, rather than the available *DateMillis values, because the date strings
 		//       are formatted in the node's local time zone, which allows the chart to display the data in OTHER
@@ -419,20 +434,28 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 		};
 
 		// now extract sources, which start at index numRangeQueries
-		var i = numRangeQueries, len = results.length;
-		var response;
-		for ( ; i < len; i++ ) {
+		var i, len = results.length;
+		var response, sourceList;
+		function sourceMapper(el) {
+			// for historic purposes, the empty source ID is mapped to 'Main'
+			return (el === '' ? 'Main' : el);
+		}
+		function removeDuplicates(el, i, me) {
+		    return me.indexOf(el) === i;
+		};
+		for ( i = numRangeQueries; i < len; i += 1 ) {
 			response = results[i];
 			if ( response.success !== true || Array.isArray(response.data) !== true || response.data.length < 1 ) {
 				sn.log('No sources available for node {0} data type {1}', urlHelperFn(dataTypes[i - numRangeQueries], i - numRangeQueries).nodeId(), dataTypes[i - numRangeQueries]);
 				continue;
 			}
-			response.data.sort();
+			sourceList = response.data.map(sourceMapper).filter(removeDuplicates);
+			sourceList.sort();
 			if ( evt.data.availableSources === undefined ) {
 				// add as "default" set of sources, for the first data type
-				evt.data.availableSources = response.data;
+				evt.data.availableSources = sourceList;
 			}
-			evt.data.availableSourcesMap[dataTypes[i-numRangeQueries]] = response.data;
+			evt.data.availableSourcesMap[dataTypes[i-numRangeQueries]] = sourceList;
 		}
 		if ( typeof callback === 'function' ) {
 			callback(evt.data);
@@ -627,15 +650,18 @@ sn.nodeUrlHelper = function(nodeId) {
 	}
 	
 	// allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
-	if ( sn.env.nodeUrlHelpers !== undefined ) {
-		var prop = undefined;
-		for ( prop in sn.env.nodeUrlHelpers ) {
-			if ( helper[prop] !== undefined || typeof sn.env.nodeUrlHelpers[prop] !== 'function' ) {
-				continue;
+	(function() {
+		var prop,
+			helpers = sn.env.nodeUrlHelpers;
+		if ( helpers !== undefined ) {
+			for ( prop in helpers ) {
+				if ( !helpers.hasOwnProperty(prop) || helper[prop] !== undefined || typeof helpers[prop] !== 'function' ) {
+					continue;
+				}
+				setupProxy(prop);
 			}
-			setupProxy(prop);
 		}
-	}
+	}());
 	
 	return helper;
 };
@@ -660,9 +686,9 @@ sn.Configuration = function(initialMap) {
 		(function() {
 			var createGetter = function(prop) { return function() { return me.map[prop]; }; };
 			var createSetter = function(prop) { return function(value) { me.map[prop] = value; }; };
-			var prop = undefined;
+			var prop;
 			for ( prop in initialMap ) {
-				if ( !me.hasOwnProperty(prop) ) {
+				if ( initialMap.hasOwnProperty(prop) && !me.hasOwnProperty(prop) ) {
 					Object.defineProperty(me, prop, {
 						enumerable : true,
 						get : createGetter(prop),
@@ -671,7 +697,7 @@ sn.Configuration = function(initialMap) {
 				}
 				me.map[prop] = initialMap[prop];
 			}
-		})();
+		}());
 	}
 };
 sn.Configuration.prototype = {
@@ -777,18 +803,20 @@ sn.Configuration.prototype = {
  */
 sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	var sources = keyValueSet;
-	var excludeSources = undefined;
+	var excludeSources;
 	var stack = d3.layout.stack();
-	var dataArray = undefined;
+	var dataArray;
 	
 	var stackedLayerData = function() {
-		if ( dataArray === undefined ) return;
+		if ( dataArray === undefined ) {
+			return;
+		}
 		var layers = stack(sources.map(function(source) {
 				var array = dataArray.map(function(d) {
 						return {
 							x: d.date, 
 							y: (excludeSources !== undefined && excludeSources.enabled(source) 
-								? 0 : d[source] !== undefined ? +d[source][valueProperty] : null),
+								? 0 : d[source] !== undefined ? +d[source][valueProperty] : null)
 						};
 					});
 				array.source = source;
@@ -808,7 +836,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 * @memberOf sn.powerPerSourceStackedLayerGenerator
 	 */
 	stackedLayerData.data = function(data) {
-		if ( !arguments.length ) return dataArray;
+		if ( !arguments.length ) { return dataArray; }
 		dataArray = data;
 		return stackedLayerData;
 	};
@@ -821,7 +849,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 * @memberOf sn.powerPerSourceStackedLayerGenerator
 	 */
 	stackedLayerData.offset = function(value) {
-		if ( !arguments.length ) return stack.offset();
+		if ( !arguments.length ) { return stack.offset(); }
 		stack.offset(value);
 		return stackedLayerData;
 	};
@@ -834,7 +862,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 * @memberOf sn.powerPerSourceStackedLayerGenerator
 	 */
 	stackedLayerData.order = function(value) {
-		if ( !arguments.length ) return stack.order();
+		if ( !arguments.length ) { return stack.order(); }
 		stack.order(value);
 		return stackedLayerData;
 	};
@@ -850,7 +878,7 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 	 * @memberOf sn.powerPerSourceStackedLayerGenerator
 	 */
 	stackedLayerData.excludeSources = function(excludeConfiguration) {
-		if ( !arguments.length ) return excludeSources;
+		if ( !arguments.length ) { return excludeSources; }
 		excludeSources = excludeConfiguration;
 		return stackedLayerData;
 	};
@@ -921,15 +949,16 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
 sn.sourceColorMapping = function(sourceMap, params) {
 	var p = (params || {});
 	var chartSourceMap = {};
-	var dataType = undefined;
+	var dataType;
 	var sourceList = [];
-	var colorGroup = undefined;
+	var colorGroup;
 	var sourceColors = [];
-	var typeSourceList = undefined;
+	var typeSourceList = [];
 	var colorGroupIndex;
-	var colorSlice = undefined;
+	var colorSlice;
 	var result = {};
 	var displayDataTypeFn;
+	var displayColorFn;
 	if ( typeof p.displayDataType === 'function' ) {
 		displayDataTypeFn = p.displayDataType;
 	} else {
@@ -937,7 +966,6 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			return (dataType === 'Power' ? 'Generation' : dataType);
 		};
 	}
-	var displayColorFn;
 	if ( typeof p.displayColor === 'function' ) {
 		displayColorFn = p.displayColor;
 	} else {
@@ -945,33 +973,42 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			return (dataType === 'Power' ? colorbrewer.Greens : colorbrewer.Blues);
 		};
 	}
-	for ( dataType in sourceMap ) {
-		chartSourceMap[dataType] = {};
-		typeSourceList = [];
-		sourceMap[dataType].forEach(function(el) {
+	function mapSources(dtype) {
+		sourceMap[dtype].forEach(function(el) {
 			var mappedSource;
 			if ( el === '' || el === 'Main' ) {
-				mappedSource = displayDataTypeFn(dataType);
+				mappedSource = displayDataTypeFn(dtype);
 			} else {
-				mappedSource = displayDataTypeFn(dataType) +' / ' +el;
+				mappedSource = displayDataTypeFn(dtype) +' / ' +el;
 			}
-			chartSourceMap[dataType][el] = mappedSource;
+			chartSourceMap[dtype][el] = mappedSource;
+			if ( el === 'Main' ) {
+				// also add '' for compatibility
+				chartSourceMap[dtype][''] = mappedSource;
+			}
 			typeSourceList.push(mappedSource);
 			sourceList.push(mappedSource);
 		});
-		colorGroup = displayColorFn(dataType);
-		if ( typeSourceList.length < 3 ) {
-			colorGroupIndex = 3;
-		} else if ( colorGroup[typeSourceList.length] === undefined ) {
-			colorGroupIndex = 9;
-		} else {
-			colorGroupIndex = typeSourceList.length;
+	}
+	for ( dataType in sourceMap ) {
+		if ( sourceMap.hasOwnProperty(dataType) ) {
+			chartSourceMap[dataType] = {};
+			typeSourceList.length = 0;
+			mapSources(dataType);
+			colorGroup = displayColorFn(dataType);
+			if ( typeSourceList.length < 3 ) {
+				colorGroupIndex = 3;
+			} else if ( colorGroup[typeSourceList.length] === undefined ) {
+				colorGroupIndex = 9;
+			} else {
+				colorGroupIndex = typeSourceList.length;
+			}
+			colorSlice = colorGroup[colorGroupIndex].slice(-typeSourceList.length);
+			if ( p.reverseColors !== false ) {
+				colorSlice.reverse();
+			}
+			sourceColors = sourceColors.concat(colorSlice);
 		}
-		colorSlice = colorGroup[colorGroupIndex].slice(-typeSourceList.length);
-		if ( p.reverseColors !== false ) {
-			colorSlice.reverse();
-		}
-		sourceColors = sourceColors.concat(colorSlice);
 	}
 	result.sourceList = sourceList;
 	result.displaySourceMap = chartSourceMap;
@@ -1040,24 +1077,24 @@ sn.seasonConsumptionPowerMap = function (dataArray, sourceIdDataTypeMap, exclude
 	var sources = [];
 	var sourceMap = {};
 	var seasonMap = (function() {
-		var result = {};
-		var i = -1;
-		while ( ++i < 4 ) {
+		var result = {},
+			i;
+		for ( i = 0; i < 4; i += 1 ) {
 			result[String(i)] = {'Consumption':[], 'Power':[]};
 		}
 		return result;
-	})();
-	var dataType = undefined;
-	var dateKey = undefined;
+	}());
+	var dataType;
+	var dateKey;
 	var dateMap = {Consumption:{}, Power:{}};
 	var domainY = {};
 	var i, iMax;
 	var p, pMax = yProps.length;
 	var el, obj;
-	var date = undefined;
-	var prop = undefined;
+	var date;
+	var prop;
 	var lines = [];
-	for ( i = 0, iMax = dataArray.length; i < iMax; ++i ) {
+	for ( i = 0, iMax = dataArray.length; i < iMax; i += 1 ) {
 		el = dataArray[i];
 		if ( sourceMap[el.sourceId] === undefined ) {
 			sources.push(el.sourceId);
@@ -1076,11 +1113,11 @@ sn.seasonConsumptionPowerMap = function (dataArray, sourceIdDataTypeMap, exclude
 					date : date,
 					hour : date.getUTCHours(),
 					day : date.getUTCDay(),
-					type : dataType,
+					type : dataType
 			};
 			// seasons are (northern hemi) [Spring, Summer, Autumn, Winter]
 			// set the "season" to an index, 0-3, where 0 -> Dec,Jan,Feb, 1-> Mar,Apr,May, etc
-			if ( date.getUTCMonth() < 2 || date.getUTCMonth() == 11 ) {
+			if ( date.getUTCMonth() < 2 || date.getUTCMonth() === 11 ) {
 				obj.season = 3;
 			} else if ( date.getUTCMonth() < 5 ) {
 				obj.season = 0;
@@ -1096,7 +1133,7 @@ sn.seasonConsumptionPowerMap = function (dataArray, sourceIdDataTypeMap, exclude
 			obj = dateMap[dataType][dateKey];
 		}
 		
-		for ( p = 0; p < pMax; ++p ) {
+		for ( p = 0; p < pMax; p += 1 ) {
 			prop = yProps[p];
 			if ( obj[prop] === undefined ) {
 				obj[prop] = null;
@@ -1121,15 +1158,182 @@ sn.seasonConsumptionPowerMap = function (dataArray, sourceIdDataTypeMap, exclude
 	}
 
 	for ( prop in seasonMap ) {
-		lines.push(seasonMap[prop].Consumption);
-		lines.push(seasonMap[prop].Power);
+		if ( seasonMap.hasOwnProperty(prop) ) {
+			lines.push(seasonMap[prop].Consumption);
+			lines.push(seasonMap[prop].Power);
+		}
 	}
 
 	return {seasonMap: seasonMap, domainY:domainY, lineData:lines, sources:sources};
 };
 
-
 /**
- * @namespace the SolarNetwork chart namespace.
+ * Load data for a set of data types, date range, and aggregate level. This object is designed 
+ * to be used once per query. After creating the object and configuring an asynchronous
+ * callback function with {@link #callback(function)}, call call {@link #load()} to start
+ * loading the data. The callback function will be called once all data has been loaded.
+ * 
+ * @class
+ * @param {string[]} dataTypes - array of data types to load data for
+ * @param {function} dataTypeUrlHelperProvider - function that returns a {@link sn.nodeUrlHelper} for a given data type
+ * @param {date} start - the start date
+ * @param {date} end - the end date
+ * @param {string} aggregate - optional aggregate level
+ * @param {number} precision - optional precision level (for Minute level aggregation only)
+ * @returns {sn.datumLoader}
  */
-sn.chart = {};
+sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, aggregate, precision) {
+	
+	var that = {
+			version : '1.0.0'
+	};
+
+	//var dataTypeSourceMapper = undefined;
+	var requestOptions;
+	var finishedCallback;
+
+	var state = {}; // keys are data types, values are 1:loading, 2:done
+	var results = {};
+	
+	function aggregateValue() {
+		return (aggregate === undefined ? 'Hour'  : aggregate);
+	}
+	
+	function precisionValue() {
+		return (precision === undefined ? 10 : precision);
+	}
+	
+	function requestCompletionHandler(dataType) {
+		state[dataType] = 2; // done
+		
+		// check if we're all done loading, and if so call our callback function
+		if ( dataTypes.every(function(e) { return state[e] === 2; }) && finishedCallback ) {
+			finishedCallback.call(that, results);
+		}
+	}
+
+	function loadForDataType(dataType, dataTypeIndex, offset) {
+		var urlHelper = dataTypeUrlHelperProvider(dataType, dataTypeIndex);
+		var opts = {};
+		var key;
+		if ( requestOptions ) {
+			for ( key in requestOptions ) {
+				if ( requestOptions.hasOwnProperty(key) ) {
+					opts[key] = requestOptions[key];
+				}
+			}
+		}
+		if ( offset ) {
+			opts.offset = offset;
+		}
+		var url;
+		var dataExtractor;
+		var offsetExtractor;
+		if ( aggregateValue() === 'Minute' ) {
+			// use /query to normalize minutes
+			url = urlHelper.dateTimeQuery(dataType, start, end, precisionValue(), opts);
+			dataExtractor = function(json) {
+				if ( json.success !== true || Array.isArray(json.data) !== true ) {
+					return undefined;
+				}
+				return json.data;
+			};
+			offsetExtractor = function() { return 0; };
+		} else {
+			// use /list for faster access
+			url = urlHelper.dateTimeList(dataType, start, end, aggregateValue(), opts);
+			dataExtractor = function(json) {
+				if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
+					return undefined;
+				}
+				return json.data.results;
+			};
+			offsetExtractor = function(json) { 
+				return (json.data.returnedResultCount + json.data.startingOffset < json.data.totalResults 
+						? (json.data.returnedResultCount + json.data.startingOffset)
+						: 0);
+			};
+		}
+		d3.json(url, function(error, json) {
+			var dataArray,
+				nextOffset;
+			if ( error ) {
+				sn.log('Error requesting data for node {0} data type {1}: {2}', urlHelper.nodeId(), dataType, error);
+				return;
+			}
+			dataArray = dataExtractor(json);
+			if ( dataArray === undefined ) {
+				sn.log('No data available for node {0} data type {1}', urlHelper.nodeId(), dataType);
+				requestCompletionHandler(dataType);
+				return;
+			}
+			if ( results[dataType] === undefined ) {
+				results[dataType] = dataArray;
+			} else {
+				results[dataType] = results[dataType].concat(dataArray);
+			}
+			
+			// see if we need to load more results
+			nextOffset = offsetExtractor(json);
+			if ( nextOffset > 0 ) {
+				loadForDataType(dataType, dataTypeIndex, nextOffset);
+			} else {
+				requestCompletionHandler(dataType);
+			}
+		});
+	}
+	
+	/**
+	 * Get or set the request options object.
+	 * 
+	 * @param {object} [value] the options to use
+	 * @return when used as a getter, the current request options, otherwise this object
+	 * @memberOf sn.datumLoader
+	 */
+	that.requestOptions = function(value) {
+		if ( !arguments.length ) { return requestOptions; }
+		requestOptions = value;
+		return that;
+	};
+
+	/**
+	 * Get or set the callback function, invoked after all data has been loaded.
+	 * 
+	 * @param {function} [value] the callback function to use
+	 * @return when used as a getter, the current callback function, otherwise this object
+	 * @memberOf sn.datumLoader
+	 */
+	that.callback = function(value) {
+		if ( !arguments.length ) { return finishedCallback; }
+		if ( typeof value === 'function' ) {
+			finishedCallback = value;
+		}
+		return that;
+	};
+	
+	/**
+	 * Initiate loading the data.
+	 * 
+	 * @memberOf sn.datumLoader
+	 */
+	that.load = function() {
+		dataTypes.forEach(function(e) {
+			state[e] = 1; // loading
+		});
+		dataTypes.forEach(function(e, i) {
+			loadForDataType(e, i);
+		});
+		return that;
+	};
+
+	return that;
+};
+
+if (typeof define === "function" && define.amd) {
+	define(sn);
+} else if (typeof module === "object" && module.exports) {
+	module.exports = sn;
+} else {
+	window.sn = sn;
+}
+}());
