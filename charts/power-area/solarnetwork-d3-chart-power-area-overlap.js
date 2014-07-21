@@ -257,7 +257,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		if ( colorCallback === undefined ) {
 			return 'black';
 		}
-		return colorCallback(groupId, d.key);
+		return colorCallback(groupId, d.sourceId, i);
 	}
 
 	function draw() {	
@@ -267,7 +267,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			var svg = groupSvg[groupId];
 			var area = svg.selectAll("path.area").data(layers);
 			var fillFn = function(d, i) {
-				return fillColor(groupId, d, i);
+				return fillColor.call(this, groupId, d[0], i);
 			};
 			area.transition().duration(transitionMs).delay(200)
 				.attr("d", areaPathGenerator)

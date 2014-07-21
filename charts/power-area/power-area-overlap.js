@@ -44,11 +44,9 @@ function colorDataTypeSourceMapper(e, i, sourceId) {
 	return sn.runtime.sourceColorMap.displaySourceMap[e][sourceId];
 }
 
-function colorForDataTypeSource(dataType, sourceId) {
-	if ( sourceId === '' ) {
-		sourceId = 'Main';
-	}
-	return sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
+function colorForDataTypeSource(dataType, sourceId, sourceIndex) {
+	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
+	return sn.runtime.colorData[mappedSourceId];
 }
 
 /**
