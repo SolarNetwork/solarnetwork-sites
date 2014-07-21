@@ -170,7 +170,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 							k = 0;
 						}
 						if ( layerData[k].values.length <= i || layerData[j].values[i].date.getTime() < layerData[k].values[i].date.getTime() ) {
-							dummy = {date : layerData[j].values[i].date};
+							dummy = {date : layerData[j].values[i].date, sourceId : layerData[k].key};
 							dummy[plotProperties[aggregateType]] = null;
 							layerData[k].values.splice(i, 0, dummy);
 						}
