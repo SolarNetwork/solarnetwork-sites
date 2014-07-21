@@ -85,9 +85,15 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 
 	var areaPathGenerator = d3.svg.area()
 		.interpolate("monotone")
-		.x(function(d) { return x(d.date); })
-		.y0(function(d) { return y(d.y0); })
-		.y1(function(d) { return y(d.y0 + d.y); });
+		.x(function(d) { 
+			return x(d.date);
+		})
+		.y0(function(d) { 
+			return y(d.y0);
+		})
+		.y1(function(d) { 
+			return y(d.y0 + d.y);
+		});
 	
 	function parseConfiguration() {
 		that.aggregate(config.aggregate);
