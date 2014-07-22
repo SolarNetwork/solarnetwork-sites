@@ -23,7 +23,7 @@ if ( sn === undefined ) {
  */
 
 /**
- * An power stacked area chart that overlaps two or more data sets.
+ * A power stacked area chart that overlaps two or more data sets.
  * 
  * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
  * in the chart. After changing the configuration call {@link sn.chart.powerAreaOverlapChart#regenerate()}
