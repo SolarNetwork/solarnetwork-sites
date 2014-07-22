@@ -147,6 +147,21 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		var plotPropName = plotProperties[aggregateType];
 		var minX = undefined, maxX = undefined;
 		var maxY = undefined;
+		var stack = d3.layout.stack()
+			.offset(stackOffset)
+			.values(function(d) { 
+				return d.values;
+			})
+			.x(function(d) { 
+				return d.date; 
+			})
+			.y(function(d) { 
+				var y = d[plotPropName];
+				if ( y === undefined || y < 0 || y === null ) {
+					y = 0;
+				}
+				return y;
+			});
 		groupIds.forEach(function(groupId) {
 			var i, j, jMax, k, dummy;
 			var layerData;
@@ -186,21 +201,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 					}
 				}
 			}
-			var stack = d3.layout.stack()
-				.offset(stackOffset)
-				.values(function(d) { 
-					return d.values;
-				})
-				.x(function(d) { 
-					return d.date; 
-				})
-				.y(function(d) { 
-					var y = d[plotPropName];
-					if ( y === undefined || y < 0 || y === null ) {
-						y = 0;
-					}
-					return y;
-				});
 			var rangeX = [rawGroupData[0].date, rawGroupData[rawGroupData.length - 1].date];
 			if ( minX === undefined || rangeX[0].getTime() < minX.getTime() ) {
 				minX = rangeX[0];
@@ -209,7 +209,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 				maxX = rangeX[1];
 			}
 			groupData[groupId] = {
-					stack : stack,
 					layerData : layerData,
 					xRange : rangeX
 			};
