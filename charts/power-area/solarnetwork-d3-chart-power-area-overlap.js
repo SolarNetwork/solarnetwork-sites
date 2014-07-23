@@ -17,6 +17,7 @@ if ( sn === undefined ) {
  * @property {number} [height=300] - desired height, in pixels, of the chart
  * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
  * @property {number} [transitionMs=600] - transition time
+ * @property {number} [opacityReduction=0.1] - a percent opacity reduction to apply to groups on top of other groups
  * @property {object} [plotProperties] - the property to plot for specific aggregation levels; if unspecified 
  *                                       the {@code watts} property is used
  * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
@@ -122,6 +123,12 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 
 	//function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
 
+	// get the opacity level for a given group
+	function groupOpacityFn(d, i) {
+		var grade = (config.value('opacityReduction') || 0.1);
+		return (1 - (i * grade));
+	}
+	
 	function computeUnitsY() {
 		var fmt;
 		var maxY = d3.max(y.domain(), function(v) { return Math.abs(v); });
@@ -252,14 +259,22 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		});
 		
 		var groups = svgRoot.selectAll("g.data").data(groupedData, function(d, i) {
-			return groupIds[i];
-		});
+				return groupIds[i];
+			});
+			
+		groups.transition().duration(transitionMs)
+			.style('opacity', groupOpacityFn);
+			
 		
 		groups.enter().append('g')
 				.attr('class', 'data')
-				.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-				
-		groups.exit().remove();
+				.attr('transform', "translate(" + p[3] + ',' + p[0] + ')')
+			.transition().duration(transitionMs)
+				.style('opacity', groupOpacityFn);
+					
+		groups.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
 		
 		var area = groups.selectAll('path.area').data(Object, function(d, i) {
 			return (d.length ? d[0].sourceId : null);
