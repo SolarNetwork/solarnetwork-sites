@@ -1230,7 +1230,7 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
 		var dataExtractor;
 		var offsetExtractor;
 		if ( aggregateValue() === 'Minute' ) {
-			// use /query to normalize minutes
+			// use /query to normalize minutes; end date is inclusive
 			url = urlHelper.dateTimeQuery(dataType, start, end, precisionValue(), opts);
 			dataExtractor = function(json) {
 				if ( json.success !== true || Array.isArray(json.data) !== true ) {
@@ -1240,7 +1240,7 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
 			};
 			offsetExtractor = function() { return 0; };
 		} else {
-			// use /list for faster access
+			// use /list for faster access; end date is exclusive
 			url = urlHelper.dateTimeList(dataType, start, end, aggregateValue(), opts);
 			dataExtractor = function(json) {
 				if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
@@ -1327,6 +1327,83 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
 	};
 
 	return that;
+};
+
+/**
+ * Get a query range appropriate for using with {@link sn.datumLoader}. Returns an object
+ * with <code>start</code> and <code>end</code> Date properties, using the given <code>endDate</code>
+ * parameter as the basis for calculating the start as an offset, based on the given <code>aggregate</code>
+ * level.
+ * 
+ * @param {string} aggregate - the aggregate level
+ * @param {number} precision - the precision, for the <b>Minute</b> aggregate level
+ * @param {object} aggregateTimeCount - either a Number or an Object with Number properties named 
+ *                 <code>numXs</code> where <code>X</code> is the aggregate level, representing
+ *                 the number of aggregate time units to include in the query
+ * @param {Date} endDate - the end date
+ * @returns {Object}
+ */
+sn.datumLoaderQueryRange = function(aggregate, precision, aggregateTimeCount, endDate) {
+	var end,
+		start,
+		timeUnit,
+		timeCount; 
+	
+	function exclusiveEndDate(time, date) {
+		var result = time.utc.ceil(date);
+		if ( result.getTime() === date.getTime() ) {
+			// already on exact aggregate, so round up to next
+			result = time.offset(result, 1);
+		}
+		return result;
+	}
+	
+	function timeCountValue(propName) {
+		var result;
+		if ( isNaN(Number(aggregateTimeCount)) ) {
+			if ( aggregateTimeCount[propName] !== undefined ) {
+				result = Number(aggregateTimeCount[propName]);
+			} else {
+				result = 1;
+			}
+		} else {
+			result = aggregateTimeCount;
+		}
+		if ( typeof result !== 'number' ) {
+			result = 1;
+		}
+		return result;
+	}
+	
+	if ( aggregate === 'Month' ) {
+		timeCount = timeCountValue('numYears');
+		timeUnit = 'year';
+		end = exclusiveEndDate(d3.time.month, endDate);
+		start = d3.time.year.utc.offset(d3.time.month.utc.floor(endDate), -timeCount);
+	} else if ( aggregate === 'Day' ) {
+		timeCount = timeCountValue('numMonths');
+		timeUnit = 'month';
+		end = exclusiveEndDate(d3.time.day, endDate);
+		start = d3.time.month.utc.offset(d3.time.day.utc.floor(endDate), -timeCount);
+	} else if ( aggregate === 'Hour' ) {
+		timeCount = timeCountValue('numDays');
+		timeUnit = 'day';
+		end = exclusiveEndDate(d3.time.hour, endDate);
+		start = d3.time.day.utc.offset(d3.time.hour.utc.floor(end), -timeCount);
+	} else {
+		// assume Minute
+		timeCount = timeCountValue('numHours');
+		timeUnit = 'hour';
+		end = d3.time.minute.utc.ceil(endDate);
+		end.setUTCMinutes((end.getUTCMinutes() + precision - (end.getUTCMinutes() % precision)), 0, 0);
+		start = d3.time.hour.utc.offset(end, -timeCount);
+	}
+	return {
+		start : start, 
+		end : end, 
+		timeUnit : timeUnit, 
+		timeCount : timeCount
+	};
 };
 
 if (typeof define === "function" && define.amd) {

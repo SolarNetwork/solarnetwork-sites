@@ -6,7 +6,6 @@
  */
 
 sn.config.debug = true;
-sn.config.host = 'data.solarnetwork.net';
 sn.runtime.excludeSources = new sn.Configuration();
 
 //adjust display units as needed (between W and kW, etc)
@@ -69,41 +68,14 @@ function chartDataCallback(dataType, datum) {
 
 // Watt stacked area overlap chart
 function powerAreaOverlapChartSetup(endDate, sourceMap) {
-	var end;
-	var start;
-	var timeCount;
-	var timeUnit;
-	var precision = (sn.env.minutePrecision || 10);
-	// for aggregate time ranges, the 'end' date in inclusive
-	if ( sn.runtime.powerAreaOverlapParameters.aggregate === 'Month' ) {
-		timeCount = (sn.env.numYears || 1);
-		timeUnit = 'year';
-		end = d3.time.month.utc.floor(endDate);
-		start = d3.time.year.utc.offset(end, -timeCount);
-	} else if ( sn.runtime.powerAreaOverlapParameters.aggregate === 'Day' ) {
-		timeCount = (sn.env.numMonths || 4);
-		timeUnit = 'month';
-		end = d3.time.day.utc.floor(endDate);
-		start = d3.time.month.utc.offset(end, -timeCount);
-	} else if ( sn.runtime.powerAreaOverlapParameters.aggregate === 'Hour' ) {
-		timeCount = (sn.env.numDays || 7);
-		timeUnit = 'day';
-		end = d3.time.hour.utc.floor(endDate);
-		start = d3.time.day.utc.offset(end, -timeCount);
-	} else {
-		// assume Minute
-		timeCount = (sn.env.numHours || 24);
-		timeUnit = 'hour';
-		end = d3.time.minute.utc.ceil(endDate);
-		end.setUTCMinutes((end.getUTCMinutes() + precision - (end.getUTCMinutes() % precision)), 0, 0);
-		start = d3.time.hour.utc.offset(end, -timeCount);
-	}
+	var queryRange = sn.datumLoaderQueryRange(sn.runtime.powerAreaOverlapParameters.aggregate,
+		(sn.env.minutePrecision || 10), sn.env, endDate);
 	
-	d3.select('.power-area-chart .time-count').text(timeCount);
-	d3.select('.power-area-chart .time-unit').text(timeUnit);
+	d3.select('.power-area-chart .time-count').text(queryRange.timeCount);
+	d3.select('.power-area-chart .time-unit').text(queryRange.timeUnit);
 	
 	sn.datumLoader(sn.env.dataTypes, urlHelperForAvailbleDataRange, 
-			start, end, sn.runtime.powerAreaOverlapParameters.aggregate)
+			queryRange.start, queryRange.end, sn.runtime.powerAreaOverlapParameters.aggregate)
 		.callback(function(results) {
 			sn.runtime.powerAreaOverlapChart.reset();
 			sn.env.dataTypes.forEach(function(e, i) {
