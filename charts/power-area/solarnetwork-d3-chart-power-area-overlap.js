@@ -38,7 +38,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	var that = {
 		version : "1.0.0"
 	};
-	var sources = [];
+
 	var config = (chartConfig || new sn.Configuration());
 	
 	// default to container's width, if we can
@@ -74,7 +74,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	// our layer data
 	var groupIds = [];
 	var groupData = {};
-	var groupSvg = {};
 	var groupLayers = {};
 	var minY = 0;
 
@@ -174,6 +173,9 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 					if ( dataCallback ) {
 						dataCallback.call(that, groupId, d);
 					}
+					if ( d.sourceId === '' ) {
+						d.sourceId = 'Main';
+					}
 					return d.sourceId;
 				})
 				.entries(rawGroupData);
@@ -232,24 +234,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		}
 		
 		computeUnitsY();
-		
-		return;
-		// turn filteredData object into proper array, sorted by date
-		sources = [];
-		var dataArray = sn.powerPerSourceArray(rawData, sources);
-		sn.log('Available area sources: {0}', sources);
-
-		// Transpose the data into watt layers by source, e.g.
-		// [ [{x:0,y:0},{x:1,y:1}...], ... ]
-		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, plotProperties[aggregateType])
-			.excludeSources(config.excludeSources)
-			.offset(stackOffset)
-			.data(dataArray);
-		layers = layerGenerator();
-
-		// Compute the x-domain (by date) and y-domain (by top).
-		computeDomainX();
-		computeDomainY();
 	}
 	
 	function fillColor(groupId, d, i) {
@@ -260,25 +244,42 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	}
 
 	function draw() {	
-		// draw data areas
+		// group the data into 2D array, so we can use d3 nested selections to map the data
+		var groupedData = [];
 		groupIds.forEach(function(groupId) {
-			var layers = groupLayers[groupId].map(function(e) { return e.values; });
-			var svg = groupSvg[groupId];
-			var area = svg.selectAll("path.area").data(layers);
-			var fillFn = function(d, i) {
-				return fillColor.call(this, groupId, d[0], i);
-			};
-			area.transition().duration(transitionMs).delay(200)
-				.attr("d", areaPathGenerator)
-				.style("fill", fillFn);
-	
-			area.enter().append("path")
-					.attr("class", "area")
-					.style("fill", fillFn)
-					.attr("d", areaPathGenerator);
-			
-			area.exit().remove();
+			var groupData = groupLayers[groupId].map(function(e) { return e.values; });
+			groupedData.push(groupData);
 		});
+		
+		var groups = svgRoot.selectAll("g.data").data(groupedData, function(d, i) {
+			return groupIds[i];
+		});
+		
+		groups.enter().append('g')
+				.attr('class', 'data')
+				.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+				
+		groups.exit().remove();
+		
+		var area = groups.selectAll('path.area').data(Object, function(d, i) {
+			return (d.length ? d[0].sourceId : null);
+		});
+		function fillFn(d, i, j) {
+			return fillColor.call(this, groupIds[j], d[0], i);
+		};
+		area.transition().duration(transitionMs).delay(200)
+			.attr("d", areaPathGenerator)
+			.style("fill", fillFn);
+
+		area.enter().append("path")
+				.attr("class", "area")
+				.style("fill", fillFn)
+				.attr("d", areaPathGenerator);
+		
+		area.exit().remove();
+		
+		adjustAxisX()
+		adjustAxisY();
 	}
 
 	function axisYTransform(d) {
@@ -322,8 +323,8 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	}
 
 	function adjustAxisY() {
-		var axisLines = svgRoot.select("g.rule").selectAll("g").data(
-				that.wiggle() ? [] : y.ticks(5));
+		var yTicks = (that.wiggle() ? [] : y.ticks(5).filter(function(e) { return e !== 0; }));
+		var axisLines = svgRoot.select("g.rule").selectAll("g").data(yTicks);
 		var axisLinesT = axisLines.transition().duration(transitionMs);
 		axisLinesT.attr("transform", axisYTransform)
 			.select("text")
@@ -353,8 +354,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 					d3.select(this).style("opacity", null);
 				});
 	}
-	
-	that.sources = sources;
 	
 	/**
 	 * Get the x-axis domain (minimum and maximum dates).
@@ -406,8 +405,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	that.reset = function() {
 		originalData = {};
 		groupData = {};
-		// TODO: delete svg groups
-		groupSvg = {};
 		return that;
 	};
 	
@@ -425,9 +422,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		if ( originalData[groupId] === undefined ) {
 			groupIds.push(groupId);
 			originalData[groupId] = rawData;
-			groupSvg[groupId] = svgRoot.append("g")
-				.attr('class', 'data')
-				.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
 		} else {
 			originalData[groupId].concat(rawData);
 		}
