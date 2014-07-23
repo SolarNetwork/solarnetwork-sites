@@ -105,6 +105,7 @@ function powerAreaOverlapChartSetup(endDate, sourceMap) {
 	sn.datumLoader(sn.env.dataTypes, urlHelperForAvailbleDataRange, 
 			start, end, sn.runtime.powerAreaOverlapParameters.aggregate)
 		.callback(function(results) {
+			sn.runtime.powerAreaOverlapChart.reset();
 			sn.env.dataTypes.forEach(function(e, i) {
 				var dataTypeResults = results[e];
 				sn.runtime.powerAreaOverlapChart.load(dataTypeResults, e);
