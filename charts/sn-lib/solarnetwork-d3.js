@@ -934,6 +934,15 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
  *             Main : 'Power / Main'
  *         }
  *     },
+ *     reverseDisplaySourceMap : {
+ *         Consumption : {
+ *             'Consumption / Main' : 'Main',
+ *             'Consumption / Shed' : 'Shed'
+ *         },
+ *         Power : {
+ *             'Power / Main' : 'Main',
+ *         }
+ *     },
  *     colorList : [ 'red', 'light-red', 'green' ]
  *     colorMap : {
  *         'Consumption / Main' : 'red',
@@ -1010,8 +1019,25 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			sourceColors = sourceColors.concat(colorSlice);
 		}
 	}
+	
+	// create a reverse display mapping
+	var reverseDisplaySourceMap = {};
+	var sourceId, displayMap;
+	for ( dataType in chartSourceMap ) {
+		if ( chartSourceMap.hasOwnProperty(dataType) ) {
+			reverseDisplaySourceMap[dataType] = {};
+			displayMap = chartSourceMap[dataType];
+			for ( sourceId in  displayMap ) {
+				if ( displayMap.hasOwnProperty(sourceId) ) {
+					reverseDisplaySourceMap[displayMap[sourceId]] = sourceId;
+				}
+			}
+		}
+	}
+	
 	result.sourceList = sourceList;
 	result.displaySourceMap = chartSourceMap;
+	result.reverseDisplaySourceMap = reverseDisplaySourceMap;
 	result.colorMap = sn.colorMap(sourceColors, sourceList);
 	return result;
 };
@@ -1191,6 +1217,7 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
 	//var dataTypeSourceMapper = undefined;
 	var requestOptions;
 	var finishedCallback;
+	var holeRemoverCallback;
 
 	var state = {}; // keys are data types, values are 1:loading, 2:done
 	var results = {};
@@ -1236,7 +1263,11 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
 				if ( json.success !== true || Array.isArray(json.data) !== true ) {
 					return undefined;
 				}
-				return json.data;
+				var result = json.data;
+				if ( holeRemoverCallback ) {
+					result = holeRemoverCallback.call(that, result);
+				}
+				return result;
 			};
 			offsetExtractor = function() { return 0; };
 		} else {
@@ -1264,7 +1295,9 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
 			dataArray = dataExtractor(json);
 			if ( dataArray === undefined ) {
 				sn.log('No data available for node {0} data type {1}', urlHelper.nodeId(), dataType);
-				requestCompletionHandler(dataType);
+				if ( requestCompletionHandler ) {
+					requestCompletionHandler.call(that, dataType);
+				}
 				return;
 			}
 			if ( results[dataType] === undefined ) {
@@ -1277,8 +1310,8 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
 			nextOffset = offsetExtractor(json);
 			if ( nextOffset > 0 ) {
 				loadForDataType(dataType, dataTypeIndex, nextOffset);
-			} else {
-				requestCompletionHandler(dataType);
+			} else if ( requestCompletionHandler ) {
+				requestCompletionHandler.call(that, dataType);
 			}
 		});
 	}
@@ -1296,6 +1329,27 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
 		return that;
 	};
 
+	/**
+	 * Get or set the "hole remover" callback function, invoked on data that has been loaded
+	 * via the /query API, which "fills" in holes for us. For consistency with the /list API,
+	 * we can choose to remove those filled in data points, which can often adversely affect
+	 * our desired results.
+	 *
+	 * The function will be passed a raw array of datum objects as its only parameter. It should
+	 * return a new array of datum objects (or an empty array).
+	 * 
+	 * @param {function} [value] the hole remover function to use
+	 * @return when used as a getter, the current hole remover function, otherwise this object
+	 * @memberOf sn.datumLoader
+	 */
+	that.holeRemoverCallback = function(value) {
+		if ( !arguments.length ) { return holeRemoverCallback; }
+		if ( typeof value === 'function' ) {
+			holeRemoverCallback = value;
+		}
+		return that;
+	};
+	
 	/**
 	 * Get or set the callback function, invoked after all data has been loaded.
 	 * 

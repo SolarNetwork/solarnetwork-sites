@@ -29,6 +29,11 @@ function legendClickHandler(d, i) {
 	}
 }
 
+function sourceExcludeCallback(dataType, sourceId) {
+	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
+	return sn.runtime.excludeSources.enabled(mappedSourceId);
+}
+
 //show/hide the proper range selection based on the current aggregate level
 function updateRangeSelection() {
 	d3.selectAll('#details div.range').style('display', function() {
@@ -74,8 +79,16 @@ function powerAreaOverlapChartSetup(endDate, sourceMap) {
 	d3.select('.power-area-chart .time-count').text(queryRange.timeCount);
 	d3.select('.power-area-chart .time-unit').text(queryRange.timeUnit);
 	
+	var plotPropName = sn.runtime.powerAreaOverlapParameters.plotProperties[sn.runtime.powerAreaOverlapParameters.aggregate];
+	
 	sn.datumLoader(sn.env.dataTypes, urlHelperForAvailbleDataRange, 
 			queryRange.start, queryRange.end, sn.runtime.powerAreaOverlapParameters.aggregate)
+		.holeRemoverCallback(function(data) {
+			// filter out any data where data value === -1
+			return data.filter(function(e) {
+				return (e[plotPropName] >= 0);
+			});
+		})
 		.callback(function(results) {
 			sn.runtime.powerAreaOverlapChart.reset();
 			sn.env.dataTypes.forEach(function(e, i) {
@@ -201,12 +214,13 @@ function onDocumentReady() {
 		excludeSources : sn.runtime.excludeSources,
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false),
 		wiggle : (sn.env.wiggle === 'true'),
-		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+		plotProperties : {Minute : 'watts', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	
 	sn.runtime.powerAreaOverlapChart = sn.chart.powerAreaOverlapChart('#power-area-chart', sn.runtime.powerAreaOverlapParameters)
 		.dataCallback(chartDataCallback)
-		.colorCallback(colorForDataTypeSource);
+		.colorCallback(colorForDataTypeSource)
+		.sourceExcludeCallback(sourceExcludeCallback);
 	
 	setupUI();
 

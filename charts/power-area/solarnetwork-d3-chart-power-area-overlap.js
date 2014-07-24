@@ -20,15 +20,10 @@ if ( sn === undefined ) {
  * @property {number} [opacityReduction=0.1] - a percent opacity reduction to apply to groups on top of other groups
  * @property {object} [plotProperties] - the property to plot for specific aggregation levels; if unspecified 
  *                                       the {@code watts} property is used
- * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
  */
 
 /**
  * A power stacked area chart that overlaps two or more data sets.
- * 
- * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
- * in the chart. After changing the configuration call {@link sn.chart.powerAreaOverlapChart#regenerate()}
- * to re-draw the chart.
  * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
@@ -71,6 +66,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	
 	var dataCallback = undefined;
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
+	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
 	
 	// our layer data
 	var groupIds = [];
@@ -168,6 +164,8 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 				}
 				return y;
 			});
+		groupData = {};
+		groupLayers = {};
 		groupIds.forEach(function(groupId) {
 			var i, j, jMax, k, dummy;
 			var layerData;
@@ -175,6 +173,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			if ( !rawGroupData || !rawGroupData.length > 1 ) {
 				return;
 			}
+			
 			layerData = d3.nest()
 				.key(function(d) {
 					if ( dataCallback ) {
@@ -186,6 +185,17 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 					return d.sourceId;
 				})
 				.entries(rawGroupData);
+			
+			// remove excluded sources...
+			if ( sourceExcludeCallback ) {
+				layerData = layerData.filter(function(e) {
+					return !sourceExcludeCallback.call(that, groupId, e.key);
+				});
+			}
+			
+			if ( layerData.length < 1 ) {
+				return;
+			}
 			
 			// fill in "holes" for each stack, if more than one stack. we assume data already sorted by date
 			jMax = layerData.length - 1;
@@ -201,7 +211,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 						}
 						if ( layerData[k].values.length <= i || layerData[j].values[i].date.getTime() < layerData[k].values[i].date.getTime() ) {
 							dummy = {date : layerData[j].values[i].date, sourceId : layerData[k].key};
-							dummy[plotProperties[aggregateType]] = null;
+							dummy[plotPropName] = null;
 							layerData[k].values.splice(i, 0, dummy);
 						}
 					}
@@ -210,6 +220,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 					}
 				}
 			}
+			
 			var rangeX = [rawGroupData[0].date, rawGroupData[rawGroupData.length - 1].date];
 			if ( minX === undefined || rangeX[0].getTime() < minX.getTime() ) {
 				minX = rangeX[0];
@@ -253,22 +264,28 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	function draw() {	
 		// group the data into 2D array, so we can use d3 nested selections to map the data
 		var groupedData = [];
+		var groupedDataIds = [];
 		groupIds.forEach(function(groupId) {
-			var groupData = groupLayers[groupId].map(function(e) { return e.values; });
+			var groupLayer = groupLayers[groupId];
+			if ( groupLayer === undefined ) {
+				return;
+			}
+			groupedDataIds.push(groupId);
+			var groupData = groupLayer.map(function(e) { return e.values; });
 			groupedData.push(groupData);
 		});
 		
 		var groups = svgRoot.selectAll("g.data").data(groupedData, function(d, i) {
-				return groupIds[i];
+				return groupedDataIds[i];
 			});
 			
 		groups.transition().duration(transitionMs)
 			.style('opacity', groupOpacityFn);
 			
-		
 		groups.enter().append('g')
 				.attr('class', 'data')
 				.attr('transform', "translate(" + p[3] + ',' + p[0] + ')')
+				.style('opacity', 1e-6)
 			.transition().duration(transitionMs)
 				.style('opacity', groupOpacityFn);
 					
@@ -277,10 +294,23 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			.remove();
 		
 		var area = groups.selectAll('path.area').data(Object, function(d, i) {
-			return (d.length ? d[0].sourceId : null);
+			// bummer that no 'j' available here :-(
+			var firstDatum = (d.length ? d[0] : undefined);
+			var j = 0;
+			var result = null;
+			if ( firstDatum ) {
+				while ( j < groupedData.length ) {
+					if ( groupedData[j].length > i && groupedData[j][i].length > 0 && groupedData[j][i][0] === firstDatum ) {
+						result = groupedDataIds[j] + '/' + firstDatum.sourceId;
+						break;
+					}
+					j += 1;
+				}
+			}
+			return result;
 		});
 		function fillFn(d, i, j) {
-			return fillColor.call(this, groupIds[j], d[0], i);
+			return fillColor.call(this, groupedDataIds[j], d[0], i);
 		};
 		area.transition().duration(transitionMs).delay(200)
 			.attr("d", areaPathGenerator)
@@ -419,7 +449,9 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 */
 	that.reset = function() {
 		originalData = {};
+		groupIds = [];
 		groupData = {};
+		groupLayers = {};
 		return that;
 	};
 	
@@ -563,6 +595,23 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return colorCallback;
 		if ( typeof value === 'function' ) {
 			colorCallback = value;
+		}
+		return that;
+	};
+	
+	/**
+	 * Get or set the source exclude callback function. The callback will be passed the group ID 
+	 * and a source ID as arguments. It should true <em>true</em> if the data set for the given
+	 * group ID and source ID should be excluded from the chart.
+	 * 
+	 * @param {function} [value] the source exclude callback
+	 * @return when used as a getter, the current source exclude callback function, otherwise this object
+	 * @memberOf sn.chart.powerAreaOverlapChart
+	 */
+	that.sourceExcludeCallback = function(value) {
+		if ( !arguments.length ) return sourceExcludeCallback;
+		if ( typeof value === 'function' ) {
+			sourceExcludeCallback = value;
 		}
 		return that;
 	};
