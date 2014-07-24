@@ -62,13 +62,6 @@ function chartDataCallback(dataType, datum) {
 	} else {
 		datum.date = null;
 	}
-
-	/* map source ID
-	var mappedSourceId = colorDataTypeSourceMapper(dataType, null, datum.sourceId);
-	if ( mappedSourceId !== undefined ) {
-		datum.sourceId = mappedSourceId;
-	}
-	*/
 }
 
 // Watt stacked area overlap chart

@@ -35,6 +35,9 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		version : "1.0.0"
 	};
 
+	var internalPropName = '__internal__';
+	var discardId = '__discard__';
+
 	var config = (chartConfig || new sn.Configuration());
 	
 	// default to container's width, if we can
@@ -176,22 +179,32 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			
 			layerData = d3.nest()
 				.key(function(d) {
-					if ( dataCallback ) {
-						dataCallback.call(that, groupId, d);
+					if ( !d.hasOwnProperty(internalPropName) ) {
+						d[internalPropName] = {};
+						d[internalPropName].groupId = groupId;
+						if ( dataCallback ) {
+							dataCallback.call(that, groupId, d);
+						}
+						if ( d.sourceId === '' ) {
+							d.sourceId = 'Main';
+						}
 					}
-					if ( d.sourceId === '' ) {
-						d.sourceId = 'Main';
+					
+					// remove excluded sources...
+					if ( sourceExcludeCallback ) {
+						if ( sourceExcludeCallback.call(that, groupId, d.sourceId) ) {
+							return discardId;
+						}
 					}
+					
 					return d.sourceId;
 				})
 				.entries(rawGroupData);
 			
-			// remove excluded sources...
-			if ( sourceExcludeCallback ) {
-				layerData = layerData.filter(function(e) {
-					return !sourceExcludeCallback.call(that, groupId, e.key);
-				});
-			}
+			// remove discarded sources...
+			layerData = layerData.filter(function(d) {
+				return (d.key !== discardId);
+			});
 			
 			if ( layerData.length < 1 ) {
 				return;
@@ -293,21 +306,8 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			.style("opacity", 1e-6)
 			.remove();
 		
-		var area = groups.selectAll('path.area').data(Object, function(d, i) {
-			// bummer that no 'j' available here :-(
-			var firstDatum = (d.length ? d[0] : undefined);
-			var j = 0;
-			var result = null;
-			if ( firstDatum ) {
-				while ( j < groupedData.length ) {
-					if ( groupedData[j].length > i && groupedData[j][i].length > 0 && groupedData[j][i][0] === firstDatum ) {
-						result = groupedDataIds[j] + '/' + firstDatum.sourceId;
-						break;
-					}
-					j += 1;
-				}
-			}
-			return result;
+		var area = groups.selectAll('path.area').data(Object, function(d) {
+			return (d.length ? d[0][internalPropName].groupId +'.'+d[0].sourceId : null);
 		});
 		function fillFn(d, i, j) {
 			return fillColor.call(this, groupedDataIds[j], d[0], i);
