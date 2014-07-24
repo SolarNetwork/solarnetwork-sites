@@ -128,6 +128,14 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		return (1 - (i * grade));
 	}
 	
+	function areaOpacityFn(d, i, j) {
+		return groupOpacityFn(null, j);
+	}
+
+	function areaFillFn(d, i, j) {
+		return fillColor.call(this, d[0][internalPropName].groupId, d[0], i);
+	}
+	
 	function computeUnitsY() {
 		var fmt;
 		var maxY = d3.max(y.domain(), function(v) { return Math.abs(v); });
@@ -225,6 +233,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 						if ( layerData[k].values.length <= i || layerData[j].values[i].date.getTime() < layerData[k].values[i].date.getTime() ) {
 							dummy = {date : layerData[j].values[i].date, sourceId : layerData[k].key};
 							dummy[plotPropName] = null;
+							dummy[internalPropName] = {groupId : groupId};
 							layerData[k].values.splice(i, 0, dummy);
 						}
 					}
@@ -292,15 +301,9 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 				return groupedDataIds[i];
 			});
 			
-		groups.transition().duration(transitionMs)
-			.style('opacity', groupOpacityFn);
-			
 		groups.enter().append('g')
 				.attr('class', 'data')
-				.attr('transform', "translate(" + p[3] + ',' + p[0] + ')')
-				.style('opacity', 1e-6)
-			.transition().duration(transitionMs)
-				.style('opacity', groupOpacityFn);
+				.attr('transform', "translate(" + p[3] + ',' + p[0] + ')');
 					
 		groups.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
@@ -309,19 +312,22 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		var area = groups.selectAll('path.area').data(Object, function(d) {
 			return (d.length ? d[0][internalPropName].groupId +'.'+d[0].sourceId : null);
 		});
-		function fillFn(d, i, j) {
-			return fillColor.call(this, groupedDataIds[j], d[0], i);
-		};
+		
 		area.transition().duration(transitionMs).delay(200)
 			.attr("d", areaPathGenerator)
-			.style("fill", fillFn);
+			.style("fill", areaFillFn);
 
 		area.enter().append("path")
 				.attr("class", "area")
-				.style("fill", fillFn)
-				.attr("d", areaPathGenerator);
+				.style("fill", areaFillFn)
+				.attr("d", areaPathGenerator)
+				.style('opacity', 1e-6)
+			.transition().duration(transitionMs)
+				.style('opacity', areaOpacityFn);
 		
-		area.exit().remove();
+		area.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
 		
 		adjustAxisX()
 		adjustAxisY();
