@@ -1396,6 +1396,7 @@ sn.datumLoader = function(dataTypes, dataTypeUrlHelperProvider,  start, end, agg
  *                 the number of aggregate time units to include in the query
  * @param {Date} endDate - the end date
  * @returns {Object}
+ * @since 0.0.4
  */
 sn.datumLoaderQueryRange = function(aggregate, precision, aggregateTimeCount, endDate) {
 	var end,
@@ -1458,6 +1459,73 @@ sn.datumLoaderQueryRange = function(aggregate, precision, aggregateTimeCount, en
 		timeUnit : timeUnit, 
 		timeCount : timeCount
 	};
+};
+
+/**
+ * Normalize the data arrays resulting from a <code>d3.nest</code> operation so that all
+ * group value arrays have the same number of elements, based on a Date property named 
+ * <code>date</code>. The data values are assumed to be sorted by <code>date</code> already.
+ * The value arrays are modified in-place. This makes the data suitable to passing to 
+ * <code>d3.stack</code>, which expects all stack data arrays to have the same number of 
+ * values, for the same keys.
+ * 
+ * The <code>layerData</code> parameter should look something like this:
+ * 
+ * <pre>[
+ *   { key : 'A', values : [{date : Date(2011-12-02 12:00)}, {date : Date(2011-12-02 12:10)}] },
+ *   { key : 'B', values : [{date : Date(2011-12-02 12:00)}] }
+ * ]</pre>
+ * 
+ * After calling this method, <code>layerData</code> would look like this (notice the 
+ * filled in secod data value in the <b>B</b> group):
+ * 
+ * <pre>[
+ *   { key : 'A', values : [{date : Date(2011-12-02 12:00)}, {date : Date(2011-12-02 12:10)}] },
+ *   { key : 'B', values : [{date : Date(2011-12-02 12:00)}, {date : Date(2011-12-02 12:10)}] }] }
+ * ]</pre>
+ * 
+ * @param {array} layerData - An arry of objects, each object with a <code>key</code> group ID
+ *                            and a <code>values</code> array of data objects
+ * @param {object} fillTemplate - An object to use as a template for any "filled in" data objects.
+ *                                The <code>date</code> property will be populated automatically.
+ * @since 0.0.4
+ */
+sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
+	var i = 0,
+		j,
+		k,
+		jMax = layerData.length - 1,
+		dummy,
+		prop;
+	// fill in "holes" for each stack, if more than one stack. we assume data already sorted by date
+	if ( jMax > 0 ) {
+		while ( i < layerData[0].values.length ) {
+			dummy = undefined;
+			for ( j = 0; j <= jMax; j++ ) {
+				if ( j < jMax ) {
+					k = j + 1;
+				} else {
+					k = 0;
+				}
+				if ( layerData[k].values.length <= i || layerData[j].values[i].date.getTime() < layerData[k].values[i].date.getTime() ) {
+					dummy = {date : layerData[j].values[i].date, sourceId : layerData[k].key};
+					if ( fillTemplate ) {
+						for ( prop in fillTemplate ) {
+							if ( fillTemplate.hasOwnProperty(prop) ) {
+								dummy[prop] = fillTemplate[prop];
+							}
+						}
+					}
+					//dummy[plotPropName] = null;
+					//dummy[internalPropName] = {groupId : groupId};
+					layerData[k].values.splice(i, 0, dummy);
+				}
+			}
+			if ( dummy === undefined ) {
+				i++;
+			}
+		}
+	}
 };
 
 if (typeof define === "function" && define.amd) {

@@ -31,6 +31,8 @@ if ( sn === undefined ) {
  * @returns {sn.chart.powerAreaOverlapChart}
  */
 sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
+	'use strict';
+	
 	var that = {
 		version : "1.0.0"
 	};
@@ -71,14 +73,12 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
 	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
 	
-	// our layer data
+	// our computed layer data
 	var groupIds = [];
 	var groupData = {};
 	var groupLayers = {};
-	var minY = 0;
 
-	// Set y-axis  unit label
-	// setup display units in kW if domain range > 1000
+	// display units in kW if domain range > 1000
 	var displayFactor = 1;
 	var displayFormatter = d3.format(',d');
 
@@ -98,7 +98,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		that.aggregate(config.aggregate);
 		that.plotProperties(config.value('plotProperties'));
 		transitionMs = (config.value('transitionMs') || 600);
-		vertRuleOpacity = (config.value('vertRuleOpacity') || 0.05);
 		stackOffset = (config.value('wiggle') === true ? 'wiggle' : 'zero');
 	}
 	
@@ -158,8 +157,8 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 
 	function setup() {
 		var plotPropName = plotProperties[aggregateType];
-		var minX = undefined, maxX = undefined;
-		var maxY = undefined;
+		var minX, maxX;
+		var maxY;
 		var stack = d3.layout.stack()
 			.offset(stackOffset)
 			.values(function(d) { 
@@ -178,9 +177,9 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		groupData = {};
 		groupLayers = {};
 		groupIds.forEach(function(groupId) {
-			var i, j, jMax, k, dummy;
-			var layerData;
-			var rawGroupData = originalData[groupId];
+			var dummy,
+				layerData,
+				rawGroupData = originalData[groupId];
 			if ( !rawGroupData || !rawGroupData.length > 1 ) {
 				return;
 			}
@@ -207,6 +206,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 					
 					return d.sourceId;
 				})
+				.sortKeys(d3.ascending)
 				.entries(rawGroupData);
 			
 			// remove discarded sources...
@@ -218,30 +218,11 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 				return;
 			}
 			
-			// fill in "holes" for each stack, if more than one stack. we assume data already sorted by date
-			jMax = layerData.length - 1;
-			if ( jMax > 0 ) {
-				i = 0;
-				while ( i < layerData[0].values.length ) {
-					dummy = undefined;
-					for ( j = 0; j <= jMax; j++ ) {
-						if ( j < jMax ) {
-							k = j + 1;
-						} else {
-							k = 0;
-						}
-						if ( layerData[k].values.length <= i || layerData[j].values[i].date.getTime() < layerData[k].values[i].date.getTime() ) {
-							dummy = {date : layerData[j].values[i].date, sourceId : layerData[k].key};
-							dummy[plotPropName] = null;
-							dummy[internalPropName] = {groupId : groupId};
-							layerData[k].values.splice(i, 0, dummy);
-						}
-					}
-					if ( dummy === undefined ) {
-						i++;
-					}
-				}
-			}
+			// fill in "holes" for each stack layer, if more than one layer. we assume data already sorted by date
+			dummy = {};
+			dummy[plotPropName] = null;
+			dummy[internalPropName] = {groupId : groupId};
+			sn.nestedStackDataNormalizeByDate(layerData, dummy);
 			
 			var rangeX = [rawGroupData[0].date, rawGroupData[rawGroupData.length - 1].date];
 			if ( minX === undefined || rangeX[0].getTime() < minX.getTime() ) {
@@ -329,7 +310,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			.style("opacity", 1e-6)
 			.remove();
 		
-		adjustAxisX()
+		adjustAxisX();
 		adjustAxisY();
 	}
 
