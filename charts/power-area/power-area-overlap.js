@@ -195,8 +195,8 @@ function onDocumentReady() {
 		numDays : 7,
 		numMonths : 4,
 		numYears : 2,
-		wiggle : 'true',
-		linkOld : 'false',
+		wiggle : false,
+		linkOld : false,
 		dataTypes: ['Consumption', 'Power']
 	});
 	
