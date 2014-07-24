@@ -1516,8 +1516,6 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
 							}
 						}
 					}
-					//dummy[plotPropName] = null;
-					//dummy[internalPropName] = {groupId : groupId};
 					layerData[k].values.splice(i, 0, dummy);
 				}
 			}
