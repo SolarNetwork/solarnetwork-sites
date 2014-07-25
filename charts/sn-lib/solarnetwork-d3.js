@@ -1526,6 +1526,14 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
 	}
 };
 
+sn.superMethod = function(name) {
+	var that = this,
+		method = that[name];
+	return function() {
+		return method.apply(that, arguments);
+    };
+};
+
 if (typeof define === "function" && define.amd) {
 	define(sn);
 } else if (typeof module === "object" && module.exports) {
