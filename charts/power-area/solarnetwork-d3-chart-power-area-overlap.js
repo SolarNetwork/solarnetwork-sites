@@ -11,31 +11,29 @@ if ( sn === undefined ) {
 }
 
 /**
- * @typedef sn.chart.powerAreaOverlapChartParameters
- * @type {sn.Configuration}
- * @property {number} [width=812] - desired width, in pixels, of the chart
- * @property {number} [height=300] - desired height, in pixels, of the chart
- * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
- * @property {number} [transitionMs=600] - transition time
- * @property {number} [opacityReduction=0.1] - a percent opacity reduction to apply to groups on top of other groups
- * @property {object} [plotProperties] - the property to plot for specific aggregation levels; if unspecified 
- *                                       the {@code watts} property is used
- */
-
-/**
  * A power stacked area chart that overlaps two or more data sets.
  * 
  * @class
+ * @abstract
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.powerAreaOverlapChartParameters} [chartConfig] - the chart parameters
- * @returns {sn.chart.powerAreaOverlapChart}
+ * @returns {sn.chart.baseGroupedStackChart}
  */
-sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
+sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	'use strict';
 	
 	var that = {
-		version : "1.0.0"
+		version : '1.0.0'
 	};
+	
+	var me = that;
+	
+	// extending classes should re-define this property so method chaining works
+	Object.defineProperty(that, 'me', {
+						enumerable : false,
+						get : function() { return me; },
+						set : function(obj) { me = obj; }
+					});
 
 	var internalPropName = '__internal__';
 	var discardId = '__discard__';
@@ -82,18 +80,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	var displayFactor = 1;
 	var displayFormatter = d3.format(',d');
 
-	var areaPathGenerator = d3.svg.area()
-		.interpolate("monotone")
-		.x(function(d) { 
-			return x(d.date);
-		})
-		.y0(function(d) { 
-			return y(d.y0);
-		})
-		.y1(function(d) { 
-			return y(d.y0 + d.y);
-		});
-	
 	function parseConfiguration() {
 		that.aggregate(config.aggregate);
 		that.plotProperties(config.value('plotProperties'));
@@ -125,14 +111,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	function groupOpacityFn(d, i) {
 		var grade = (config.value('opacityReduction') || 0.1);
 		return (1 - (i * grade));
-	}
-	
-	function areaOpacityFn(d, i, j) {
-		return groupOpacityFn(null, j);
-	}
-
-	function areaFillFn(d, i, j) {
-		return fillColor.call(this, d[0][internalPropName].groupId, d[0], i);
 	}
 	
 	function computeUnitsY() {
@@ -264,62 +242,23 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		return colorCallback(groupId, d.sourceId, i);
 	}
 
-	function draw() {	
-		// group the data into 2D array, so we can use d3 nested selections to map the data
-		var groupedData = [];
-		var groupedDataIds = [];
-		groupIds.forEach(function(groupId) {
-			var groupLayer = groupLayers[groupId];
-			if ( groupLayer === undefined ) {
-				return;
-			}
-			groupedDataIds.push(groupId);
-			var groupData = groupLayer.map(function(e) { return e.values; });
-			groupedData.push(groupData);
-		});
-		
-		var groups = svgRoot.selectAll("g.data").data(groupedData, function(d, i) {
-				return groupedDataIds[i];
-			});
-			
-		groups.enter().append('g')
-				.attr('class', 'data')
-				.attr('transform', "translate(" + p[3] + ',' + p[0] + ')');
-					
-		groups.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-			.remove();
-		
-		var area = groups.selectAll('path.area').data(Object, function(d) {
-			return (d.length ? d[0][internalPropName].groupId +'.'+d[0].sourceId : null);
-		});
-		
-		area.transition().duration(transitionMs).delay(200)
-			.attr("d", areaPathGenerator)
-			.style("fill", areaFillFn);
-
-		area.enter().append("path")
-				.attr("class", "area")
-				.style("fill", areaFillFn)
-				.attr("d", areaPathGenerator)
-				.style('opacity', 1e-6)
-			.transition().duration(transitionMs)
-				.style('opacity', areaOpacityFn);
-		
-		area.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-			.remove();
-		
-		adjustAxisX();
-		adjustAxisY();
-	}
-
 	function axisYTransform(d) {
 		// align to half-pixels, to 1px line is aligned to pixels and crisp
 		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
-	};
+	}
 
-	function adjustAxisX() {
+	function axisRuleClassY(d) {
+		return (d === 0 ? 'origin' : 'm');
+	}
+
+	function draw() {	
+		// extending classes should do something here...
+		
+		drawAxisX();
+		drawAxisY();
+	}
+
+	function drawAxisX() {
 		if ( d3.event && d3.event.transform ) {
 			d3.event.transform(x);
 		}
@@ -350,11 +289,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			.remove();
 	}
 	
-	function axisRuleClassY(d) {
-		return (d === 0 ? 'origin' : 'm');
-	}
-
-	function adjustAxisY() {
+	function drawAxisY() {
 		var yTicks = (that.wiggle() ? [] : y.ticks(5).filter(function(e) { return e !== 0; }));
 		var axisLines = svgRoot.select("g.rule").selectAll("g").data(yTicks);
 		var axisLinesT = axisLines.transition().duration(transitionMs);
@@ -387,11 +322,79 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 				});
 	}
 	
+	Object.defineProperty(that, 'x', {
+						enumerable : false,
+						writable : false,
+						configurable : false,
+						value : x
+					});
+
+	Object.defineProperty(that, 'y', {
+						enumerable : false,
+						writable : false,
+						configurable : false,
+						value : y
+					});
+
+	Object.defineProperty(that, 'fillColor', {
+						enumerable : false,
+						writable : false,
+						configurable : false,
+						value : fillColor
+					});
+					
+	Object.defineProperty(that, 'groupOpacityFn', {
+						enumerable : false,
+						writable : false,
+						configurable : false,
+						value : groupOpacityFn
+					});
+
+	Object.defineProperty(that, 'internalPropName', {
+						enumerable : false,
+						writable : false,
+						configurable : false,
+						value : internalPropName
+					});
+
+	Object.defineProperty(that, 'discardId', {
+						enumerable : false,
+						writable : false,
+						configurable : false,
+						value : discardId
+					});
+
+	Object.defineProperty(that, 'padding', {
+						enumerable : false,
+						get : function() { return p; }
+					});
+
+	Object.defineProperty(that, 'svgRoot', {
+						enumerable : false,
+						get : function() { return svgRoot; }
+					});
+
+	Object.defineProperty(that, 'groupIds', {
+						enumerable : false,
+						get : function() { return groupIds; }
+					});
+
+	Object.defineProperty(that, 'groupLayers', {
+						enumerable : false,
+						get : function() { return groupLayers; }
+					});
+					
+	Object.defineProperty(that, 'draw', {
+						enumerable : false,
+						configurable : true,
+						value : draw
+					});
+
 	/**
 	 * Get the x-axis domain (minimum and maximum dates).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.xDomain = function() { return x.domain(); };
 
@@ -399,7 +402,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * Get the y-axis domain (minimum and maximum values).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.yDomain = function() { return y.domain(); };
 	
@@ -410,7 +413,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * chart ended up using.
 	 *  
 	 * @return the y-axis scale factor
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.yScale = function() { return displayFactor; };
 
@@ -420,26 +423,26 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * @param {number} [value] the number of consumption sources to use
 	 * @returns when used as a getter, the count number, otherwise this object
 	 * @returns the {@code aggregate} value
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.aggregate = function(value) { 
 		if ( !arguments.length ) return aggregateType;
 		aggregateType = (value === 'Month' ? 'Month' : value === 'Day' ? 'Day' : value === 'Hour' ? 'Hour' : 'Minute');
-		return that;
+		return me;
 	};
 	
 	/**
 	 * Clear out all data associated with this chart. Does not redraw.
 	 * 
 	 * @return this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.reset = function() {
 		originalData = {};
 		groupIds = [];
 		groupData = {};
 		groupLayers = {};
-		return that;
+		return me;
 	};
 	
 	/**
@@ -450,7 +453,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * @param {Array} rawData - the raw chart data to load
 	 * @param {String} groupId - the ID to associate with the data; each stack group must have its own ID
 	 * @return this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.load = function(rawData, groupId) {
 		if ( originalData[groupId] === undefined ) {
@@ -459,7 +462,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		} else {
 			originalData[groupId].concat(rawData);
 		}
-		return that;
+		return me;
 	};
 	
 	/**
@@ -467,7 +470,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * source 
 	 * 
 	 * @return this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.regenerate = function() {
 		if ( originalData === undefined ) {
@@ -476,8 +479,8 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		}
 		parseConfiguration();
 		setup();
-		draw();
-		return that;
+		that.draw();
+		return me;
 	};
 	
 	/**
@@ -485,12 +488,12 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {number} [value] the number of milliseconds to use
 	 * @return when used as a getter, the millisecond value, otherwise this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
 		transitionMs = +value; // the + used to make sure we have a Number
-		return that;
+		return me;
 	};
 
 	/**
@@ -500,12 +503,12 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {string|function} [value] the stack offset to use
 	 * @return when used as a getter, the stack offset value, otherwise this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.stackOffset = function(value) {
 		if ( !arguments.length ) return stackOffset;
 		stackOffset = value;
-		return that;
+		return me;
 	};
 
 	/**
@@ -517,7 +520,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * @param {boolean} [value] <em>true</em> to use the {@code wiggle} offset, <em>false</em> to use {@code zero}
 	 * @return when used as a getter, <em>true</em> if {@code wiggle} is the current offset, <em>false</em> otherwise;
 	 *         when used as a setter, this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.wiggle = function(value) {
 		if ( !arguments.length ) return (stackOffset === 'wiggle');
@@ -541,7 +544,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {object} [value] the aggregate property names to use
 	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.plotProperties = function(value) {
 		if ( !arguments.length ) return plotProperties;
@@ -550,7 +553,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			p[e] = (value !== undefined && value[e] !== undefined ? value[e] : 'watts');
 		});
 		plotProperties = p;
-		return that;
+		return me;
 	};
 
 	/**
@@ -560,14 +563,14 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the data callback
 	 * @return when used as a getter, the current data callback function, otherwise this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.dataCallback = function(value) {
 		if ( !arguments.length ) return dataCallback;
 		if ( typeof value === 'function' ) {
 			dataCallback = value;
 		}
-		return that;
+		return me;
 	};
 
 	/**
@@ -576,14 +579,14 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the color callback
 	 * @return when used as a getter, the current color callback function, otherwise this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.colorCallback = function(value) {
 		if ( !arguments.length ) return colorCallback;
 		if ( typeof value === 'function' ) {
 			colorCallback = value;
 		}
-		return that;
+		return me;
 	};
 	
 	/**
@@ -593,16 +596,130 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the source exclude callback
 	 * @return when used as a getter, the current source exclude callback function, otherwise this object
-	 * @memberOf sn.chart.powerAreaOverlapChart
+	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.sourceExcludeCallback = function(value) {
 		if ( !arguments.length ) return sourceExcludeCallback;
 		if ( typeof value === 'function' ) {
 			sourceExcludeCallback = value;
 		}
-		return that;
+		return me;
 	};
 
 	parseConfiguration();
+	return that;
+};
+
+/**
+ * @typedef sn.chart.powerAreaOverlapChartParameters
+ * @type {sn.Configuration}
+ * @property {number} [width=812] - desired width, in pixels, of the chart
+ * @property {number} [height=300] - desired height, in pixels, of the chart
+ * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
+ * @property {number} [transitionMs=600] - transition time
+ * @property {number} [opacityReduction=0.1] - a percent opacity reduction to apply to groups on top of other groups
+ * @property {object} [plotProperties] - the property to plot for specific aggregation levels; if unspecified 
+ *                                       the {@code watts} property is used
+ */
+
+/**
+ * A power stacked area chart that overlaps two or more data sets.
+ * 
+ * @class
+ * @extends sn.chart.baseGroupedStackChart
+ * @param {string} containerSelector - the selector for the element to insert the chart into
+ * @param {sn.chart.powerAreaOverlapChartParameters} [chartConfig] - the chart parameters
+ * @returns {sn.chart.powerAreaOverlapChart}
+ */
+sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
+	'use strict';
+	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig),
+		superDraw = sn.superMethod.call(parent, 'draw');
+	var that = (function() {
+		var	me = {},
+			prop;
+		for ( prop in parent ) {
+			if ( parent.hasOwnProperty(prop) ) {
+				me[prop] = parent[prop];
+			}
+		}
+		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
+		return me;
+	}());
+	parent.me = that;
+
+	var areaPathGenerator = d3.svg.area()
+		.interpolate("monotone")
+		.x(function(d) { 
+			return parent.x(d.date);
+		})
+		.y0(function(d) { 
+			return parent.y(d.y0);
+		})
+		.y1(function(d) { 
+			return parent.y(d.y0 + d.y);
+		});
+
+	function areaFillFn(d, i, j) {
+		return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
+	}
+	
+	function areaOpacityFn(d, i, j) {
+		return parent.groupOpacityFn(null, j);
+	}
+	
+	function draw() {
+		// group the data into 2D array, so we can use d3 nested selections to map the data
+		var groupedData = [];
+		var groupedDataIds = [];
+		var groupIds = parent.groupIds;
+		var transitionMs = parent.transitionMs();
+		groupIds.forEach(function(groupId) {
+			var groupLayer = parent.groupLayers[groupId];
+			if ( groupLayer === undefined ) {
+				return;
+			}
+			groupedDataIds.push(groupId);
+			var groupData = groupLayer.map(function(e) { return e.values; });
+			groupedData.push(groupData);
+		});
+		
+		var groups = parent.svgRoot.selectAll("g.data").data(groupedData, function(d, i) {
+				return groupedDataIds[i];
+			});
+			
+		groups.enter().append('g')
+				.attr('class', 'data')
+				.attr('transform', "translate(" + parent.padding[3] + ',' + parent.padding[0] + ')');
+					
+		groups.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+		
+		var area = groups.selectAll('path.area').data(Object, function(d) {
+			return (d.length ? d[0][parent.internalPropName].groupId +'.'+d[0].sourceId : null);
+		});
+		
+		area.transition().duration(transitionMs).delay(200)
+			.attr("d", areaPathGenerator)
+			.style("fill", areaFillFn);
+
+		area.enter().append("path")
+				.attr("class", "area")
+				.style("fill", areaFillFn)
+				.attr("d", areaPathGenerator)
+				.style('opacity', 1e-6)
+			.transition().duration(transitionMs)
+				.style('opacity', areaOpacityFn);
+		
+		area.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+			
+		superDraw();
+	};
+	
+	Object.defineProperty(parent, 'draw', {configurable : true, value : draw });
+	
 	return that;
 };
