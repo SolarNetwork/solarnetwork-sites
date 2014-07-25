@@ -264,6 +264,10 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return (d === 0 ? 'origin' : 'm');
 	}
 
+	function axisTextClassY(d) {
+		return (d === 0 ? 'origin' : null);
+	}
+
 	function draw() {	
 		// extending classes should do something here...
 		
@@ -303,12 +307,13 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	}
 	
 	function drawAxisY() {
-		var yTicks = (that.wiggle() ? [] : y.ticks(5).filter(function(e) { return e !== 0; }));
+		var yTicks = (that.wiggle() ? [] : y.ticks(5));
 		var axisLines = svgRoot.select("g.rule").selectAll("g").data(yTicks);
 		var axisLinesT = axisLines.transition().duration(transitionMs);
-		axisLinesT.attr("transform", axisYTransform)
-			.select("text")
-				.text(displayFormat);
+		
+		axisLinesT.attr("transform", axisYTransform).select("text")
+				.text(displayFormat)
+				.attr('class', axisTextClassY);
 		axisLinesT.select("line")
 				.attr('class', axisRuleClassY);
 		
@@ -326,7 +331,8 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 				.attr('class', axisRuleClassY);
 		entered.append("text")
 				.attr("x", p[3] - 10)
-				.text(displayFormat);
+				.text(displayFormat)
+				.attr('class', axisTextClassY);
 		entered.transition().duration(transitionMs)
 				.style("opacity", 1)
 				.each('end', function() {
@@ -344,10 +350,11 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		'discardId' : { value : discardId },
 		'padding' : { get : function() { return p; } },
 		'svgRoot' : { get : function() { return svgRoot; } },
+		'svgTickGroupX' : { get : function() { return svgTickGroupX; } },
 		'groupIds' : { get : function() { return groupIds; } },
 		'groupLayers' : { get : function() { return groupLayers; } },
 		'draw' : { value : draw, configurable : true },
-		'drawAxisX' : { value : drawAxisY, configurable : true },
+		'drawAxisX' : { value : drawAxisX, configurable : true },
 		'drawAxisY' : { value : drawAxisY, configurable : true }
 	});
 
