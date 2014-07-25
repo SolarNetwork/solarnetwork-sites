@@ -1499,9 +1499,12 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
 		prop;
 	// fill in "holes" for each stack, if more than one stack. we assume data already sorted by date
 	if ( jMax > 0 ) {
-		while ( i < layerData[0].values.length ) {
+		while ( i < d3.max(layerData.map(function(e) { return e.values.length; })) ) {
 			dummy = undefined;
 			for ( j = 0; j <= jMax; j++ ) {
+				if ( layerData[j].values.length <= i ) {
+					continue;
+				}
 				if ( j < jMax ) {
 					k = j + 1;
 				} else {
