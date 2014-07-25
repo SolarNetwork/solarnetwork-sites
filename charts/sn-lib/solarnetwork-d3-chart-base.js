@@ -268,6 +268,13 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return (d === 0 ? 'origin' : null);
 	}
 
+	function axisXTickClassMajor(d) {
+		return (aggregateType === 'Minute' && d.getUTCHours() === 0)
+			|| (aggregateType === 'Hour' && d.getUTCHours() === 0)
+			|| (aggregateType === 'Day' && d.getUTCDate() === 1)
+			|| (aggregateType === 'Month' && d.getUTCMonth() === 0);
+	}
+
 	function draw() {	
 		// extending classes should do something here...
 		
@@ -284,17 +291,23 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		var ticks = x.ticks(numTicks);
 
 		// Generate x-ticks
-		var labels = svgTickGroupX.selectAll("text").data(ticks);
+		var labels = svgTickGroupX.selectAll("text").data(ticks)
+				.classed({
+						major : axisXTickClassMajor
+					});
 		
 		labels.transition().duration(transitionMs)
-	  		.attr("x", x)
-	  		.text(fx);
+				.attr("x", x)
+				.text(fx);
 		
 		labels.enter().append("text")
-			.attr("dy", "-0.5em") // needed so descenders not cut off
-			.style("opacity", 1e-6)
-			.attr("x", x)
-		.transition().duration(transitionMs)
+				.attr("dy", "-0.5em") // needed so descenders not cut off
+				.style("opacity", 1e-6)
+				.attr("x", x)
+				.classed({
+						major : axisXTickClassMajor
+					})
+			.transition().duration(transitionMs)
 				.style("opacity", 1)
 				.text(fx)
 				.each('end', function() {

@@ -231,8 +231,9 @@ svg {
 	text-anchor: middle;
 }
 
-.chart g.agg text {
-	font-weight: bold;
+.chart g.agg text,
+.chart g.ticks text.major {
+	font-weight: 600;
 }
 
 .chart g.rule line {
@@ -248,6 +249,10 @@ svg {
 .chart g.rule text {
 	text-anchor: end;
 	alignment-baseline: middle;
+}
+
+.chart g.rule text.origin {
+	display: none;
 }
 
 .chart path.area {
