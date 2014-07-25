@@ -335,71 +335,21 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 				});
 	}
 	
-	Object.defineProperty(that, 'x', {
-						enumerable : false,
-						writable : false,
-						configurable : false,
-						value : x
-					});
-
-	Object.defineProperty(that, 'y', {
-						enumerable : false,
-						writable : false,
-						configurable : false,
-						value : y
-					});
-
-	Object.defineProperty(that, 'fillColor', {
-						enumerable : false,
-						writable : false,
-						configurable : false,
-						value : fillColor
-					});
-					
-	Object.defineProperty(that, 'groupOpacityFn', {
-						enumerable : false,
-						writable : false,
-						configurable : false,
-						value : groupOpacityFn
-					});
-
-	Object.defineProperty(that, 'internalPropName', {
-						enumerable : false,
-						writable : false,
-						configurable : false,
-						value : internalPropName
-					});
-
-	Object.defineProperty(that, 'discardId', {
-						enumerable : false,
-						writable : false,
-						configurable : false,
-						value : discardId
-					});
-
-	Object.defineProperty(that, 'padding', {
-						enumerable : false,
-						get : function() { return p; }
-					});
-
-	Object.defineProperty(that, 'svgRoot', {
-						enumerable : false,
-						get : function() { return svgRoot; }
-					});
-
-	Object.defineProperty(that, 'groupIds', {
-						enumerable : false,
-						get : function() { return groupIds; }
-					});
-
-	Object.defineProperty(that, 'groupLayers', {
-						enumerable : false,
-						get : function() { return groupLayers; }
-					});
-					
-	Object.defineProperty(that, 'draw', {configurable : true, value : draw });
-	Object.defineProperty(that, 'drawAxisX', {configurable : true, value : drawAxisY});
-	Object.defineProperty(that, 'drawAxisY', {configurable : true, value : drawAxisY});
+	Object.defineProperties(that, {
+		'x' : { value : x },
+		'y' : { value : y },
+		'fillColor' : { value : fillColor },
+		'groupOpacityFn' : { value : groupOpacityFn },
+		'internalPropName' : { value : internalPropName },
+		'discardId' : { value : discardId },
+		'padding' : { get : function() { return p; } },
+		'svgRoot' : { get : function() { return svgRoot; } },
+		'groupIds' : { get : function() { return groupIds; } },
+		'groupLayers' : { get : function() { return groupLayers; } },
+		'draw' : { value : draw, configurable : true },
+		'drawAxisX' : { value : drawAxisY, configurable : true },
+		'drawAxisY' : { value : drawAxisY, configurable : true }
+	});
 
 	/**
 	 * Get the x-axis domain (minimum and maximum dates).
