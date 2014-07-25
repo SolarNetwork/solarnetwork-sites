@@ -103,39 +103,51 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 		return parent.y(d.y0) - parent.y(d.y0 + d.y);
 	}
 	
-	function foo() {
-		var sourceGroups = svg.selectAll("g.source").data(layers)
-			.style("fill", sn.colorFn);
-		sourceGroups.enter()
-			.append("g")
-				.attr("class", "source")
-				.style("fill", sn.colorFn);
-		sourceGroups.exit().remove();
+	function axisXMidBarValue(d) { 
+		return xBar(d) + (xBar.rangeBand() / 2); 
+	}
+	
+	function axisXTickClassMajor(d) {
+		var aggregateType = parent.aggregate();
+		return (aggregateType === 'Day' && d.getUTCDate() === 1)
+			|| (aggregateType === 'Hour' && d.getUTCHours() === 0)
+			|| (aggregateType === 'Month' && d.getUTCMonth() === 0);
+	}
+
+	function drawAxisX() {
+		var numTicks = 12,
+			fx = parent.x.tickFormat(numTicks),
+			ticks = parent.x.ticks(numTicks),
+			transitionMs = parent.transitionMs();
+
+		// Generate x-ticks, centered within bars
+		var labels = parent.svgTickGroupX.selectAll('text').data(ticks, Object)
+				.classed({
+						major : axisXTickClassMajor
+					});
 		
-		var centerYLoc = y(0);
+		labels.transition().duration(transitionMs)
+	  			.attr('x', axisXMidBarValue)
+	  			.text(fx);
 		
-		var bars = sourceGroups.selectAll("rect").data(Object, function(d) {
-			return d.x;
-		});
-		bars.transition().duration(transitionMs)
-			.attr("x", valueX)
-			.attr("y", valueY)
-			.attr("height", heightY)
-			.attr("width", xBar.rangeBand());
+		labels.enter().append('text')
+				.attr('dy', '-0.5em') // needed so descenders not cut off
+				.style('opacity', 1e-6)
+				.attr('x', axisXMidBarValue)
+				.classed({
+						major : axisXTickClassMajor
+					})
+			.transition().duration(transitionMs)
+				.style('opacity', 1)
+				.text(fx)
+				.each('end', function() {
+						// remove the opacity style
+						d3.select(this).style('opacity', null);
+					});
 		
-		var entered = bars.enter().append("rect")
-			.attr("x", valueX)
-			.attr("y", centerYLoc)
-			.attr("height", 1e-6)
-			.attr("width", xBar.rangeBand());
-		
-		entered.transition().duration(transitionMs)
-			.attr("y", valueY)
-			.attr("height", heightY);
-		
-		bars.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-  			.remove();
+		labels.exit().transition().duration(transitionMs)
+				.style('opacity', 1e-6)
+				.remove();
 	}
 	
 	function draw() {
@@ -210,6 +222,7 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 				.remove();
 		
 		parent.drawAxisY();
+		drawAxisX();
 	};
 	
 	Object.defineProperty(parent, 'draw', {configurable : true, value : draw });
