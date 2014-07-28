@@ -1485,7 +1485,7 @@ sn.datumLoaderQueryRange = function(aggregate, precision, aggregateTimeCount, en
  * ]</pre>
  * 
  * @param {array} layerData - An arry of objects, each object with a <code>key</code> group ID
- *                            and a <code>values</code> array of data objects
+ *                            and a <code>values</code> array of data objects.
  * @param {object} fillTemplate - An object to use as a template for any "filled in" data objects.
  *                                The <code>date</code> property will be populated automatically.
  * @since 0.0.4
@@ -1527,6 +1527,26 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
 			}
 		}
 	}
+};
+
+/**
+ * Set the display units within a d3 selection based on a scale. This method takes a 
+ * base unit and adds an SI prefix based on the provided scale. It replaces the text
+ * content of any DOM node with a <code>unit</code> class that is a child of the given
+ * selection.
+ * 
+ * @param {object} selection - A d3 selection that serves as the root search context.
+ * @param {string} baseUnit - The base unit, for example <b>W</b> or <b>Wh</b>.
+ * @param {number} scale - The unit scale, which must be a recognized SI scale, such 
+ *                         as <b>1000</b> for <b>k</b>.
+ * @since 0.0.4
+ */
+sn.adjustDisplayUnits = function(selection, baseUnit, scale) {
+	var unit = (scale === 1000000000 ? 'G' 
+		: scale === 1000000 ? 'M' 
+		: scale === 1000 ? 'k' 
+		: '') + baseUnit;
+	selection.selectAll('.unit').text(unit);
 };
 
 sn.superMethod = function(name) {
