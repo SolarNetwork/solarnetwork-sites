@@ -62,6 +62,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		chartData = undefined,
 		chartLabels = undefined;
 	
+	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
+
 	var percentFormatter = d3.format('.0%');
 
 	var originalData = undefined;
@@ -103,26 +105,38 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	// setup display units in kW if domain range > 1000
 	var displayFactor = 1;
 	var displayFormatter = d3.format(',d');
+	
+	function sliceValue(d) {
+		return d.value;
+	}
+	
 	function computeUnits() {
 		var fmt;
-		var maxValue = d3.max(pieSlices, function(d) {
-			return d.value;
-		});
-		if ( maxValue >= 1000000 ) {
+		var maxValue = d3.max(pieSlices, sliceValue);
+		
+		displayFactor = 1;
+		
+		if ( displayFactorCallback ) {
+			displayFactor = displayFactorCallback.call(that, maxValue);
+		} else if ( maxValue >= 50000000 ) {
+			displayFactor = 1000000000;
+		} else if ( maxValue >= 500000 ) {
 			displayFactor = 1000000;
-			fmt = ',.2f';
 		} else if ( maxValue >= 1000 ) {
 			displayFactor = 1000;
+		}
+
+		if ( displayFactor === 1000000 ) {
+			fmt = ',.2f';
+		} else if ( displayFactor === 1000 ) {
 			fmt = ',.1f';
 		} else {
-			displayFactor = 1;
 			fmt = ',d';
 		}
+
 		displayFormatter = d3.format(fmt);
 		
-		totalValue = d3.sum(pieSlices, function(d) {
-			return d.value;
-		});
+		totalValue = d3.sum(pieSlices, sliceValue);
 	}
 	
 	function displayFormat(d) {
@@ -443,6 +457,23 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	that.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
 		transitionMs = +value; // the + used to make sure we have a Number
+		return that;
+	};
+
+	/**
+	 * Get or set the display factor callback function. The callback will be passed the maximum 
+	 * pie slice value as an argument. It should return a number representing the scale factor to use
+	 * in labels.
+	 * 
+	 * @param {function} [value] the display factor exclude callback
+	 * @return when used as a getter, the current display factor callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
+	that.displayFactorCallback = function(value) {
+		if ( !arguments.length ) return displayFactorCallback;
+		if ( typeof value === 'function' ) {
+			displayFactorCallback = value;
+		}
 		return that;
 	};
 
