@@ -83,6 +83,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	var dataCallback = undefined;
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
 	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
+	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
 	
 	// our computed layer data
 	var groupIds = [];
@@ -129,16 +130,26 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	function computeUnitsY() {
 		var fmt;
 		var maxY = d3.max(y.domain(), function(v) { return Math.abs(v); });
-		if ( maxY >= 100000 ) {
+		displayFactor = 1;
+		
+		if ( displayFactorCallback ) {
+			displayFactor = displayFactorCallback.call(me, maxY);
+		} else if ( maxY >= 50000000 ) {
+			displayFactor = 1000000000;
+		} else if ( maxY >= 500000 ) {
 			displayFactor = 1000000;
-			fmt = ',g';
 		} else if ( maxY >= 1000 ) {
 			displayFactor = 1000;
+		}
+
+		if ( displayFactor === 1000000 ) {
+			fmt = ',g';
+		} else if ( displayFactor === 1000 ) {
 			fmt = ',g';
 		} else {
-			displayFactor = 1;
 			fmt = ',d';
 		}
+		
 		displayFormatter = d3.format(fmt);
 	}
 	
@@ -583,6 +594,24 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return sourceExcludeCallback;
 		if ( typeof value === 'function' ) {
 			sourceExcludeCallback = value;
+		}
+		return me;
+	};
+
+	
+	/**
+	 * Get or set the display factor callback function. The callback will be passed the absolute maximum 
+	 * Y domain value as an argument. It should return a number representing the scale factor to use
+	 * in Y-axis labels.
+	 * 
+	 * @param {function} [value] the display factor exclude callback
+	 * @return when used as a getter, the current display factor callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.displayFactorCallback = function(value) {
+		if ( !arguments.length ) return displayFactorCallback;
+		if ( typeof value === 'function' ) {
+			displayFactorCallback = value;
 		}
 		return me;
 	};
