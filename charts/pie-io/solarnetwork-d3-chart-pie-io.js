@@ -126,12 +126,14 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			displayFactor = 1000;
 		}
 
-		if ( displayFactor === 1000000 ) {
+		if ( displayFactor >= 1000000 ) {
 			fmt = ',.2f';
 		} else if ( displayFactor === 1000 ) {
 			fmt = ',.1f';
-		} else {
+		} else if ( displayFactor === 1 ) {
 			fmt = ',d';
+		} else {
+			fmt = ',g';
 		}
 
 		displayFormatter = d3.format(fmt);

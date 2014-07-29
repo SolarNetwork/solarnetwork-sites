@@ -142,12 +142,10 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			displayFactor = 1000;
 		}
 
-		if ( displayFactor === 1000000 ) {
-			fmt = ',g';
-		} else if ( displayFactor === 1000 ) {
-			fmt = ',g';
-		} else {
+		if ( displayFactor === 1 ) {
 			fmt = ',d';
+		} else {
+			fmt = ',g';
 		}
 		
 		displayFormatter = d3.format(fmt);
