@@ -84,6 +84,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
 	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
+	var layerPostProcessCallback = undefined; // function accepts (groupId, result of d3.nest()) and should return same structure
 	
 	// our computed layer data
 	var groupIds = [];
@@ -223,6 +224,10 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			dummy[plotPropName] = null;
 			dummy[internalPropName] = {groupId : groupId};
 			sn.nestedStackDataNormalizeByDate(layerData, dummy);
+			
+			if ( layerPostProcessCallback ) {
+				layerData = layerPostProcessCallback(groupId, layerData);
+			}
 			
 			var rangeX = [rawGroupData[0].date, rawGroupData[rawGroupData.length - 1].date];
 			if ( minX === undefined || rangeX[0].getTime() < minX.getTime() ) {
@@ -596,7 +601,6 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return me;
 	};
 
-	
 	/**
 	 * Get or set the display factor callback function. The callback will be passed the absolute maximum 
 	 * Y domain value as an argument. It should return a number representing the scale factor to use
@@ -610,6 +614,23 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return displayFactorCallback;
 		if ( typeof value === 'function' ) {
 			displayFactorCallback = value;
+		}
+		return me;
+	};
+
+	/**
+	 * Get or set the layer post-process callback function. The callback will be passed a 
+	 * group ID and that group's result of the d3.nest() operator, after all layer data 
+	 * arrays have been normalized to contain the same number of elements. 
+	 * 
+	 * @param {function} [value] the layer post-process callback
+	 * @return when used as a getter, the current layer post-process callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.layerPostProcessCallback = function(value) {
+		if ( !arguments.length ) return layerPostProcessCallback;
+		if ( typeof value === 'function' ) {
+			layerPostProcessCallback = value;
 		}
 		return me;
 	};
