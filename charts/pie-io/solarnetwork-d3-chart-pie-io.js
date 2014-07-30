@@ -62,7 +62,9 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		chartData = undefined,
 		chartLabels = undefined;
 	
+	var colorCallback = undefined; // function accepts (sourceId) and returns a color
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
+	var layerKeyCallback = undefined; // function accepts datum and should return string key
 
 	var percentFormatter = d3.format('.0%');
 
@@ -148,8 +150,10 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	function setup(rawData) {
 		originalData = rawData;
 		
+		var keyFn = (layerKeyCallback ? layerKeyCallback : function(d) { return d.sourceId; });
+		
 		var rollup = d3.nest()
-			.key(function(d) { return d.sourceId; })
+			.key(keyFn)
 			.rollup(function(group) { 
 				return d3.sum(group, function(d) {
 					return (config.excludeSources !== undefined && config.excludeSources.enabled(d.sourceId) 
@@ -164,7 +168,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 				return !config.excludeSources.enabled(e.key);
 			});
 		}
-		
+
 		var pie = d3.layout.pie()
 			.sort(null)
 			.value(function(d) {
@@ -177,6 +181,9 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	}
 	
 	function pieSliceColorFn(d) {
+		if ( colorCallback ) {
+			return colorCallback.call(that, d.data);
+		}
 		return sn.colorFn({source:d.data.key});
 	}
 	
@@ -463,6 +470,21 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	};
 
 	/**
+	 * Get or set the color callback function. The callback will be passed a datum.
+	 * 
+	 * @param {function} [value] the color callback
+	 * @return when used as a getter, the current color callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.colorCallback = function(value) {
+		if ( !arguments.length ) return colorCallback;
+		if ( typeof value === 'function' ) {
+			colorCallback = value;
+		}
+		return that;
+	};
+	
+	/**
 	 * Get or set the display factor callback function. The callback will be passed the maximum 
 	 * pie slice value as an argument. It should return a number representing the scale factor to use
 	 * in labels.
@@ -475,6 +497,22 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return displayFactorCallback;
 		if ( typeof value === 'function' ) {
 			displayFactorCallback = value;
+		}
+		return that;
+	};
+
+	/**
+	 * Get or set the layer key callback function. The callback will be passed a datum and should
+	 * return the rollup key to use.
+	 * 
+	 * @param {function} [value] the layer post-process callback
+	 * @return when used as a getter, the current layer key callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
+	that.layerKeyCallback = function(value) {
+		if ( !arguments.length ) return layerKeyCallback;
+		if ( typeof value === 'function' ) {
+			layerKeyCallback = value;
 		}
 		return that;
 	};
