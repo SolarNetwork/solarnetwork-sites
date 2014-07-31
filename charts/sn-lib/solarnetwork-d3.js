@@ -396,11 +396,14 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 				result = repInterval;
 			} else {
 				// merge start/end dates
+				// note we don't copy the time zone... this breaks when the tz are different!
 				if ( repInterval.endDateMillis > result.endDateMillis ) {
 					result.endDateMillis = repInterval.endDateMillis;
+					result.endDate = repInterval.endDate;
 				}
 				if ( repInterval.startDateMillis < result.startDateMillis ) {
 					result.startDateMillis = repInterval.startDateMillis;
+					result.startDate = repInterval.startDate;
 				}
 			}
 		}
