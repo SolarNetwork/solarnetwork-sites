@@ -1008,10 +1008,16 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			typeSourceList.length = 0;
 			mapSources(dataType);
 			colorGroup = displayColorFn(dataType);
-			if ( typeSourceList.length < 3 ) {
-				colorGroupIndex = 3;
-			} else if ( colorGroup[typeSourceList.length] === undefined ) {
-				colorGroupIndex = 9;
+			if ( colorGroup[typeSourceList.length] === undefined ) {
+				colorGroupIndex = (function() {
+					var i;
+					for ( i = typeSourceList.length; i < 30; i += 1 ) {
+						if ( colorGroup[i] !== undefined ) {
+							return i;
+						}
+					}
+					return 0;
+				}());
 			} else {
 				colorGroupIndex = typeSourceList.length;
 			}
