@@ -369,7 +369,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		
 		// inner labels, showing percentage
 		var innerMinValue = innerLabelMinValue();
-		var innerLabelData = (config.enabled('hideValues') 
+		var innerLabelData = (config.enabled('hidePercentages') 
 			? []
 			: pieSlices.filter(function(e) { return e.value > innerMinValue; }));
 
