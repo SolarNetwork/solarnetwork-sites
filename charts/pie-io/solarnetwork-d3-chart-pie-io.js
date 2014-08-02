@@ -65,6 +65,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var colorCallback = undefined; // function accepts (sourceId) and returns a color
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
 	var layerKeyCallback = undefined; // function accepts datum and should return string key
+	var layerKeySort = sortSliceKeys;
 
 	var percentFormatter = d3.format('.0%');
 
@@ -74,6 +75,10 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var totalValue = 0;
 	var innerRadius = 0;
 	var arc = d3.svg.arc();
+	
+	function sortSliceKeys(d1, d2) {
+		return d1.key.localeCompare(d2.key);
+	}
 	
 	function parseConfiguration() {
 		transitionMs = (config.value('transitionMs') || 600);
@@ -170,7 +175,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		}
 
 		var pie = d3.layout.pie()
-			.sort(null)
+			.sort(layerKeySort)
 			.value(function(d) {
 				return d.values;
 			});
@@ -215,7 +220,9 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.attrTween("d", arcTween);
 
 		pie.enter().append("path")
-			.attr("class", "area")
+			.attr("class", function(d, i) {
+				return 'area ' +d.data.key;
+			})
 			.style("fill", pieSliceColorFn)
 			.style("opacity", 1e-6)
 			.attr("d", arc)
@@ -513,6 +520,22 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return layerKeyCallback;
 		if ( typeof value === 'function' ) {
 			layerKeyCallback = value;
+		}
+		return that;
+	};
+
+	/**
+	 * Get or set the layer key sort function. The function will be passed two datum and should
+	 * return -1, 0, or 1 if they are in descending, equal, or ascending order.
+	 * 
+	 * @param {function} [value] the layer sort callback
+	 * @return when used as a getter, the current layer key sort function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
+	that.layerKeySort = function(value) {
+		if ( !arguments.length ) return layerKeySort;
+		if ( typeof value === 'function' ) {
+			layerKeySort = value;
 		}
 		return that;
 	};
