@@ -35,13 +35,7 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 	'use strict';
 	var parent = sn.chart.baseGroupedStackBarChart(containerSelector, chartConfig);
 	var that = (function() {
-		var	me = {},
-			prop;
-		for ( prop in parent ) {
-			if ( parent.hasOwnProperty(prop) ) {
-				me[prop] = parent[prop];
-			}
-		}
+		var	me = sn.util.copy(parent);
 		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
 		return me;
 	}());

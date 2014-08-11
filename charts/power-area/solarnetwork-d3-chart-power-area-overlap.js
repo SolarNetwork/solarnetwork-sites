@@ -36,14 +36,7 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig),
 		superDraw = sn.superMethod.call(parent, 'draw');
 	var that = (function() {
-		var	me = {},
-			prop;
-		for ( prop in parent ) {
-			if ( parent.hasOwnProperty(prop) ) {
-				me[prop] = parent[prop];
-			}
-		}
-		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
+		var	me = sn.util.copy(parent);
 		return me;
 	}());
 	parent.me = that;
