@@ -728,22 +728,15 @@ sn.Configuration.prototype = {
 	 * @returns {sn.Configuration} this object to allow method chaining
 	 */
 	toggle : function(key, enabled) {
-		var value = enabled;
+		var val = enabled;
 		if ( key === undefined ) {
 			return this;
 		}
-		if ( value === undefined ) {
+		if ( val === undefined ) {
 			// in 1-argument mode, toggle current value
-			value = (this.map[key] === undefined);
+			val = (this.map[key] === undefined);
 		}
-		if ( value === true ) {
-			// enable key
-			this.map[key] = true;
-		} else {
-			// disable key (via delete)
-			delete this.map[key];
-		}
-		return this;
+		return this.value(key, (val === true ? true : null));
 	},
 	
 	/**
@@ -756,13 +749,24 @@ sn.Configuration.prototype = {
 	 * otherwise this object.
 	 */
 	value : function(key, newValue) {
+		var me = this;
 		if ( arguments.length === 1 ) {
 			return this.map[key];
 		}
 		if ( newValue === null ) {
 			delete this.map[key];
+			if ( this.hasOwnProperty(key) ) {
+				delete this[key];
+			}
 		} else {
 			this.map[key] = newValue;
+			if ( !this.hasOwnProperty(key) ) {
+				Object.defineProperty(this, key, {
+					enumerable : true,
+					get : function() { return me.map[key]; },
+					set : function(value) { me.map[key] = value; }
+				});
+			}
 		}
 		return this;
 	}
