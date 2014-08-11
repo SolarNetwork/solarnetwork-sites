@@ -386,17 +386,17 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		'internalPropName' : { value : internalPropName },
 		'plotPropertyName' : { get : plotPropertyName },
 		'discardId' : { value : discardId },
-		'padding' : { get : function() { return p; } },
-		'width' : { get : function() { return w; } },
-		'height' : { get : function() { return h; } },
-		'svgRoot' : { get : function() { return svgRoot; } },
-		'svgDataRoot' : { get : function() { return svgDataRoot; } },
-		'svgTickGroupX' : { get : function() { return svgTickGroupX; } },
+		'padding' : { value : p },
+		'width' : { value : w },
+		'height' : { value : h },
+		'svgRoot' : { value : svgRoot },
+		'svgDataRoot' : { value : svgDataRoot },
+		'svgTickGroupX' : { value : svgTickGroupX },
 		'groupIds' : { get : function() { return groupIds; } },
 		'groupLayers' : { get : function() { return groupLayers; } },
-		'draw' : { value : draw, configurable : true },
-		'drawAxisX' : { value : drawAxisX, configurable : true },
-		'drawAxisY' : { value : drawAxisY, configurable : true }
+		'drawAxisX' : { value : drawAxisX },
+		'drawAxisY' : { value : drawAxisY },
+		'draw' : { value : draw, writable : true },
 	});
 
 	/**

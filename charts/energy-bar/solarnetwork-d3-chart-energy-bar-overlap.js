@@ -1,7 +1,7 @@
 /**
  * @require d3 3.0
  * @require solarnetwork-d3 0.0.4
- * @require solarnetwork-d3-chart-base 1.0.0
+ * @require solarnetwork-d3-chart-base-bar 1.0.0
  */
 
 if ( sn === undefined ) {
@@ -26,15 +26,14 @@ if ( sn === undefined ) {
  * A power stacked area chart that overlaps two or more data sets.
  * 
  * @class
- * @extends sn.chart.baseGroupedStackChart
+ * @extends sn.chart.baseGroupedStackBarChart
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.energyBarOverlapChartParameters} [chartConfig] - the chart parameters
  * @returns {sn.chart.energyBarOverlapChart}
  */
 sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 	'use strict';
-	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig),
-		superDraw = sn.superMethod.call(parent, 'draw');
+	var parent = sn.chart.baseGroupedStackBarChart(containerSelector, chartConfig);
 	var that = (function() {
 		var	me = {},
 			prop;
@@ -48,106 +47,20 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 	}());
 	parent.me = that;
 	
-	// an ordinal x-axis scale, to render precise bars with
-	var xBar = d3.scale.ordinal();
-
-	function groupFillFn(d, i, j) {
-		return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
-	}
+	var me = that;
 	
+	// extending classes should re-define this property so method chaining works
+	Object.defineProperty(that, 'me', {
+						enumerable : false,
+						get : function() { return me; },
+						set : function(obj) { 
+							me = obj;
+							parent.me = obj;
+						}
+					});
+
 	function dataTypeOpacityFn(d, i) {
 		return parent.groupOpacityFn(null, i);
-	}
-	
-	function computeDomainX() {
-		var x = parent.x,
-			aggregateType = parent.aggregate(),
-			xDomain = x.domain(),
-			buckets,
-			end = xDomain[1]; // d3.time.X.range has an exclusive end date, so we must add 1
-		if ( aggregateType === 'Month' ) {
-			end = d3.time.month.utc.offset(end, 1); 
-			buckets = d3.time.months.utc;
-		} else if ( aggregateType === 'Day' ) {
-			end = d3.time.day.utc.offset(end, 1); 
-			buckets = d3.time.days.utc;
-		} else {
-			// assume 'Hour'
-			end = d3.time.hour.utc.offset(end, 1); 
-			buckets = d3.time.hours.utc;
-		}
-		buckets = buckets(xDomain[0], end);
-		xBar.domain(buckets).rangeRoundBands(x.range(), 0.2); 
-	}
-
-	/**
-	 * Return the x pixel coordinate for a given bar.
-	 * 
-	 * @param {Object} d the data element
-	 * @param {Number} i the domain index
-	 * @returns {Number} x pixel coordinate
-	 */
-	function valueX(d, i) {
-		return xBar(d.date);
-	}
-	
-	function valueXMidBar(d, i) {
-		return (xBar(d.date) + (xBar.rangeBand() / 2));
-	}
-	
-	function valueY(d) {
-		return parent.y(d.y0 + d.y);
-	}
-	
-	function heightY(d) {
-		return parent.y(d.y0) - parent.y(d.y0 + d.y);
-	}
-	
-	function axisXMidBarValue(d) { 
-		return xBar(d) + (xBar.rangeBand() / 2); 
-	}
-	
-	function axisXTickClassMajor(d) {
-		var aggregateType = parent.aggregate();
-		return (aggregateType === 'Day' && d.getUTCDate() === 1)
-			|| (aggregateType === 'Hour' && d.getUTCHours() === 0)
-			|| (aggregateType === 'Month' && d.getUTCMonth() === 0);
-	}
-
-	function drawAxisX() {
-		var numTicks = 12,
-			fx = parent.x.tickFormat(numTicks),
-			ticks = parent.x.ticks(numTicks),
-			transitionMs = parent.transitionMs();
-
-		// Generate x-ticks, centered within bars
-		var labels = parent.svgTickGroupX.selectAll('text').data(ticks, Object)
-				.classed({
-						major : axisXTickClassMajor
-					});
-		
-		labels.transition().duration(transitionMs)
-	  			.attr('x', axisXMidBarValue)
-	  			.text(fx);
-		
-		labels.enter().append('text')
-				.attr('dy', '-0.5em') // needed so descenders not cut off
-				.style('opacity', 1e-6)
-				.attr('x', axisXMidBarValue)
-				.classed({
-						major : axisXTickClassMajor
-					})
-			.transition().duration(transitionMs)
-				.style('opacity', 1)
-				.text(fx)
-				.each('end', function() {
-						// remove the opacity style
-						d3.select(this).style('opacity', null);
-					});
-		
-		labels.exit().transition().duration(transitionMs)
-				.style('opacity', 1e-6)
-				.remove();
 	}
 	
 	function draw() {
@@ -155,12 +68,10 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 			groupIds = parent.groupIds,
 			transitionMs = parent.transitionMs(),
 			groups,
-			sources,
-			bars,
-			centerYLoc = parent.y(0);
+			sources;
 
 		// calculate our bar metrics
-		computeDomainX();
+		parent.computeDomainX();
 		
 		// construct a 3D array of our data, to achieve a dataType/source/datum hierarchy
 		groupIds.forEach(function(groupId) {
@@ -187,45 +98,23 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 		sources = groups.selectAll('g.data').data(Object, function(d, i) {
 				return d[0].sourceId;
 			})
-			.style('fill', groupFillFn);
+			.style('fill', parent.groupFillFn);
 			
 		sources.enter().append('g')
 				.attr('class', 'data')
-				.style('fill', groupFillFn);
+				.style('fill', parent.groupFillFn);
 					
 		sources.exit().transition().duration(transitionMs)
 			.style('opacity', 1e-6)
 			.remove();
 		
-		// now add actual bars for the datum in the source in the data type
-		bars = sources.selectAll('rect').data(Object, function(d, i) {
-			return d.date;
-		});
-		
-		bars.transition().duration(transitionMs)
-				.attr('x', valueX)
-				.attr('y', valueY)
-				.attr('height', heightY)
-				.attr('width', xBar.rangeBand());
-		
-		bars.enter().append('rect')
-				.attr('x', valueX)
-				.attr('y', centerYLoc)
-				.attr('height', 1e-6)
-				.attr('width', xBar.rangeBand())
-			.transition().duration(transitionMs)
-				.attr('y', valueY)
-				.attr('height', heightY);
-		
-		bars.exit().transition().duration(transitionMs)
-				.style('opacity', 1e-6)
-				.remove();
-		
+		parent.drawBarsForSources(sources);
 		parent.drawAxisY();
-		drawAxisX();
+		parent.drawAxisX();
 	};
 	
-	Object.defineProperty(parent, 'draw', {configurable : true, value : draw });
+	// define our drawing function
+	parent.draw = draw;
 	
 	return that;
 };
