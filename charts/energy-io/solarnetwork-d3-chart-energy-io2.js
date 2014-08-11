@@ -72,9 +72,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	// calculated drawing data
 	var drawData = {};
 
-	var svgAggBandGroup = parent.svgRoot.append("g")
+	var svgAggBandGroup = parent.svgDataRoot.append("g")
 		.attr("class", "agg-band")
-		.attr("transform", "translate(" + parent.padding[3] + "," +(parent.height + parent.padding[0] + parent.padding[2] - 25) + ".5)"); // .5 for odd-width stroke
+		.attr("transform", "translate(0," +(parent.height + parent.padding[2] - 25) + ".5)"); // .5 for odd-width stroke
 	
 	var svgData = parent.svgDataRoot.append("g")
 		.attr('class', 'data crisp');
@@ -204,12 +204,40 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 				.remove();
 	}
 	
+	/**
+	 * A rollup function for d3.dest(), that aggregates the plot property value and 
+	 * returns objects in the form <code>{ date : Date(..), y : Number, plus : Number, minus : Number }</code>.
+	 */
+	function nestRollupAggregateSum(array) {
+		// Note: we don't use d3.sum here because we want to end up with a null value for "holes"
+		var sum = null, plus = null, minus = null, 
+			d, v, i, len = array.length, groupId, negate = false;
+		for ( i = 0; i < len; i += 1 ) {
+			d = array[i];
+			v = d[parent.plotPropertyName];
+			if ( v !== undefined ) {
+				groupId = d[parent.internalPropName].groupId;
+				negate = negativeGroupMap[groupId] === true;
+				if ( negate ) {
+					minus += v;
+				} else {
+					plus += v;
+				}
+			}
+		}
+		if ( plus !== null || minus !== null ) {
+			sum = plus - minus;
+		}
+		return { date : array[0].date, y : sum, plus : plus, minus : minus };
+	}
+	
 	function setupDrawData() {
 		var groupedData = [],
 			groupIds = parent.groupIds,
 			maxPositiveY = 0,
 			maxNegativeY = 0,
-			sumLineData;
+			sumLineData,
+			timeAggregateData;
 
 		// construct a 3D array of our data, to achieve a dataType/source/datum hierarchy;
 		// also construct 2D array for sum line
@@ -261,33 +289,23 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		var allData = d3.merge(d3.merge(groupedData)).concat(xBar.domain().map(function(e) {
 			return { date : e };
 		}));
+		drawData.allData = allData;
 		sumLineData = d3.nest()
 			.key(function(d) { 
 				return d.date.getTime();
 			})
 			.sortKeys(d3.ascending)
-			.rollup(function(array) {
-				// Note: we don't use d3.sum here because we want to end up with a null value for "holes"
-				var sum, d, v, i, len = array.length, groupId;
-				for ( i = 0; i < len; i += 1 ) {
-					d = array[i];
-					v = d[parent.plotPropertyName];
-					if ( v === undefined ) {
-						v = null; // so we either end up with null, or treat as 0 if add to another value
-					} else {
-						groupId = d[parent.internalPropName].groupId;
-						if ( negativeGroupMap[groupId] === true ) {
-							v = -v;
-						}
-					}
-					if ( i === 0 ) {
-						sum = v;
-					} else if ( v !== null ) {
-						sum += v;
-					}
-				}
-				return { date : array[0].date, y : sum };
+			.rollup(nestRollupAggregateSum)
+			.entries(allData).map(function (e) {
+				return e.values;
+			});
+			
+		timeAggregateData = d3.nest()
+			.key(function(d) {
+				
 			})
+			.sortKeys(d3.ascending)
+			.rollup(nestRollupAggregateSum)
 			.entries(allData).map(function (e) {
 				return e.values;
 			});
