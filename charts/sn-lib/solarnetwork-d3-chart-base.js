@@ -380,6 +380,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	Object.defineProperties(that, {
 		'x' : { value : x },
 		'y' : { value : y },
+		'config' : { value : config },
 		'fillColor' : { value : fillColor },
 		'groupOpacityFn' : { value : groupOpacityFn },
 		'internalPropName' : { value : internalPropName },

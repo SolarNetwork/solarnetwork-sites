@@ -35,7 +35,7 @@ h2 {
 	font-size: 24px;
 	line-height: 24px;
 	margin-top: 0;
-	margin-bottom: 4px;
+	margin-bottom: 8px;
 	text-transform: uppercase;
 	border-bottom: 1px solid black;
 }
@@ -231,6 +231,10 @@ svg {
 
 .chart g.ticks text {
 	text-anchor: middle;
+}
+
+.chart g.ticks text.major {
+	font-weight: bold;
 }
 
 .chart g.ticks text.agg {
