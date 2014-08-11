@@ -7,7 +7,7 @@
  * @require queue 1.0
  */
 var sn = {
-	version : '0.0.4',
+	version : '0.0.5',
 	
 	/**
 	 * @namespace the SolarNetwork chart namespace.
@@ -1628,12 +1628,47 @@ sn.aggregateNestedDataLayers = function(layerData, resultKey, copyProperties, su
 	return layerData;
 };
 
+/**
+ * Get a proxy method for a "super" class' method on the `this` objct.
+ * 
+ * @param {String} name - The name of the method to get a proxy for.
+ * @returns {Function} A function that calls the `name` function of the `this` object.
+ * @since 0.0.4
+ */
 sn.superMethod = function(name) {
 	var that = this,
 		method = that[name];
 	return function() {
 		return method.apply(that, arguments);
     };
+};
+
+/**
+ * Utility functions.
+ * @namespace
+ */
+sn.util = {};
+
+/**
+ * Copy the enumerable own properties of `obj` onto `obj2` and return `obj2`.
+ * 
+ * @param {Object} obj1 - The object to copy enumerable properties from.
+ * @param {Object} [obj2] - The optional object to copy the properties to. If not
+ *                          provided a new object will be created.
+ * @returns {Object} The object whose properties were copied to.
+ * @since 0.0.5
+ */
+sn.util.copy = function(obj1, obj2) {
+	var prop;
+	if ( obj2 === undefined ) {
+		obj2 = {};
+	}
+	for ( prop in obj1 ) {
+		if ( obj1.hasOwnProperty(prop) ) {
+			obj2[prop] = obj1[prop];
+		}
+	}
+	return obj2;
 };
 
 if (typeof define === "function" && define.amd) {
