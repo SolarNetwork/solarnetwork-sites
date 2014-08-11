@@ -225,10 +225,6 @@ svg {
 	shape-rendering: crispEdges;
 }
 
-.chart rect {
-	fill-opacity: 0.8;
-}
-
 .chart text {
 	fill: #333;
 }
