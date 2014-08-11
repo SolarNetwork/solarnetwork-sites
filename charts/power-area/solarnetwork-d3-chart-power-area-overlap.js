@@ -119,7 +119,8 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		superDraw();
 	};
 	
-	Object.defineProperty(parent, 'draw', {configurable : true, value : draw });
+	// define our drawing function
+	parent.draw = draw;
 	
 	return that;
 };
