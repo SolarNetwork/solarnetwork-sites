@@ -694,6 +694,7 @@ sn.Configuration = function(initialMap) {
 				if ( initialMap.hasOwnProperty(prop) && !me.hasOwnProperty(prop) ) {
 					Object.defineProperty(me, prop, {
 						enumerable : true,
+						configurable : true,
 						get : createGetter(prop),
 						set : createSetter(prop)
 					});
@@ -763,6 +764,7 @@ sn.Configuration.prototype = {
 			if ( !this.hasOwnProperty(key) ) {
 				Object.defineProperty(this, key, {
 					enumerable : true,
+					configurable : true,
 					get : function() { return me.map[key]; },
 					set : function(value) { me.map[key] = value; }
 				});
