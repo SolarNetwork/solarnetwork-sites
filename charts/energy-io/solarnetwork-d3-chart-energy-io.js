@@ -284,6 +284,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		
 		parent.drawAxisY();
 		parent.drawAxisX();
+		parent.drawAxisXRules(drawData.timeAggregateData);
 	};
 	
 	function drawSumLine(sumLineData) {
@@ -333,10 +334,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		}
 
 		var barWidth = xBar.rangeBand();
-		var barSpacing = (xBar.domain().length > 1 
-			? (xBar(xBar.domain()[1]) - xBar(xBar.domain()[0])) 
-			: barWidth);
-		var barPadding = (barSpacing - barWidth) / 2;
+		var barPadding = parent.xBarPadding() / 2;
 		var aggBands = svgAggBandGroup.selectAll("line").data(bandTicks, parent.keyX);
 		var bandPosition = function(s) {
 				s.attr("x1", function(d) {
@@ -384,7 +382,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			/* could shift to center of band; but for now keeping vertically aligned with top aggregate label
 			if ( d.date.getTime() < xDomain[1].getTime() ) { 
 				// shift the label to the next bar (this assumes 3 bars per group)
-				//x += barSpacing;
+				//x += barPadding * 2 + barWidth;
 			}
 			*/
 			return x;
@@ -396,7 +394,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 
 		var labelFormatter = timeAggregateLabelFormatter();
 
-		var aggBandLabels = svgAggBandLabelGroup.selectAll("text").data(bandTicks, parent.keyX);
+		var aggBandLabels = svgAggBandLabelGroup.selectAll("text").data(parent.trimToXDomain(bandTicks), parent.keyX);
 		aggBandLabels.transition().duration(transitionMs)
 		  	.attr("x", labelTextX)
 		  	.text(textFn);
@@ -419,27 +417,18 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	
 	function drawTimeAggregates(timeAggregateData) {
 		var transitionMs = parent.transitionMs(),
-			xDomain = parent.x.domain(),
-			start = 0, 
-			len = timeAggregateData.length,
-			labelTicks;
-		
-		var labelFormatter = timeAggregateLabelFormatter();
+			aggLabels,
+			labelTicks,
+			labelFormatter = timeAggregateLabelFormatter();
 		
 		// remove any ticks earlier than first full range
-		while ( start < len ) {
-			if ( timeAggregateData[start].date.getTime() >= xDomain[0].getTime() ) {
-				break;
-			}
-			start += 1;
-		}
-		labelTicks = timeAggregateData.slice(start);
+		labelTicks = parent.trimToXDomain(timeAggregateData);
 		
 		function textFn(d) {
 			return labelFormatter(d.plus / parent.yScale());
 		}
 
-		var aggLabels = svgAggGroup.selectAll("text").data(labelTicks, parent.keyX);
+		aggLabels = svgAggGroup.selectAll("text").data(labelTicks, parent.keyX);
 		
 		aggLabels.transition().duration(transitionMs)
 				.attr("x", parent.valueXMidBar)

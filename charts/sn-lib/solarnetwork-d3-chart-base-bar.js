@@ -18,6 +18,7 @@ if ( sn === undefined ) {
  * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
  * @property {number} [transitionMs=600] - transition time
  * @property {number} [opacityReduction=0.1] - a percent opacity reduction to apply to groups on top of other groups
+ * @property {number} [vertRuleOpacity] - the maximum opacity to render vertical rules at, during transitions
  * @property {object} [plotProperties] - the property to plot for specific aggregation levels; if unspecified 
  *                                       the {@code watts} property is used
  */
@@ -56,8 +57,16 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	// an ordinal x-axis scale, to render precise bars with
 	var xBar = d3.scale.ordinal();
 
+	var svgVertRuleGroup = parent.svgRoot.append("g")
+		.attr("class", "vertrule")
+		.attr("transform", "translate(" + parent.padding[3] + "," + parent.padding[0] + ")");
+
 	function groupFillFn(d, i) {
 		return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
+	}
+	
+	function vertRuleOpacity() {
+		return (parent.config.vertRuleOpacity || 0.05);
 	}
 	
 	function computeDomainX() {
@@ -95,10 +104,9 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	 * Return the x pixel coordinate for a given bar.
 	 * 
 	 * @param {Object} d the data element
-	 * @param {Number} i the domain index
 	 * @returns {Number} x pixel coordinate
 	 */
-	function valueX(d, i) {
+	function valueX(d) {
 		return xBar(d.date);
 	}
 	
@@ -106,6 +114,10 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		return axisXMidBarValue(d.date);
 	}
 	
+	function valueXVertRule(d) {
+		return (Math.floor(valueX(d) - (xBarPadding() / 2)) + 0.5);
+	}
+
 	function valueY(d) {
 		return parent.y(d.y0 + d.y);
 	}
@@ -128,6 +140,42 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	function axisXTickCount() {
 		var count = parent.config.value('tickCountX');
 		return (count || 12);
+	}
+	
+	/**
+	 * Get the number of pixels used for padding between bars.
+	 *
+	 * @returns {Number} the number of pixels padding between each bar
+	 */
+	function xBarPadding() {
+		var domain = xBar.domain();
+		var barSpacing = (domain.length > 1 
+			? (xBar(domain[1]) - xBar(domain[0])) 
+			: barWidth);
+		var barPadding = (barSpacing - xBar.rangeBand());
+		return barPadding;
+	}
+	
+	/**
+	 * Remove data that falls outside the X domain.
+	 * 
+	 * @param {Array} array The array to inspect.
+	 * @returns {Array} Either a copy of the array with some elements removed, or the original array
+	 *                  if nothing needed to be removed.
+	 */
+	function trimToXDomain(array) {
+		var start = 0,
+			len = array.length,
+			xDomainStart = parent.x.domain()[0];
+		
+		// remove any data earlier than first full range
+		while ( start < len ) {
+			if ( array[start].date.getTime() >= xDomainStart.getTime() ) {
+				break;
+			}
+			start += 1;
+		}
+		return (start === 0 ? array : array.slice(start));
 	}
 
 	function drawAxisX() {
@@ -167,13 +215,9 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	function drawBarsForSources(sources) {
-		// now add actual bars for the datum in the source in the data type
-		var bars = sources.selectAll('rect').data(Object, function(d, i) {
-			return d.date;
-		});
-		
 		var centerYLoc = parent.y(0),
-			transitionMs = parent.transitionMs();
+			transitionMs = parent.transitionMs(),
+			bars = sources.selectAll('rect').data(Object, keyX);
 		
 		bars.transition().duration(transitionMs)
 				.attr('x', valueX)
@@ -195,6 +239,36 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 				.remove();
 	}
 	
+	function drawAxisXRules(vertRuleTicks) {
+		var transitionMs = parent.transitionMs(),
+			axisLines,
+			labelTicks;
+			
+		labelTicks = trimToXDomain(vertRuleTicks);
+		axisLines = svgVertRuleGroup.selectAll("line").data(labelTicks, keyX),
+		
+		axisLines.transition().duration(transitionMs)
+	  		.attr("x1", valueXVertRule)
+	  		.attr("x2", valueXVertRule);
+		
+		axisLines.enter().append("line")
+			.style("opacity", 1e-6)
+			.attr("x1", valueXVertRule)
+	  		.attr("x2", valueXVertRule)
+	  		.attr("y1", 0)
+	  		.attr("y2", parent.height + 10)
+		.transition().duration(transitionMs)
+			.style("opacity", vertRuleOpacity())
+			.each('end', function() {
+				// remove the opacity style
+				d3.select(this).style("opacity", null);
+			});
+		
+		axisLines.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+	}
+	
 	Object.defineProperties(that, {
 		'x' : { value : parent.x },
 		'y' : { value : parent.y },
@@ -213,7 +287,10 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		'groupIds' : { get : function() { return parent.groupIds; } },
 		'groupLayers' : { get : function() { return parent.groupLayers; } },
 		
+		'svgVertRuleGroup' : { value : svgVertRuleGroup },
 		'xBar' : { value : xBar },
+		'xBarPadding' : { value : xBarPadding },
+		'trimToXDomain' : { value : trimToXDomain },
 		'computeDomainX' : { value : computeDomainX },
 		'groupFillFn' : { value : groupFillFn },
 		
@@ -221,10 +298,12 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		'keyX' : { value : keyX },
 		'valueX' : { value : valueX },
 		'valueXMidBar' : { value : valueXMidBar },
+		'valueXVertRule' : { value : valueXVertRule },
 		'valueY' : { value : valueY },
 		'heightY' : { value : heightY },
 		
 		'drawAxisX' : { value : drawAxisX },
+		'drawAxisXRules' : { value : drawAxisXRules },
 		'drawBarsForSources' : { value : drawBarsForSources },
 		'drawAxisY' : { value : parent.drawAxisY },
 		'draw' : { 
