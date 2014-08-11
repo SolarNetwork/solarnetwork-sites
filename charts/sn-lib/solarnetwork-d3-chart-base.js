@@ -78,7 +78,8 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	var stackOffset = undefined;
 
 	var svgRoot = undefined,
-		svgTickGroupX = undefined;
+		svgTickGroupX = undefined,
+		svgDataRoot = undefined;
 	
 	var dataCallback = undefined;
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
@@ -111,6 +112,10 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	} else {
 		svgRoot.selectAll('*').remove();
 	}
+	
+	svgDataRoot = svgRoot.append('g')
+		.attr("class", "data-root")
+		.attr("transform", "translate(" + p[3] +"," +p[0] +")");
 
 	svgTickGroupX = svgRoot.append("g")
 		.attr("class", "ticks")
@@ -155,9 +160,13 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	function displayFormat(d) {
 		return displayFormatter(d / displayFactor);
 	}
+	
+	function plotPropertyName() {
+		return plotProperties[aggregateType];
+	}
 
 	function setup() {
-		var plotPropName = plotProperties[aggregateType];
+		var plotPropName = plotPropertyName();
 		var minX, maxX;
 		var maxY;
 		var stack = d3.layout.stack()
@@ -374,9 +383,13 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		'fillColor' : { value : fillColor },
 		'groupOpacityFn' : { value : groupOpacityFn },
 		'internalPropName' : { value : internalPropName },
+		'plotPropertyName' : { get : plotPropertyName },
 		'discardId' : { value : discardId },
 		'padding' : { get : function() { return p; } },
+		'width' : { get : function() { return w; } },
+		'height' : { get : function() { return h; } },
 		'svgRoot' : { get : function() { return svgRoot; } },
+		'svgDataRoot' : { get : function() { return svgDataRoot; } },
 		'svgTickGroupX' : { get : function() { return svgTickGroupX; } },
 		'groupIds' : { get : function() { return groupIds; } },
 		'groupLayers' : { get : function() { return groupLayers; } },
