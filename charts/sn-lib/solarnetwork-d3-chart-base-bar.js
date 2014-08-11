@@ -35,13 +35,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	'use strict';
 	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig);
 	var that = (function() {
-		var	me = {},
-			prop;
-		for ( prop in parent ) {
-			if ( parent.hasOwnProperty(prop) ) {
-				me[prop] = parent[prop];
-			}
-		}
+		var	me = sn.util.copy(parent);
 		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
 		return me;
 	}());
@@ -85,6 +79,16 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		}
 		buckets = buckets(xDomain[0], end);
 		xBar.domain(buckets).rangeRoundBands(x.range(), 0.2); 
+	}
+
+	/**
+	 * Return the date value for a given data element.
+	 *
+	 * @param {Object} d the data element
+	 * @returns {Date} the date
+	 */
+	function keyX(d) {
+		return d.date;
 	}
 
 	/**
@@ -214,6 +218,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		'groupFillFn' : { value : groupFillFn },
 		
 		// the following functions accept a data element, e.g. { date : Date, y : Number, y0 : Number }
+		'keyX' : { value : keyX },
 		'valueX' : { value : valueX },
 		'valueXMidBar' : { value : valueXMidBar },
 		'valueY' : { value : valueY },

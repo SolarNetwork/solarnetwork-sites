@@ -1,7 +1,7 @@
 /**
  * @require d3 3.0
- * @require queue 1.0
- * @require solarnetwork-d3 0.0.3
+ * @require solarnetwork-d3 0.0.54
+ * @require solarnetwork-d3-chart-base-bar 1.0.0
  */
 
 if ( sn === undefined ) {
@@ -35,391 +35,58 @@ if ( sn === undefined ) {
  * must be set up previously.
  * 
  * @class
+ * @extends sn.chart.baseGroupedStackBarChart
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.energyIOBarChartParameters} [chartConfig] - the chart parameters
  * @returns {sn.chart.energyIOBarChart}
  */
 sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
-	var that = {
-		version : "1.0.0"
-	};
-	var sources = undefined;
-	var config = (chartConfig || new sn.Configuration());
+	'use strict';
 	
-	// default to container's width, if we can
-	var containerWidth = sn.pixelWidth(containerSelector);
+	// override defaults of parent
+	if ( !(chartConfig && chartConfig.padding) ) {
+		chartConfig.value('padding', [20, 0, 40, 30]);
+	}
 	
-	var p = (config.padding || [20, 0, 40, 30]),
-		w = (config.width || containerWidth || 812) - p[1] - p[3],
-		h = (config.height || 300) - p[0] - p[2],
-    	x = d3.time.scale.utc().range([0, w]),
-    	xBar = d3.scale.ordinal(),
-		y = d3.scale.linear().range([h, 0]),
-		format = d3.time.format("%H");
-	
-	// String, one of supported SolarNet aggregate types: Month, Day, or Hour
-	var aggregateType = undefined;
-	
-	var transitionMs = undefined;
-	
-	//var ruleOpacity = (parameters.ruleOpacity || 0.1);
-	var vertRuleOpacity = undefined;
-	
-	// Array of string color values representing spring, summer, autumn, winter
-	var seasonColors = undefined;
-	
+	var parent = sn.chart.baseGroupedStackBarChart(containerSelector, chartConfig);
+	var that = (function() {
+		var	me = sn.util.copy(parent);
+		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
+		return me;
+	}());
+	parent.me = that;
+
 	// Boolean, true for northern hemisphere seasons, false for southern.
 	var northernHemisphere = undefined;
-
-	var svgRoot = undefined,
-		svg = undefined,
-		svgTickGroupX = undefined,
-		aggGroup = undefined,
-		svgAggBandGroup = undefined,
-		svgSumLineGroup = undefined;
 	
-	// our layer data, and generator function
-	var layerGenerator = undefined;
-	var layers = undefined;
-	var minY = 0;
-	var dailyAggregateWh = undefined;
-	var aggDisplayFormatter = d3.format(',d');
+	// object keys define group IDs to treat as "negative" or consumption values, below the X axis
+	var negativeGroupMap = { Consumption : true };
 	
-	var consumptionLayerCount = 0;
+	// calculated drawing data
+	var drawData = {};
 
-	// Set y-axis  unit label
-	// setup display units in kWh if domain range > 1000
-	var displayFactor = 1;
-	var displayFormatter = d3.format(',d');
-
-	function parseConfiguration() {
-		that.aggregate(config.aggregate);
-		transitionMs = (config.transitionMs || 600);
-		vertRuleOpacity = (config.vertRuleOpacity || 0.05);
-		seasonColors = (config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
-		northernHemisphere = (config.northernHemisphere === true ? true : false);
-	}
-
-	// create our SVG container structure now
-	svgRoot = d3.select(containerSelector).select('svg');
-	if ( svgRoot.empty() ) {
-		svgRoot = d3.select(containerSelector).append('svg:svg')
-			.attr('class', 'chart')
-			.attr("width", w + p[1] + p[3])
-			.attr("height", h + p[0] + p[2]);
-	} else {
-		svgRoot.selectAll('*').remove();
-	}
-
-	svgAggBandGroup = svgRoot.append("g")
-		.attr("class", "agg-band")
-		.attr("transform", "translate(" + p[3] + "," +(h + p[0] + p[2] - 25) + ".5)"); // .5 for odd-width stroke
-
-	svgRoot.append("g")
-		.attr("class", "agg-band-ticks")
-		.attr("transform", "translate(" + p[3] + "," +(h + p[0] + p[2] - 21) + ")");
-
-	svg = svgRoot.append("g")
-		.attr('class', 'data')
-		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+	var svgAggBandGroup = parent.svgDataRoot.append('g')
+		.attr('class', 'agg-band')
+		.attr('transform', 'translate(0,' +(parent.height + parent.padding[2] - 25) + '.5)'); // .5 for odd-width stroke
 	
-	svgSumLineGroup = svgRoot.append("g")
-		.attr('class', 'agg-sum')
-		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-
-	svgTickGroupX = svgRoot.append("g")
-		.attr("class", "ticks")
-		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
+	var svgAggBandLabelGroup = parent.svgDataRoot.append('g')
+		.attr('class', 'agg-band-ticks')
+		.attr('transform', 'translate(0,' +(parent.height + parent.padding[2] - 21) +')');
 	
-	svgRoot.append("g")
-		.attr("class", "vertrule")
-		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
+	var svgData = parent.svgDataRoot.append('g')
+		.attr('class', 'data crisp');
+	
+	var svgSumLineGroup = parent.svgDataRoot.append('g')
+		.attr('class', 'agg-sum');
 
-	svgRoot.append("g")
-		.attr("class", "rule")
-		.attr("transform", "translate(0," + p[0] + ")");
-
-	aggGroup = svgRoot.append("g")
+	var svgAggGroup = parent.svgDataRoot.append('g')
 		.attr('class', 'agg-gen')
-		.attr("transform", "translate(" + p[3] + ",15)");
+		.attr('transform', 'translate(0,' + (10 - parent.padding[0]) + ')');
 	
-	function computeDomainX() {
-		var buckets;
-		// d3.time.X.range has an exclusive end date, so we must add 1
-		var end = layers.domainX[1];
-		if ( aggregateType === 'Month' ) {
-			end = d3.time.month.utc.offset(end, 1); 
-			buckets = d3.time.months.utc;
-		} else if ( aggregateType === 'Day' ) {
-			end = d3.time.day.utc.offset(end, 1); 
-			buckets = d3.time.days.utc;
-		} else {
-			// assume 'Hour'
-			end = d3.time.hour.utc.offset(end, 1); 
-			buckets = d3.time.hours.utc;
-		}
-		x.domain(layers.domainX);
-		buckets = buckets(layers.domainX[0], end);
-		xBar.domain(buckets).rangeRoundBands(x.range(), 0.2); 
-	}
-
-	function computeDomainY() {
-		y.domain([minY, layers.maxY]).nice();
-		computeUnitsY();
-	}
 	
-	function computeUnitsY() {
-		var fmt;
-		var aggFmt;
-		var maxY = d3.max(y.domain() ,function(v) { return Math.abs(v); });
-		if ( maxY >= 1000000 ) {
-			displayFactor = 1000000;
-			fmt = ',g';
-			aggFmt = ',.2f';
-		} else if ( maxY >= 1000 ) {
-			displayFactor = 1000;
-			fmt = ',g';
-			aggFmt = ',.1f';
-		} else {
-			displayFactor = 1;
-			fmt = ',d';
-			aggFmt = ',d';
-		}
-		displayFormatter = d3.format(fmt);
-		aggDisplayFormatter = d3.format(aggFmt);
-	}
-	
-	function displayFormat(d) {
-		return displayFormatter(d / displayFactor);
-	}
-
-	function aggDisplayFormat(d) {
-		return aggDisplayFormatter(d / displayFactor);
-	}
-
-	// Create daily aggregated data, in form [ { date: Date(2011-12-02 12:00), wattHoursTotal: 12312 }, ... ]
-	function calculateAggregateWh() {
-		var results = [];
-		var i, j, len;
-		var startIndex = undefined;
-		var endIndex = layers[0].length;
-		var currDayData = undefined;
-		var obj = undefined;
-		var domain = x.domain();
-		
-		// sum up values for each aggregate range
-		len = layers.length;
-		OUTER: for ( i = 0; i < endIndex; i++ ) {
-			if ( startIndex !== undefined && i < startIndex ) {
-				// skip before first full aggregate range
-				continue;
-			}
-			for ( j = 0; j < len; j++ ) {
-				if ( sn.runtime.excludeSources[layers[j].source] !== undefined ) {
-					continue;
-				}
-				obj = layers[j][i];
-				if ( startIndex === undefined ) {
-					// we only want to sum for full ranges; e.g. for Hour aggregation if our domain starts at noon, 
-					// we don't start aggregating values until we find the first midnight value
-					if ( (aggregateType === 'Hour' && obj.x.getUTCHours() === 0)
-							|| (aggregateType === 'Day' && obj.x.getUTCDate() === 1)
-							|| (aggregateType === 'Month' && (obj.x.getUTCMonth() % 3) === 2) ) {
-						startIndex = i;
-					} else {
-						continue OUTER;
-					}
-				}
-				if ( currDayData === undefined 
-						|| (aggregateType === 'Hour' && obj.x.getUTCDate() !== currDayData.date.getUTCDate())
-						|| (aggregateType !== 'Month' && obj.x.getUTCMonth() !== currDayData.date.getUTCMonth()) 
-						|| (aggregateType !== 'Month' && obj.x.getUTCFullYear() !== currDayData.date.getUTCFullYear())
-						|| (aggregateType === 'Month' && (obj.x.getUTCMonth() % 3) === 2 && obj.x.getTime() >= d3.time.month.utc.offset(currDayData.date, 3).getTime()) ) {
-					currDayData = {
-							date : new Date(obj.x.getTime()), 
-							wattHoursTotal : 0,
-							wattHoursConsumed : 0,
-							wattHoursGenerated : 0
-						};
-					currDayData.date.setUTCHours(0, 0, 0, 0);
-					results.push(currDayData);
-					
-					// also add key for data's time in returned array, for fast lookup
-					results[currDayData.date.getTime()] = currDayData;
-				}
-				if ( i >= startIndex ) {
-					if ( j < consumptionLayerCount ) {
-						currDayData.wattHoursConsumed += obj.y;
-						currDayData.wattHoursTotal -= obj.y;
-					} else {
-						currDayData.wattHoursGenerated += obj.y;
-						currDayData.wattHoursTotal += obj.y;
-					}
-				}
-			}
-		}
-		
-		return results;
-	}
-	
-	function setup(rawData) {
-		// turn filteredData object into proper array, sorted by date
-		sources = [];
-		var dataArray = sn.powerPerSourceArray(rawData, sources);
-
-		// Transpose the data into watt layers by source, e.g.
-		// [ [{x:0,y:0,y0:0},{x:1,y:1,y0:0}...], ... ]
-		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'wattHours')
-			.excludeSources(config.excludeSources)
-			.offset(function(data) {
-				minY = 0;
-				var i, j = -1,
-					m = data[0].length,
-					offset,
-					y0 = [];
-				while (++j < m) {
-					i = -1;
-					offset = 0;
-					while ( ++i < consumptionLayerCount ) {
-						offset -= data[i][j][1];
-					}
-					y0[j] = offset;
-					if ( offset < minY ) {
-						minY = offset;
-					}
-				}
-				return y0;
-			}).data(dataArray);
-		layers = layerGenerator();
-
-		// Compute the x-domain (by date) and y-domain (by top).
-		computeDomainX();
-		computeDomainY();
-	}
-	
-	function axisYTransform(d) {
-		// align to half-pixels, to 1px line is aligned to pixels and crisp
-		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
-	}
-
-	function axisXMidBarValue(d) { 
-		return xBar(d) + (xBar.rangeBand() / 2); 
-	}
-	
-	function axisXAggObject(d, propName) {
-		var t = new Date(d.getTime());
-		if ( aggregateType === 'Month' ) {
-			t = d3.time.month.utc.floor(d);
-			t = d3.time.month.utc.offset(t, -((t.getUTCMonth() + 1) % 3));
-		} if ( aggregateType === 'Day' ) {
-			t = d3.time.month.utc.floor(d);
-		}
-		t.setUTCHours(0, 0, 0, 0); // truncate to midnight of day
-		return dailyAggregateWh[t.getTime()];
-	}
-	
-	function axisXAggValue(d, propName) {
-		var a = axisXAggObject(d, propName);
-		var v = (a !== undefined ? Number(a[propName]) : undefined);
-		if ( isNaN(v) ) {
-			return 0;
-		}
-		return v;
-	}
-	
-	function axisXAggTextFn(d, propName) {
-		var a = axisXAggObject(d, propName);
-		return (a === undefined ? '' : aggDisplayFormat(a[propName]));
-	}
-	
-	function axisXAggSumTextFn(d) {
-		return axisXAggTextFn(d, 'wattHoursTotal');
-	}
-	
-	function axisXAggGenerationTextFn(d) {
-		return axisXAggTextFn(d, 'wattHoursGenerated');
-	}
-	
-	function labelSeasonColors(d) {
-		if ( aggregateType === 'Month' ) {
-			return seasonColor(d);
-		}
-		return null;
-	}
-	
-	function adjustAxisXAggregateGeneration(aggTicks) {
-		var aggLabels = aggGroup.selectAll("text").data(aggTicks, Object);
-		
-		aggLabels.transition().duration(transitionMs)
-				.attr("x", axisXMidBarValue)
-				.text(axisXAggGenerationTextFn)
-				.style("fill", labelSeasonColors);
-			
-		aggLabels.enter().append("text")
-				.attr("x", axisXMidBarValue)
-				.style("opacity", 1e-6)
-				.style("fill", labelSeasonColors)
-			.transition().duration(transitionMs)
-				.text(axisXAggGenerationTextFn)
-				.style("opacity", 1)
-				.each('end', function() {
-					// remove the opacity style
-					d3.select(this).style("opacity", null);
-				});
-
-		aggLabels.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-			.remove();
-	}
-	
-	/**
-	 * Return an array of dates on the 1st and 15th day of each month within a given domain.
-	 * 
-	 * @param {Array} domain - at least 2 dates representing the start and end
-	 * @return {Array} array of Date objects
-	 */
-	function firstAndMidMonthDates(domain) {
-		var end = domain[domain.length - 1].getTime();
-		var day = d3.time.month.utc.ceil(domain[0]);
-		var result = [];
-		while ( day.getTime() < end ) {
-			result.push(day);
-			if ( day.getUTCDate() === 1 ) {
-				day = d3.time.day.utc.offset(day, 14);
-			} else {
-				day = d3.time.month.utc.ceil(day);
-			}
-		}
-		return result;
-	}
-
-	function solarQuarterDates(domain) {
-		var end = domain[domain.length - 1].getTime();
-		var month = d3.time.month.utc.ceil(domain[0]);
-		var result = [];
-		while ( month.getTime() <= end ) {
-			if ( result.length === 0 ) {
-				// round up to nearest quarter...
-				month = d3.time.month.utc.offset(month, Math.ceil(month.getUTCMonth() / 3) * 3 - month.getUTCMonth()); // not month + 1 because here we want Jan
-			}
-			result.push(month);
-			month = d3.time.month.utc.offset(month, 3);
-		}
-		return result;
-	}
-
-	function tickClassAgg(d) {
-		return (aggregateType === 'Day' && d.getUTCDate() === 15)
-			|| (aggregateType === 'Hour' && d.getUTCHours() === 12)
-			|| (aggregateType === 'Month' && d.getUTCMonth() % 3 === 1);
-	}
-	
-	function tickClassNeg(d) {
-		return (tickClassAgg(d) && axisXAggValue(d, 'wattHoursTotal') < 0);
-	}
-
-	function seasonColor(d) {
-		var month = d.getUTCMonth();
+	function seasonColorFn(d) {
+		var seasonColors = (parent.config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
+		var month = d.date.getUTCMonth();
 		if ( month < 2 || month == 11 ) {
 			return (northernHemisphere ? seasonColors[3] : seasonColors[1]);
 		}
@@ -432,161 +99,266 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		return (northernHemisphere ? seasonColors[2] : seasonColors[0]);
 	}
 	
-	function axisXVertRule(d) {
-			return (xBar(d) + 0.5);
+	function labelSeasonColors(d) {
+		if ( parent.aggregate() === 'Month' ) {
+			return seasonColorFn(d);
+		}
+		return null;
 	}
 	
-	function adjustAxisX() {
-		if ( d3.event && d3.event.transform ) {
-			d3.event.transform(x);
-		}
-		var ticks;
-		var aggTicks = [];
-		var aggVertRuleTicks = [];
-		var aggBandTicks = [];
-		var e, i, len, date;
-		if ( aggregateType === 'Month' ) {
-			ticks = solarQuarterDates(x.domain());
-			if ( ticks.length > 0 && x.domain()[0].getUTCMonth() % 3 !== 0 ) {
-				// insert a tick for the band to show the first partial season
-				aggBandTicks.push(x.domain()[0]);
-			}
-			// ticks are on Jan, Apr, Jul, Oct
-			for ( i = 0, len = ticks.length; i < len; i++ ) {
-				e = ticks[i];
-				date = d3.time.month.utc.offset(e, -1);
-				if ( date.getTime() < x.domain()[0].getTime() ) {
-					date = x.domain()[0];
-				}
-				aggBandTicks.push(date);
-			}
-			if ( ticks.length > 0 && x.domain()[1].getUTCMonth() % 3 !== 0 ) {
-				// insert a tick for the band to show the last partial season
-				aggBandTicks.push(x.domain()[1]);
-			}
-			aggTicks = ticks;
-		} else if ( aggregateType === 'Day' ) {
-			ticks = firstAndMidMonthDates(x.domain());
-			// agg ticks shifted by 14 days so centered within the month
-			for ( i = 0, len = ticks.length; i < len; i++ ) {
-				e = ticks[i];
-				if ( e.getUTCDate() === 15 ) {
-					aggTicks.push(e);
-				} else if ( e.getUTCDate() === 1 ) {
-					aggVertRuleTicks.push(e);
-				}
-			}
+	function timeAggregateLabelFormatter() {
+		var fmt;
+		if ( parent.yScale() === 1 ) {
+			fmt = ',d';
 		} else {
-			// assume aggregateType == Hour
-			ticks = x.ticks(d3.time.hours.utc, 12);
-			
-			for ( i = 0, len = ticks.length; i < len; i++ ) {
-				e = ticks[i];
-				if ( e.getUTCHours() === 12 ) {
-					aggTicks.push(e);
-				} else if ( e.getUTCHours() === 0 ) {
-					aggVertRuleTicks.push(e);
+			fmt = ',.1f';
+		}
+		return d3.format(fmt);
+	}
+
+	/**
+	 * A rollup function for d3.dest(), that aggregates the plot property value and 
+	 * returns objects in the form <code>{ date : Date(..), y : Number, plus : Number, minus : Number }</code>.
+	 */
+	function nestRollupAggregateSum(array) {
+		// Note: we don't use d3.sum here because we want to end up with a null value for "holes"
+		var sum = null, plus = null, minus = null, 
+			d, v, i, len = array.length, groupId, negate = false;
+		for ( i = 0; i < len; i += 1 ) {
+			d = array[i];
+			v = d[parent.plotPropertyName];
+			if ( v !== undefined ) {
+				groupId = d[parent.internalPropName].groupId;
+				negate = negativeGroupMap[groupId] === true;
+				if ( negate ) {
+					minus += v;
+				} else {
+					plus += v;
 				}
 			}
 		}
-		dailyAggregateWh = calculateAggregateWh();
-
-		adjustAxisXTicks(ticks);
-		adjustAxisXRules(aggVertRuleTicks);
-		adjustAxisXAggregateBands(aggBandTicks, ticks);
-		adjustAxisXAggregateGeneration(aggTicks);
+		if ( plus !== null || minus !== null ) {
+			sum = plus - minus;
+		}
+		return { date : array[0].date, y : sum, plus : plus, minus : minus };
 	}
 	
-	function adjustAxisXTicks(ticks) {
-		var fx = x.tickFormat(ticks.length);
-		
-		function tickText(d) {
-			if ( tickClassAgg(d) ) {
-				return axisXAggSumTextFn(d);
+	function setupDrawData() {
+		var groupedData = [],
+			groupIds = parent.groupIds,
+			maxPositiveY = 0,
+			maxNegativeY = 0,
+			sumLineData,
+			timeAggregateData;
+
+		// construct a 3D array of our data, to achieve a dataType/source/datum hierarchy;
+		// also construct 2D array for sum line
+		groupIds.forEach(function(groupId) {
+			var groupLayer = parent.groupLayers[groupId];
+			if ( groupLayer === undefined ) {
+				groupedData.push([]);
 			} else {
-				return fx(d);
+				groupedData.push(groupLayer.map(function(e) {
+					var max = d3.max(e.values, function(d) {
+						return (d.y + d.y0);
+					});
+					if ( negativeGroupMap[groupId] === true ) {
+						if ( max > maxNegativeY ) {
+							maxNegativeY = max;
+						}
+					} else if ( max > maxPositiveY ) {
+						maxPositiveY = max;
+					}
+					return e.values;
+				}));
+			}
+		});
+		
+		var allData = d3.merge(d3.merge(groupedData)).concat(parent.xBar.domain().map(function(e) {
+			return { date : e };
+		}));
+		drawData.allData = allData;
+		sumLineData = d3.nest()
+			.key(function(d) { 
+				return d.date.getTime();
+			})
+			.sortKeys(d3.ascending)
+			.rollup(nestRollupAggregateSum)
+			.entries(allData).map(function (e) {
+				return e.values;
+			});
+			
+		timeAggregateData = d3.nest()
+			.key(function(d) {
+				var aggregateType = parent.aggregate();
+				var date;
+				if ( aggregateType === 'Day' ) {
+					// rollup to month
+					date = d3.time.month.utc.floor(d.date);
+				} else if ( aggregateType === 'Month' ) {
+					// rollup to MIDDLE of seasonal quarters, e.g. Jan/Apr/Jul/Oct
+					date = d3.time.month.utc.offset(d.date, -((d.date.getUTCMonth() + 1) % 3));
+				} else {
+					date = d3.time.day.utc.floor(d.date);
+				}
+				return date.getTime();
+			})
+			.sortKeys(d3.ascending)
+			.rollup(nestRollupAggregateSum)
+			.entries(allData).map(function (e) {
+				// map date to aggregate value
+				e.values.date = new Date(Number(e.key));
+				return e.values;
+			});
+			
+		return {
+			groupedData : groupedData, 
+			sumLineData : sumLineData,
+			timeAggregateData : timeAggregateData,
+			maxPositiveY : maxPositiveY,
+			maxNegativeY : maxNegativeY
+		};
+	}
+	
+	function draw() {
+		var groupIds = parent.groupIds,
+			transitionMs = parent.transitionMs(),
+			groups,
+			sources,
+			centerYLoc,
+			yDomain = parent.y.domain();
+			
+		// calculate our bar metrics
+		parent.computeDomainX();
+		
+		drawData = setupDrawData();
+
+		// adjust Y domain to include "negative" range
+		yDomain[0] = -drawData.maxNegativeY;
+		yDomain[1] = drawData.maxPositiveY;
+		parent.y.domain(yDomain).nice();
+		
+		centerYLoc = parent.y(0);
+		
+		function dataTypeGroupTransformFn(d) {
+			var yShift = 0;
+			if ( d.length > 0 && d[0].length > 0 && negativeGroupMap[d[0][0][parent.internalPropName].groupId] ) {
+				yShift = -(centerYLoc * 2);
+				return ('scale(1, -1) translate(0,' + yShift +')');
+			} else {
+				return null;
 			}
 		}
-
-		// Add date labels, centered within associated band
-		var labels = svgTickGroupX.selectAll("text").data(ticks, Object)
-			.classed({
-				agg : tickClassAgg,
-				neg : tickClassNeg
-			});
-
-		labels.transition().duration(transitionMs)
-		  	.attr("x", axisXMidBarValue)
-		  	.text(tickText);
 		
-		labels.enter().append("text")
-			.attr("dy", "-0.5em") // needed so descenders not cut off
-			.style("opacity", 1e-6)
-			.attr("x", axisXMidBarValue)
-			.classed({
-				agg : tickClassAgg,
-				neg : tickClassNeg
+		// we create groups for each data type, but don't destroy them, so we preserve DOM order
+		// and maintain opacity levels for all stack layers within each data type
+		groups = svgData.selectAll('g.dataType').data(drawData.groupedData, function(d, i) {
+					return groupIds[i];
+				});
+		groups.transition().duration(transitionMs)
+				.attr('transform', dataTypeGroupTransformFn);
+		groups.enter().append('g')
+				.attr('class', 'dataType')
+				.attr('transform', dataTypeGroupTransformFn);
+				
+		// now add a group for each source within the data type, where we set the color so all
+		// bars within the group inherit the same value
+		sources = groups.selectAll('g.source').data(Object, function(d, i) {
+				return d[0].sourceId;
 			})
-		.transition().duration(transitionMs)
-				.style("opacity", 1)
-				.text(tickText)
-				.each('end', function() {
-						// remove the opacity style
-						d3.select(this).style("opacity", null);
-					});
-		
-		labels.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
+			.style('fill', parent.groupFillFn);
+			
+		sources.enter().append('g')
+				.attr('class', 'source')
+				.style('fill', parent.groupFillFn);
+					
+		sources.exit().transition().duration(transitionMs)
+			.style('opacity', 1e-6)
 			.remove();
+		
+		parent.drawBarsForSources(sources);
+		
+		drawSumLine(drawData.sumLineData);
+		drawTimeAggregateBands(drawData.timeAggregateData);
+		drawTimeAggregates(drawData.timeAggregateData);
+		
+		parent.drawAxisY();
+		parent.drawAxisX();
+	};
+	
+	function drawSumLine(sumLineData) {
+		var transitionMs = parent.transitionMs();
+		
+		function sumDefined(d) {
+			return d.y !== null;
+		}
+		
+		var svgLine = d3.svg.line()
+			.x(parent.valueXMidBar)
+			.y(function(d) { return parent.y(d.y) - 0.5; })
+			.interpolate("monotone")
+			.defined(sumDefined);
+		
+		var sumLine = svgSumLineGroup.selectAll("path").data([sumLineData]);
+		
+		sumLine.transition().duration(transitionMs)
+			.attr("d", svgLine);
+		
+		sumLine.enter().append("path")
+				.attr("d", d3.svg.line()
+						.x(parent.valueXMidBar)
+						.y(function() { return parent.y(0) - 0.5; })
+						.interpolate("monotone")
+						.defined(sumDefined))
+			.transition().duration(transitionMs)
+				.attr("d", svgLine);
+				
+		sumLine.exit().transition().duration(transitionMs)
+				.style('opacity', 1e-6)
+				.remove();
 	}
 	
-	function adjustAxisXRules(aggVertRuleTicks) {
-		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(aggVertRuleTicks, Object);
-		axisLines.transition().duration(transitionMs)
-	  		.attr("x1", axisXVertRule)
-	  		.attr("x2", axisXVertRule);
-		
-		axisLines.enter().append("line")
-			.style("opacity", 1e-6)
-			.attr("x1", axisXVertRule)
-	  		.attr("x2", axisXVertRule)
-	  		.attr("y1", 0)
-	  		.attr("y2", h + 10)
-		.transition().duration(transitionMs)
-			.style("opacity", vertRuleOpacity)
-			.each('end', function() {
-				// remove the opacity style
-				d3.select(this).style("opacity", null);
-			});
-		
-		axisLines.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-			.remove();
-	}
-	
-	function adjustAxisXAggregateBands(bandTicks, labelTicks) {
+	function drawTimeAggregateBands(timeAggregateData) {
+		var transitionMs = parent.transitionMs(),
+			xDomain = parent.x.domain(),
+			xBar = parent.xBar,
+			d, 
+			len = timeAggregateData.length,
+			bandTicks;
+			
+		if ( parent.aggregate() === 'Month' && len > 0 ) {
+			bandTicks = timeAggregateData;
+		} else {
+			bandTicks = [];
+		}
+
 		var barWidth = xBar.rangeBand();
 		var barSpacing = (xBar.domain().length > 1 
 			? (xBar(xBar.domain()[1]) - xBar(xBar.domain()[0])) 
 			: barWidth);
 		var barPadding = (barSpacing - barWidth) / 2;
-		var aggBands = svgRoot.select("g.agg-band").selectAll("line").data(bandTicks, Object);
+		var aggBands = svgAggBandGroup.selectAll("line").data(bandTicks, parent.keyX);
 		var bandPosition = function(s) {
 				s.attr("x1", function(d) {
-					return xBar(d) - barPadding;
+					var date = d.date;
+					if ( date.getTime() < xDomain[0].getTime() ) {
+						// first band starts before first date, shift to first date
+						date = xDomain[0];
+					}
+					return xBar(date) - barPadding;
 				})
 				.attr("x2", function(d, i) {
 					// for all bands but last, set to start of next band
 					if ( i + 1 < bandTicks.length ) {
-						return xBar(bandTicks[i+1]) - barPadding;
+						return xBar(bandTicks[i+1].date) - barPadding;
 					}
 					// for last band, set to end of last bar
 					if ( bandTicks.length > 1 ) {
-						return (xBar(x.domain()[1]) + barWidth + barPadding);
+						return (xBar(xDomain[1]) + barWidth + barPadding);
 					}
-					return xBar(d) + barPadding;
+					return xBar(d.date) + barPadding;
 				})
-				.style('stroke', seasonColor);
+				.style('stroke', seasonColorFn);
 		};
 		aggBands.transition().duration(transitionMs)
 			.call(bandPosition);
@@ -604,18 +376,37 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		aggBands.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
-		
-		var aggBandLabels = svgRoot.select("g.agg-band-ticks").selectAll("text").data(labelTicks, Object);
+			
+		// now draw the labels inside the bands
+			
+		function labelTextX(d) {
+			var x = parent.valueXMidBar(d);
+			/* could shift to center of band; but for now keeping vertically aligned with top aggregate label
+			if ( d.date.getTime() < xDomain[1].getTime() ) { 
+				// shift the label to the next bar (this assumes 3 bars per group)
+				//x += barSpacing;
+			}
+			*/
+			return x;
+		}
+			
+		function textFn(d) {
+			return labelFormatter((d.plus - d.minus) / parent.yScale());
+		}
+
+		var labelFormatter = timeAggregateLabelFormatter();
+
+		var aggBandLabels = svgAggBandLabelGroup.selectAll("text").data(bandTicks, parent.keyX);
 		aggBandLabels.transition().duration(transitionMs)
-		  	.attr("x", axisXMidBarValue)
-		  	.text(axisXAggSumTextFn);
+		  	.attr("x", labelTextX)
+		  	.text(textFn);
 		
 		aggBandLabels.enter().append("text")
 			.style("opacity", 1e-6)
-			.attr("x", axisXMidBarValue)
+			.attr("x", labelTextX)
 		.transition().duration(transitionMs)
 				.style("opacity", 1)
-				.text(axisXAggSumTextFn)
+				.text(textFn)
 				.each('end', function() {
 						// remove the opacity style
 						d3.select(this).style("opacity", null);
@@ -625,252 +416,53 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			.style("opacity", 1e-6)
 			.remove();
 	}
-
-	function adjustAxisY() {
-		function ruleClass(d) {
-			return (d === 0 ? 'origin' : 'm');
-		}
-		
-		var axisLines = svgRoot.select("g.rule").selectAll("g").data(y.ticks(5));
-		var axisLinesT = axisLines.transition().duration(transitionMs);
-		axisLinesT.attr("transform", axisYTransform)
-			.select("text")
-				.text(displayFormat);
-		axisLinesT.select("line")
-				.attr('class', ruleClass);
-		
-	  	axisLines.exit().transition().duration(transitionMs)
-	  			.style("opacity", 1e-6)
-	  			.remove();
-	  			
-		var entered = axisLines.enter()
-				.append("g")
-				.style("opacity", 1e-6)
-	  			.attr("transform", axisYTransform);
-		entered.append("line")
-				.attr("x2", w + p[3])
-				.attr('x1', p[3])
-				.attr('class', ruleClass);
-		entered.append("text")
-				.attr("x", p[3] - 10)
-				.text(displayFormat);
-		entered.transition().duration(transitionMs)
-			.style("opacity", null);
-	}
 	
-	/**
-	 * Return the x pixel coordinate for a given bar.
-	 * 
-	 * @param {Object} d the data element
-	 * @param {Number} i the domain index
-	 * @returns {Number} x pixel coordinate
-	 */
-	function valueX(d, i) {
-		return xBar(d.x);
-	}
-	
-	function valueXMidBar(d, i) {
-		return (xBar(d.x) + (xBar.rangeBand() / 2));
-	}
-	
-	function redraw() {
-		// Add a group for each source.
-		var sourceGroups = svg.selectAll("g.source").data(layers)
-			.style("fill", sn.colorFn);
-		sourceGroups.enter()
-			.append("g")
-				.attr("class", "source")
-				.style("fill", sn.colorFn);
-		sourceGroups.exit().remove();
+	function drawTimeAggregates(timeAggregateData) {
+		var transitionMs = parent.transitionMs(),
+			xDomain = parent.x.domain(),
+			start = 0, 
+			len = timeAggregateData.length,
+			labelTicks;
 		
-		var centerYLoc = y(0);
+		var labelFormatter = timeAggregateLabelFormatter();
 		
-		function valueY(d) {
-			return y(d.y0 + d.y);
-		}
-		
-		function heightY(d) {
-			return y(d.y0) - y(d.y0 + d.y);
-		}
-		
-		var bars = sourceGroups.selectAll("rect").data(Object, function(d) {
-			return d.x;
-		});
-		bars.transition().duration(transitionMs)
-			.attr("x", valueX)
-			.attr("y", valueY)
-			.attr("height", heightY)
-			.attr("width", xBar.rangeBand());
-		
-		var entered = bars.enter().append("rect")
-			.attr("x", valueX)
-			.attr("y", centerYLoc)
-			.attr("height", 1e-6)
-			.attr("width", xBar.rangeBand());
-		
-		entered.transition().duration(transitionMs)
-			.attr("y", valueY)
-			.attr("height", heightY);
-		
-		bars.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-  			.remove();
-		
-		var sumLineData = (function() {
-			var i, iMax;
-			var j, len, e;
-			var sum;
-			var result = [];
-			for ( i = 0, iMax = layers[0].length; i < iMax; i++ ) {
-				sum = null;
-				for ( j = 0, len = layers.length; j < len; j++ ) {
-					e = layers[j][i];
-					if ( e.y === null ) {
-						continue;
-					}
-					if ( j < consumptionLayerCount ) {
-						sum -= e.y;
-					} else {
-						sum += e.y;
-					}
-				}
-				result.push({x:layers[0][i].x, y:sum});
+		// remove any ticks earlier than first full range
+		while ( start < len ) {
+			if ( timeAggregateData[start].date.getTime() >= xDomain[0].getTime() ) {
+				break;
 			}
-			return result;
-		})();
-		
-		function sumDefined(d) {
-			return d.y !== null;
+			start += 1;
 		}
+		labelTicks = timeAggregateData.slice(start);
 		
-		var svgLine = d3.svg.line()
-			.x(valueXMidBar)
-			.y(function(d) { return y(d.y) - 0.5; })
-			.interpolate("monotone")
-			.defined(sumDefined);
-		var sumLine = svgSumLineGroup.selectAll("path").data([sumLineData]);
-		sumLine.transition().duration(transitionMs)
-			.attr("d", svgLine);
-		sumLine.enter().append("path")
-				.attr("d", d3.svg.line()
-						.x(valueXMidBar)
-						.y(function() { return y(0) - 0.5; })
-						.interpolate("monotone")
-						.defined(sumDefined))
+		function textFn(d) {
+			return labelFormatter(d.plus / parent.yScale());
+		}
+
+		var aggLabels = svgAggGroup.selectAll("text").data(labelTicks, parent.keyX);
+		
+		aggLabels.transition().duration(transitionMs)
+				.attr("x", parent.valueXMidBar)
+				.text(textFn)
+				.style("fill", labelSeasonColors);
+			
+		aggLabels.enter().append("text")
+				.attr("x", parent.valueXMidBar)
+				.style("opacity", 1e-6)
+				.style("fill", labelSeasonColors)
 			.transition().duration(transitionMs)
-				.attr("d", svgLine);
-		sumLine.exit().remove();
+				.text(textFn)
+				.style("opacity", 1)
+				.each('end', function() {
+					// remove the opacity style
+					d3.select(this).style("opacity", null);
+				});
+
+		aggLabels.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
 	}
 
-	that.sources = sources;
-	
-	/**
-	 * Get the x-axis domain (minimum and maximum dates).
-	 * 
-	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
-	 * @memberOf sn.chart.energyIOBarChart
-	 */
-	that.xDomain = function() { return x.domain(); };
-
-	/**
-	 * Get the y-axis domain (minimum and maximum values).
-	 * 
-	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
-	 * @memberOf sn.chart.energyIOBarChart
-	 */
-	that.yDomain = function() { return y.domain(); };
-	
-	/**
-	 * Get the scaling factor the y-axis is using. By default this will return {@code 1}.
-	 * After calling the {@link #load()} method, however, the chart may decide to scale
-	 * the y-axis for clarity. You can call this method to find out the scaling factor the
-	 * chart ended up using.
-	 *  
-	 * @returns the y-axis scale factor
-	 * @memberOf sn.chart.energyIOBarChart
-	 */
-	that.yScale = function() { return displayFactor; };
-	
-	/**
-	 * Get the current {@code aggregate} value in use.
-	 * 
-	 * @param {number} [value] the number of consumption sources to use
-	 * @returns when used as a getter, the count number, otherwise this object
-	 * @returns the {@code aggregate} value
-	 * @memberOf sn.chart.energyIOBarChart
-	 */
-	that.aggregate = function(value) { 
-		if ( !arguments.length ) return aggregateType;
-		aggregateType = (value === 'Month' ? 'Month' : value === 'Day' ? 'Day' : 'Hour');
-		return that;
-	};
-	
-	/**
-	 * Load data for the chart. The data is expected to be in a form suitable for
-	 * passing to {@link sn.energyPerSourceArray}.
-	 * 
-	 * @param {Array} rawData - the raw chart data to load
-	 * @returns this object
-	 * @memberOf sn.chart.energyIOBarChart
-	 */
-	that.load = function(rawData) {
-		parseConfiguration();
-		setup(rawData);
-		adjustAxisX();
-		adjustAxisY();
-		redraw();
-		return that;
-	};
-	
-	/**
-	 * Regenerate the chart, using the current data. This can be called after disabling a
-	 * source 
-	 * 
-	 * @returns this object
-	 * @memberOf sn.chart.energyIOBarChart
-	 */
-	that.regenerate = function() {
-		if ( layerGenerator === undefined ) {
-			// did you call load() first?
-			return that;
-		}
-		parseConfiguration();
-		layers = layerGenerator();
-		computeDomainY();
-		adjustAxisX();
-		adjustAxisY();
-		redraw();
-		return that;
-	};
-	
-	/**
-	 * Get or set the consumption source count. Set this to the number of sources that 
-	 * are considered "consumption" and should show up <em>under</em> the y-axis origin.
-	 * The sources are assumed to already be ordered with consumption before generation.
-	 * 
-	 * @param {number} [value] the number of consumption sources to use
-	 * @returns when used as a getter, the count number, otherwise this object
-	 * @memberOf sn.chart.energyIOBarChart
-	 */
-	that.consumptionSourceCount = function(value) {
-		if ( !arguments.length ) return consumptionLayerCount;
-		consumptionLayerCount = +value; // the + used to make sure we have a Number
-		return that;
-	};
-
-	/**
-	 * Get or set the animation transition time, in milliseconds.
-	 * 
-	 * @param {number} [value] the number of milliseconds to use
-	 * @return when used as a getter, the millisecond value, otherwise this object
-	 * @memberOf sn.chart.energyIOBarChart
-	 */
-	that.transitionMs = function(value) {
-		if ( !arguments.length ) return transitionMs;
-		transitionMs = +value; // the + used to make sure we have a Number
-		return that;
-	};
-	
 	/**
 	 * Toggle showing the sum line, or get the current setting.
 	 * 
@@ -880,6 +472,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	 */
 	that.showSumLine = function(value) {
 		if ( !arguments.length ) return !svgSumLineGroup.classed('off');
+		var transitionMs = parent.transitionMs();
 		svgSumLineGroup
 			.style("opacity", (value ? 1e-6 : 1))
 			.classed('off', false)
@@ -906,14 +499,45 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		if ( value === northernHemisphere ) {
 			return;
 		}
+		var transitionMs = parent.transitionMs();
 		northernHemisphere = (value === true);
 		svgAggBandGroup.selectAll("line").transition().duration(transitionMs)
-			.style('stroke', seasonColor);
-		aggGroup.selectAll("text").transition().duration(transitionMs)
+			.style('stroke', seasonColorFn);
+		svgAggGroup.selectAll("text").transition().duration(transitionMs)
 			.style("fill", labelSeasonColors);
 		return that;
 	};
+	
+	/**
+	 * Get or set an array of group IDs to treat as negative group IDs, that appear below
+	 * the X axis.
+	 *
+	 * @param {Array} [value] the array of group IDs to use
+	 * @return {Array} when used as a getter, the list of group IDs currently used, otherwise this object
+	 * @memberOf sn.chart.energyIOBarChart
+	 */
+	that.negativeGroupIds = function(value) {
+		if ( !arguments.length ) {
+			return (function() {
+				var prop,
+					result = [];
+				for ( prop in negativeGroupMap ) {
+					if ( negativeGroupMap.hasOwnProperty(prop) ) {
+						result.pus(prop);
+					}
+				}
+				return result;
+			}());
+		}
+		negativeGroupMap = {};
+		value.forEach(function(e) {
+			negativeGroupMap[e] = true;
+		});
+		return that;
+	};
 
-	parseConfiguration();
+	// define our drawing function
+	parent.draw = draw;
+	
 	return that;
 };
