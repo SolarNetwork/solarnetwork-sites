@@ -302,11 +302,24 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			
 		timeAggregateData = d3.nest()
 			.key(function(d) {
-				
+				var aggregateType = parent.aggregate();
+				var date;
+				if ( aggregateType === 'Day' ) {
+					// rollup to month
+					date = d3.time.month.utc.floor(d.date);
+				} else if ( aggregateType === 'Month' ) {
+					// rollup to MIDDLE of seasonal quarters, e.g. Jan/Apr/Jul/Oct
+					date = d3.time.month.utc.offset(d.date, -(d.date.getUTCMonth() - (d.date.getUTCMonth() % 3)));
+				} else {
+					date = d3.time.day.utc.floor(d.date);
+				}
+				return date.getTime();
 			})
 			.sortKeys(d3.ascending)
 			.rollup(nestRollupAggregateSum)
 			.entries(allData).map(function (e) {
+				// map date to aggregate value
+				e.values.date = new Date(Number(e.key));
 				return e.values;
 			});
 			
