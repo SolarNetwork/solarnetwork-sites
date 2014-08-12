@@ -44,7 +44,7 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 	var me = that;
 	
 	var svgData = parent.svgDataRoot.append('g')
-		.attr('class', 'data crisp');
+		.attr('class', 'data');
 		
 	// extending classes should re-define this property so method chaining works
 	Object.defineProperty(that, 'me', {

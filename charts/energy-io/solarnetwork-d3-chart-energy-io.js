@@ -74,7 +74,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		.attr('transform', 'translate(0,' +(parent.height + parent.padding[2] - 21) +')');
 	
 	var svgData = parent.svgDataRoot.append('g')
-		.attr('class', 'data crisp');
+		.attr('class', 'data');
 	
 	var svgSumLineGroup = parent.svgDataRoot.append('g')
 		.attr('class', 'agg-sum');
