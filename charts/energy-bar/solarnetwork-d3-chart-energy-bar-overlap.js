@@ -43,6 +43,9 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 	
 	var me = that;
 	
+	var svgData = parent.svgDataRoot.append('g')
+		.attr('class', 'data crisp');
+		
 	// extending classes should re-define this property so method chaining works
 	Object.defineProperty(that, 'me', {
 						enumerable : false,
@@ -79,23 +82,22 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 		
 		// we create groups for each data type, but don't destroy them, so we preserve DOM order
 		// and maintain opacity levels for all stack layers within each data type
-		groups = parent.svgRoot.selectAll('g.dataType').data(groupedData, function(d, i) {
+		groups = svgData.selectAll('g.dataType').data(groupedData, function(d, i) {
 			return groupIds[i];
 		});
 		groups.enter().append('g')
 				.attr('class', 'dataType')
-				.attr('transform', 'translate(' + parent.padding[3] + ',' + parent.padding[0] + ')')
 				.style('opacity', dataTypeOpacityFn);
 
 		// now add a group for each source within the data type, where we set the color so all
 		// bars within the group inherit the same value
-		sources = groups.selectAll('g.data').data(Object, function(d, i) {
+		sources = groups.selectAll('g.source').data(Object, function(d, i) {
 				return d[0].sourceId;
 			})
 			.style('fill', parent.groupFillFn);
 			
 		sources.enter().append('g')
-				.attr('class', 'data')
+				.attr('class', 'source')
 				.style('fill', parent.groupFillFn);
 					
 		sources.exit().transition().duration(transitionMs)
