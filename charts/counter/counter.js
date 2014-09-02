@@ -73,25 +73,23 @@ function setupCounters() {
 		.sourceIds(sn.env.sourceIds)
 		.callback(function(sum) {
 			var totalKWattHours = sum / 1000;
-			
-			sn.log('{0} total kWh', totalKWattHours);
+			sn.log('{0} total generation kWh', totalKWattHours);
 			sn.runtime.flipCounterKWh.update(Math.round(totalKWattHours));
-		})
-		.start();
+		})/*
+		.start()*/;
 	
 	// Wh counter utility (consumption)
 	if ( sn.runtime.wattHourConsumptionCounter !== undefined ) {
 		sn.runtime.wattHourConsumptionCounter.stop();
 	}
-	sn.runtime.wattHourConsumptionCounter = sn.util.sumCounter(sn.runtime.consumptionUrlHelper, {
-		sourceIds: sn.env.consumptionSourceIds.split(/\s*,\s*/),
-		nodeUrlHelper: sn.runtime.consumptionUrlHelper,
-		callback : function() {
-			var totalKWattHours = this.aggregateValue() / 1000;
+	sn.runtime.wattHourConsumptionCounter = sn.util.sumCounter(sn.runtime.consumptionUrlHelper)
+		.sourceIds(sn.env.consumptionSourceIds)
+		.callback(function(sum) {
+			var totalKWattHours = sum / 1000;
+			sn.log('{0} total consumption kWh', totalKWattHours);
 			sn.runtime.flipCounterKWhConsumed.update(Math.round(totalKWattHours));
-		}
-	});
-	//sn.runtime.wattHourConsumptionCounter.start();
+		})
+		.start();
 }
 
 function onDocumentReady() {
