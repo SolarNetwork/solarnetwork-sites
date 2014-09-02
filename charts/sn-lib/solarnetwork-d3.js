@@ -597,15 +597,20 @@ sn.nodeUrlHelper = function(nodeId) {
 		 * @return {String} a URL string
 		 */
 		dateTimeList : function(type, startDate, endDate, agg, opts) {
-			var types = (Array.isArray(type) ? type : [type]);
-			types.sort();
-			var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.utc.offset(endDate, -1) : endDate);
-			var dataURL = (baseURL() +'/datum/list?nodeId=' +nodeId 
-                    		+'&type=' +encodeURIComponent(type.toLowerCase()));
+			var types, 
+				eDate = (opts !== undefined && opts.exclusiveEndDate === true && endDate ? d3.time.second.utc.offset(endDate, -1) : endDate), 
+				dataURL = baseURL() +'/datum/list?nodeId=' +nodeId;
+			if ( type ) {
+				types = (Array.isArray(type) ? type : [type]);
+				types.sort();
+				types.forEach(function(e) {
+            		dataURL += '&type=' +encodeURIComponent(e.toLowerCase());
+				});
+            }
 			if ( startDate ) {
 				dataURL += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
 			}
-			if ( endDate ) {
+			if ( eDate ) {
 				dataURL += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate));
 			}
 			if ( typeof agg === 'string' && agg.length > 0 ) {
