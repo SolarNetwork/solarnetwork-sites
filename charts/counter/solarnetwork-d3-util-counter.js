@@ -24,7 +24,7 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 		timer, 
 		endDate,
 		aggBase = 0,
-		aggLatest = 0;
+		aggPartial = 0;
 		
 	function nodeUrlHelperProvider(sourceId) {
 		return nodeUrlHelper;
@@ -32,7 +32,7 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 	
 	function sumResults(results, interval) {
 		var sum = 0, 
-			latest = 0,
+			partial = 0,
 			sourceId, 
 			data,
 			date,
@@ -48,8 +48,8 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 						val = 0;
 					}
 					if ( interval.offset(date, 1).getTime() > now ) {
-						// this time slice extends beyond the current time, so add to latest
-						latest += val;
+						// this time slice extends beyond the current time, so add to partial
+						partial += val;
 					} else {
 						sum += val;
 					}
@@ -61,7 +61,7 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 				}
 			}
 		}
-		return {sum : sum, latest : latest, mostRecentDate : mostRecentDate};
+		return {sum : sum, partial : partial, mostRecentDate : mostRecentDate};
 	}
 	
 	function performSum(finishedCallback, aggregateLevel) {
@@ -93,14 +93,14 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 			.callback(function(results) {
 				var sum;
 				sum	= sumResults(results, interval);
-				sn.log('Got {0} sum {1} from {2} to {3}', aggregateLevel, sum.sum, endDate, sum.mostRecentDate);
+				sn.log('Got {0} sum {1} (partial {2}) from {3} to {4}', aggregateLevel, sum.sum, sum.partial, endDate, sum.mostRecentDate);
 				aggBase += sum.sum;
 				if ( sum.mostRecentDate ) {
 					endDate = sum.mostRecentDate;
 					if ( nextAggregateLevel ) {
 						performSum(finishedCallback, nextAggregateLevel);
 					} else {
-						aggLatest = sum.latest;
+						aggPartial = sum.partial;
 						finishedCallback();
 					}
 				} else {
@@ -112,7 +112,7 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 	function update() {
 		function finished() {
 			if ( callback ) {
-				callback.call(that, (aggBase + aggLatest));
+				callback.call(that, (aggBase + aggPartial));
 			}
 			// if timer was defined, keep going as if interval set
 			if ( timer !== undefined ) {
@@ -203,7 +203,7 @@ sn.util.counterfoo = function() {
 	that.configure = configure;
 	
 	function aggregateValue() {
-		return aggBase + aggLatest;
+		return aggBase + aggPartial;
 	}
 	that.aggregateValue = aggregateValue;
 	
@@ -269,14 +269,14 @@ sn.util.counterfoo = function() {
 					}
 				}
 				if ( results[lastIndex] === undefined ) {
-					// no change to latest
-					aggValueLatest = aggLatest;
+					// no change to partial
+					aggValueLatest = aggPartial;
 				}
 
 				// update public aggregate values now that all data collected
 				aggBase = aggValueBase;
-				aggLatest = aggValueLatest;
-				sn.log('Base {0} set to {1}, latest to {2}', config.aggProperty, aggBase, aggLatest);
+				aggPartial = aggValueLatest;
+				sn.log('Base {0} set to {1}, partial to {2}', config.aggProperty, aggBase, aggPartial);
 			
 				// set the endDate to the startOfHour we just calculated with, so next update we start from there
 				endDate = startOfHour;
@@ -326,7 +326,7 @@ sn.util.counterfoo = function() {
 			q.defer(noop);
 		}
 		
-		// pull in latest hour, to get just a single hour, this query needs the start date === end date
+		// pull in partial hour, to get just a single hour, this query needs the start date === end date
 		if ( sDate.getTime() < eDate.getTime() ) {
 			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, eDate, 'Hour', {exclusiveEndDate:false}));
 		} else {
