@@ -26,39 +26,29 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 		aggBase = 0,
 		aggPartial = 0;
 		
-	function nodeUrlHelperProvider(sourceId) {
-		return nodeUrlHelper;
-	}
-	
 	function sumResults(results, interval) {
 		var sum = 0, 
 			partial = 0,
-			sourceId, 
-			data,
 			date,
 			mostRecentDate,
 			now = new Date().getTime();
-		for ( sourceId in results ) {
-			if ( results.hasOwnProperty(sourceId) ) {
-				data = results[sourceId];
-				data.forEach(function(d) {
-					var val = Number(d[aggProperty]);
-					date = sn.timestampFormat.parse(d.created);
-					if ( isNaN(val) ) {
-						val = 0;
-					}
-					if ( interval.offset(date, 1).getTime() > now ) {
-						// this time slice extends beyond the current time, so add to partial
-						partial += val;
-					} else {
-						sum += val;
-					}
-				});
-				if ( data.length > 0 ) {
-					if ( !mostRecentDate || date.getTime() > mostRecentDate.getTime() ) {
-						mostRecentDate = date;
-					}
-				}
+
+		results.forEach(function(d) {
+			var val = Number(d[aggProperty]);
+			date = sn.timestampFormat.parse(d.created);
+			if ( isNaN(val) ) {
+				val = 0;
+			}
+			if ( interval.offset(date, 1).getTime() > now ) {
+				// this time slice extends beyond the current time, so add to partial
+				partial += val;
+			} else {
+				sum += val;
+			}
+		});
+		if ( results.length > 0 ) {
+			if ( !mostRecentDate || date.getTime() > mostRecentDate.getTime() ) {
+				mostRecentDate = date;
 			}
 		}
 		return {sum : sum, partial : partial, mostRecentDate : mostRecentDate};
@@ -89,7 +79,7 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 			}
 		}
 
-		sn.datum.loader(sourceIds, nodeUrlHelperProvider, endDate, null, aggregateLevel)
+		sn.datum.loader(sourceIds, nodeUrlHelper, endDate, null, aggregateLevel)
 			.callback(function(results) {
 				var sum;
 				sum	= sumResults(results, interval);

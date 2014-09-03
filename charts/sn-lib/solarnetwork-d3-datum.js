@@ -25,13 +25,13 @@ sn.datum = {};
  * 
  * @class
  * @param {string[]} sourceIds - array of source IDs to load data for
- * @param {function} urlHelperProvider - function that returns a {@link sn.nodeUrlHelper} for a given source
+ * @param {function} urlHelper - a {@link sn.nodeUrlHelper}
  * @param {date} start - the start date, or {@code null}
  * @param {date} end - the end date, or {@code null}
  * @param {string} aggregate - aggregate level
  * @returns {sn.datumLoader}
  */
-sn.datum.loader = function(sourceIds, urlHelperProvider, start, end, aggregate) {
+sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	
 	var that = {
 			version : '1.0.0'
@@ -41,8 +41,8 @@ sn.datum.loader = function(sourceIds, urlHelperProvider, start, end, aggregate) 
 	var finishedCallback;
 	var holeRemoverCallback;
 
-	var state = {}; // keys are source IDs, values are 1:loading, 2:done
-	var results = {};
+	var state = 0; // keys are source IDs, values are 1:loading, 2:done
+	var results;
 	
 	function aggregateValue() {
 		return (aggregate === undefined ? 'Hour'  : aggregate);
@@ -52,18 +52,17 @@ sn.datum.loader = function(sourceIds, urlHelperProvider, start, end, aggregate) 
 		return (precision === undefined ? 10 : precision);
 	}
 	
-	function requestCompletionHandler(sourceId) {
-		state[sourceId] = 2; // done
+	function requestCompletionHandler() {
+		state = 2; // done
 		
 		// check if we're all done loading, and if so call our callback function
-		if ( sourceIds.every(function(e) { return state[e] === 2; }) && finishedCallback ) {
+		if ( finishedCallback ) {
 			finishedCallback.call(that, results);
 		}
 	}
 
-	function loadForSource(sourceId, sourceIndex, offset) {
-		var urlHelper = urlHelperProvider(sourceId, sourceIndex),
-			opts = {},
+	function loadData(offset) {
+		var opts = {},
 			key,
 			url,
 			dataExtractor,
@@ -118,23 +117,22 @@ sn.datum.loader = function(sourceIds, urlHelperProvider, start, end, aggregate) 
 			dataArray = dataExtractor(json);
 			if ( dataArray === undefined ) {
 				sn.log('No data available for node {0} source {1}', urlHelper.nodeId(), sourceId);
-				if ( requestCompletionHandler ) {
-					requestCompletionHandler.call(that, sourceId);
-				}
+				requestCompletionHandler();
 				return;
 			}
-			if ( results[sourceId] === undefined ) {
-				results[sourceId] = dataArray;
+
+			if ( results === undefined ) {
+				results = dataArray;
 			} else {
-				results[sourceId] = results[sourceId].concat(dataArray);
+				results = results.concat(dataArray);
 			}
 			
 			// see if we need to load more results
 			nextOffset = offsetExtractor(json);
 			if ( nextOffset > 0 ) {
-				loadForSource(sourceId, sourceIndex, nextOffset);
-			} else if ( requestCompletionHandler ) {
-				requestCompletionHandler.call(that, sourceId);
+				loadData(nextOffset);
+			} else {
+				requestCompletionHandler();
 			}
 		});
 	}
@@ -194,12 +192,8 @@ sn.datum.loader = function(sourceIds, urlHelperProvider, start, end, aggregate) 
 	 * @memberOf sn.datumLoader
 	 */
 	that.load = function() {
-		sourceIds.forEach(function(e) {
-			state[e] = 1; // loading
-		});
-		sourceIds.forEach(function(e, i) {
-			loadForSource(e, i);
-		});
+		state = 1;
+		loadData();
 		return that;
 	};
 
