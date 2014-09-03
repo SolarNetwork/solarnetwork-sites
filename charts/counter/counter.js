@@ -33,6 +33,7 @@ function setup() {
 			} else if ( propName === 'nodeId' ) {
 				sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
 			}
+			setupCounters();
 		}).each(function(e) {
 			var input = d3.select(this);
 			var name = input.attr('name');
@@ -75,9 +76,9 @@ function setupCounters() {
 			var totalKWattHours = sum / 1000;
 			sn.log('{0} total generation kWh', totalKWattHours);
 			sn.runtime.flipCounterKWh.update(Math.round(totalKWattHours));
-		})/*
-		.start()*/;
-	
+		})
+		.start();
+
 	// Wh counter utility (consumption)
 	if ( sn.runtime.wattHourConsumptionCounter !== undefined ) {
 		sn.runtime.wattHourConsumptionCounter.stop();
