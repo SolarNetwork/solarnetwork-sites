@@ -18,6 +18,261 @@ if ( sn === undefined ) {
 sn.datum = {};
 
 /**
+ * A node-specific URL utility object.
+ * 
+ * @class
+ * @constructor
+ * @param {Number} nodeId The node ID to use.
+ * @param {Object} configuration The configuration options to use.
+ * @returns {sn.datum.nodeUrlHelper}
+ */
+sn.datum.nodeUrlHelper = function(nodeId, configuration) {
+	var that = {
+		version : '1.0.0'
+	};
+	
+	var config = (configuration || {
+		host : 'data.solarnetwork.net',
+		tls : true,
+		path : '/solarquery',
+		secureQuery : false
+	});
+	
+	/**
+	 * Get a URL for just the SolarNet host, without any path.
+	 *
+	 * @returns {String} the URL to the SolarNet host
+	 * @memberOf sn.datum.nodeUrlHelper
+	 */
+	function hostURL() {
+		return ('http' +(config.tls === true ? 's' : '') +'://' +config.host);
+	}
+	
+	/**
+	 * Get a URL for the SolarNet host and the base API path, e.g. <code>/solarquery/api/v1/sec</code>.
+	 *
+	 * @returns {String} the URL to the SolarNet base API path
+	 * @memberOf sn.datum.nodeUrlHelper
+	 */
+	function baseURL() {
+		return (hostURL() +config.path +'/api/v1/' +(config.secureQuery === true ? 'sec' : 'pub'));
+	}
+	
+	/**
+	 * Get a URL for the "reportable interval" for this node, optionally limited to a specific source ID.
+	 *
+	 * @param {Array} sourceIds An array of source IDs to limit query to. If not provided then all available 
+	 *                sources will be returned.
+	 * @returns {String} the URL to find the reportable interval
+	 * @memberOf sn.datum.nodeUrlHelper
+	 */
+	function reportableIntervalURL(sourceIds) {
+		var url = (baseURL() +'/range/interval?nodeId=' +nodeId);
+		if ( Array.isArray(sourceIds) ) {
+			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+		}
+		return url;
+	}
+	
+	/**
+	 * Get a available source IDs for this node, optionally limited to a date range.
+	 *
+	 * @param {Date} startDate An optional start date to limit the results to.
+	 * @param {Date} endDate An optional end date to limit the results to.
+	 * @returns {String} the URL to find the available source
+	 * @memberOf sn.datum.nodeUrlHelper
+	 */
+	function availableSourcesURL(startDate, endDate) {
+		var url = (baseURL() +'/range/sources?nodeId=' +nodeId);
+		if ( startDate !== undefined ) {
+			url += '&start=' +encodeURIComponent(sn.dateFormat(startDate));
+		}
+		if ( endDate !== undefined ) {
+			url += '&end=' +encodeURIComponent(sn.dateFormat(endDate));
+		}
+		return url;
+	}
+	
+	/**
+	 * Generate a SolarNet {@code /datum/query} URL.
+	 * 
+	 * @param {String} type a single supported datum type, or an Array of datum types, to query for
+	 * @param {Date} startDate the starting date for the query, or <em>null</em> to omit
+	 * @param {Date} endDate the ending date for the query, or <em>null</em> to omit
+	 * @param {String|Number} agg a supported aggregate type (e.g. Hour, Day, etc) or a minute precision Number
+	 * @param {Array} sourceIds array of source IDs to limit query to
+	 * @return {String} the URL to perform the query with
+	 * @memberOf sn.datum.nodeUrlHelper
+	 */
+	function dateTimeQueryURL(startDate, endDate, agg, sourceIds) {
+		var url = (baseURL() +'/datum/query?nodeId=' +nodeId),
+			aggNum = Number(agg);
+		if ( startDate ) {
+			url += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
+		}
+		if ( endDate ) {
+			url += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL((function() {
+				return (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.utc.offset(endDate, -1) : endDate);
+			}())));
+		}
+		if ( !isNaN(aggNum) ) {
+			url += '&precision=' +aggNum.toFixed(0);
+		} else if ( typeof agg === 'string' && agg.length > 0 ) {
+			url += '&aggregate=' + encodeURIComponent(agg);
+		}
+		if ( Array.isArray(sourceIds) ) {
+			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+		}
+		return url;
+	}
+		
+	/**
+	 * Generate a SolarNet {@code /datum/list} URL.
+	 * 
+	 * @param {Date} startDate The starting date for the query, or <em>null</em> to omit
+	 * @param {Date} endDate The ending date for the query, or <em>null</em> to omit
+	 * @param {String|Number} agg A supported aggregate type (e.g. Hour, Day, etc) or a minute precision Number
+	 * @param {Array} sourceIds Array of source IDs to limit query to
+	 * @param {Object} pagination An optional pagination object, with <code>offset</code> and <code>max</code> properties.
+	 * @return {String} the URL to perform the list with
+	 * @memberOf sn.datum.nodeUrlHelper
+	 */
+	function dateTimeListURL(startDate, endDate, agg, sourceIds, pagination) {
+		var url = (baseURL() +'/datum/list?nodeId=' +nodeId),
+			aggNum = Number(agg);
+		if ( startDate ) {
+			url += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
+		}
+		if ( eDate ) {
+			url += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate));
+		}
+		if ( !isNaN(aggNum) ) {
+			url += '&precision=' +aggNum.toFixed(0);
+		} else if ( typeof agg === 'string' && agg.length > 0 ) {
+			url += '&aggregate=' + encodeURIComponent(agg);
+		}
+		if ( Array.isArray(sourceIds) ) {
+			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+		}
+		if ( pagination !== undefined ) {
+			if ( pagination.max > 0 ) {
+				url += '&max=' + encodeURIComponent(pagination.max);
+			}
+			if ( pagination.offset > 0 ) {
+				url += '&offset=' + encodeURIComponent(pagination.offset);
+			}
+		}
+		return dataURL;
+	}
+		
+	/**
+	 * Generate a SolarNet {@code /datum/mostRecent} URL.
+	 * 
+	 * @param {Array} sourceIds Array of source IDs to limit query to
+	 * @return {String} the URL to perform the most recent query with
+	 * @memberOf sn.datum.nodeUrlHelper
+	 */
+	function mostRecentURL(sourceIds) {
+		var url = (baseURL() + '/datum/mostRecent?nodeId=' + nodeId);
+		url += nodeId;
+		if ( Array.isArray(sourceIds) ) {
+			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
+		}
+		return url;
+	}
+		
+	Object.defineProperties(that, {
+		nodeId					: { value : nodeId },
+		hostURL					: { value : hostURL },
+		baseURL					: { value : baseURL },
+		reportableIntervalURL 	: { value : reportableIntervalURL },
+		availableSourcesURL		: { value : availableSourcesURL },
+		dateTimeQueryURL		: { value : dateTimeQueryURL },
+		dateTimeListURL			: { value : dateTimeListURL },
+		mostRecentURL			: { value : mostRecentURL }
+	});
+	return that;
+};
+
+
+/**
+ * Call the {@code /range/interval} web service for a set of source IDs and
+ * invoke a callback function with the results.
+ * 
+ * <p>The callback function will be passed the same 'data' object returned
+ * by the {@code /range/interval} endpoint, but the start/end dates will be
+ * a combination of the earliest available and latest available results for
+ * every different node ID provided.
+ * 
+ * @param {Array} sourceSets An array of objects, each with a {@code sourceIds} array 
+ *                property and a {@code nodeUrlHelper} {@code sn.datum.nodeUrlHelper}
+ *                propery.
+ * @param {Function} [callback] A callback function which will be passed the result object.
+ */
+sn.datum.availableDataRange = function(sourceSets, callback) {
+	var q = queue();
+	
+	// submit all queries to our queue
+	(function() {
+		var i,
+			url;
+		for ( i = 0; i < sourceSets.length; i += 1 ) {
+			url = sourceSets[i].nodeUrlHelper.reportableIntervalURL(sourceSets[i].sourceIds);
+			q.defer(d3.json, url);
+		}
+	}());
+	
+	function extractReportableInterval(results) {
+		var result, 
+			i = 0,
+			repInterval;
+		for ( i = 0; i < results.length; i += 1 ) {
+			repInterval = results[i];
+			if ( repInterval.data === undefined || repInterval.data.endDate === undefined ) {
+				sn.log('No data available for node {0} sources {1}', 
+					sourceSets[i].nodeUrlHelper.nodeId, sourceSets[i].sourceIds.join(','));
+				continue;
+			}
+			repInterval = repInterval.data;
+			if ( result === undefined ) {
+				result = repInterval;
+			} else {
+				// merge start/end dates
+				// note we don't copy the time zone... this breaks when the tz are different!
+				if ( repInterval.endDateMillis > result.endDateMillis ) {
+					result.endDateMillis = repInterval.endDateMillis;
+					result.endDate = repInterval.endDate;
+				}
+				if ( repInterval.startDateMillis < result.startDateMillis ) {
+					result.startDateMillis = repInterval.startDateMillis;
+					result.startDate = repInterval.startDate;
+				}
+			}
+		}
+		return result;
+	}
+	
+	q.awaitAll(function(error, results) {
+		if ( error ) {
+			sn.log('Error requesting available data range: ' +error);
+			return;
+		}
+		var intervalObj = extractReportableInterval(results);
+		if ( intervalObj.startDateMillis !== undefined ) {
+			intervalObj.sDate = new Date(intervalObj.startDateMillis);
+			//intervalObj.sLocalDate = sn.dateTimeFormatLocal.parse(intervalObj.startDate);
+		}
+		if ( intervalObj.endDateMillis !== undefined ) {
+			intervalObj.eDate = new Date(intervalObj.endDateMillis);
+		}
+
+		if ( typeof callback === 'function' ) {
+			callback(intervalObj);
+		}
+	});
+};
+
+/**
  * Load data for a set of source IDs, date range, and aggregate level. This object is designed 
  * to be used once per query. After creating the object and configuring an asynchronous
  * callback function with {@link #callback(function)}, call call {@link #load()} to start
