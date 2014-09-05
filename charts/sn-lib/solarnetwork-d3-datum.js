@@ -111,12 +111,12 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 			var dataArray,
 				nextOffset;
 			if ( error ) {
-				sn.log('Error requesting data for node {0} source {1}: {2}', urlHelper.nodeId(), sourceId, error);
+				sn.log('Error requesting data for node {0}: {2}', urlHelper.nodeId(), error);
 				return;
 			}
 			dataArray = dataExtractor(json);
 			if ( dataArray === undefined ) {
-				sn.log('No data available for node {0} source {1}', urlHelper.nodeId(), sourceId);
+				sn.log('No data available for node {0}', urlHelper.nodeId());
 				requestCompletionHandler();
 				return;
 			}
