@@ -98,7 +98,7 @@ function powerAreaOverlapChartSetup(endDate, sourceMap) {
 		}).load();
 }
 
-function setup(repInterval, sourceMap) {
+function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eLocalDate;
 	sn.runtime.sourceMap = sourceMap;
 	sn.runtime.sourceColorMap = sn.sourceColorMapping(sourceMap);
@@ -137,12 +137,43 @@ function setupUI() {
 	d3.selectAll('.node-id').text(sn.env.nodeId);
 
 	// update details form based on env
-	['nodeId', 'consumptionNodeId', 'numHours', 'numDays', 'numMonths', 'numYears'].forEach(function(e) {
-		d3.select('input[name='+e+']').property('value', sn.env[e]);
-	});
-	d3.select('input[name=wiggle]').attr('checked', function() {
-		return (sn.env.wiggle === 'true' ? 'checked' : null);
-	});
+	d3.selectAll('#details input')
+		.on('change', function(e) {
+			var me = d3.select(this);
+			var propName = me.attr('name');
+			var getAvailable = false;
+			if ( this.type === 'checkbox' ) {
+				sn.env[propName] = me.property('checked');
+			} else {
+				sn.env[propName] = me.property('value');
+			}
+			if ( propName === 'consumptionNodeId' ) {
+				sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'nodeId' ) {
+				sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'wiggle' ) {
+				sn.runtime.powerAreaOverlapParameters.value(propName, sn.env[propName]);
+				sn.runtime.powerAreaOverlapChart.regenerate();
+				return;
+			}
+			if ( getAvailable ) {
+				sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
+			} else {
+				powerAreaOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+			}
+		}).each(function(e) {
+			var input = d3.select(this);
+			var name = input.attr('name');
+			if ( sn.env[name] !== undefined ) {
+				if ( input.property('type') === 'checkbox' ) {
+					input.attr('checked', (sn.env[name] === 'true' ? 'checked' : null));
+				} else {
+					input.property('value', sn.env[name]);
+				}
+			}
+		});
 
 	// toggle between supported aggregate levels
 	d3.select('#range-toggle').classed('clickable', true).on('click', function(d, i) {
@@ -156,48 +187,41 @@ function setupUI() {
 		}, 500);
 		updateRangeSelection();
 	});
+}
+
+function setupSourceGroupMap() {
+	var map = {},
+		sourceArray;
+	sourceArray = sn.env.sourceIds.split(/\s*,\s*/);
+	map['Generation'] = sourceArray;
 	
-	// update the chart details
-	d3.selectAll('#details input').on('change', function(e) {
-		var me = d3.select(this);
-		var propName = me.attr('name');
-		var getAvailable = false;
-		if ( this.type === 'checkbox' ) {
-			sn.env[propName] = me.property('checked');
-		} else {
-			sn.env[propName] = me.property('value');
-		}
-		if ( propName === 'consumptionNodeId' ) {
-			sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
-			getAvailable = true;
-		} else if ( propName === 'nodeId' ) {
-			sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
-			getAvailable = true;
-		} else if ( propName === 'wiggle' ) {
-			sn.runtime.powerAreaOverlapParameters.value(propName, sn.env[propName]);
-			sn.runtime.powerAreaOverlapChart.regenerate();
-			return;
-		}
-		if ( getAvailable ) {
-			sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
-		} else {
-			powerAreaOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
-		}
-	});
+	sourceArray = sn.env.consumptionSourceIds.split(/\s*,\s*/);
+	map['Consumption'] = sourceArray;
+	sn.runtime.sourceGroupMap = map;
+}
+
+function sourceSets() {
+	if ( !sn.runtime.sourceGroupMap ) {
+		setupSourceGroupMap();
+	}
+	return [
+		{ nodeUrlHelper : sn.runtime.urlHelper, sourceIds : sn.runtime.sourceGroupMap['Generation'] },
+		{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Consumption'] }
+	];
 }
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 108,
+		nodeId : 30,
+		sourceIds : 'Main',
 		consumptionNodeId : 108,
+		consumptionSourceIds : 'A,B,C',
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
 		numMonths : 4,
 		numYears : 2,
-		wiggle : false,
-		linkOld : false,
-		dataTypes: ['Consumption', 'Power']
+		linkOld : 'false'
 	});
 	
 	sn.runtime.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
@@ -215,10 +239,16 @@ function onDocumentReady() {
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 	
-	setupUI();
+	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
 
+	setupUI();
+	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+		setup(reportableInterval);
+	});
+	/*
 	// find our available data range, and then draw our charts!
-	function handleAvailableDataRange(event) {
+	function handleAvailableDataRange(data) {
 		setup(event.data.reportableInterval, event.data.availableSourcesMap);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
@@ -235,7 +265,6 @@ function onDocumentReady() {
 		}
 	}
 	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
-	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
-	sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
+	sn.datum.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
+	*/
 }
