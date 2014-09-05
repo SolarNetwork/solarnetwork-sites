@@ -105,7 +105,8 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 			.callback(function(results) {
 				var sum;
 				sum	= sumResults(results, interval);
-				sn.log('Got {0} sum {1} (partial {2}) from {3} to {4}', aggregateLevel, sum.sum, sum.partial, endDate, sum.mostRecentDate);
+				sn.log('Got {0} sum {1} (partial {2}) from {3}', aggregateLevel, sum.sum, sum.partial, 
+					(endDate === undefined ? '-' : endDate));
 				aggBase += sum.sum;
 				if ( sum.mostRecentDate ) {
 					endDate = sum.mostRecentDate;
