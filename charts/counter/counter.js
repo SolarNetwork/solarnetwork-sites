@@ -22,7 +22,7 @@ function urlHelperForAvailbleDataRange(e, i) {
 }
 
 function setup() {
-	var inputs = d3.selectAll('#details input')
+	d3.selectAll('#details input')
 		.on('change', function(e) {
 			var me = d3.select(this);
 			var propName = me.attr('name');
