@@ -12,6 +12,28 @@ if ( sn.util === undefined ) {
 	sn.util = {};
 }
 
+/**
+ * Calculate a sum total aggregate for a single property over all time on a single SolarNode
+ * for a set of source IDs. The class periodically updates the total as time progresses, to
+ * keep the total up to date. Configure the class by calling the various methods on it before
+ * calling the {@link #start()} method. For example:
+ * 
+ * <pre>var counter = sn.util.sumCounter(myUrlHelper)
+ *     .sourceIds('Main')
+ *     .callback(function(sum) {
+ *         sn.log('Got sum: {0}', sum);
+ *      })
+ *      .start();
+ * </pre>
+ * 
+ * The class combines multiple levels of aggregation to efficiently produce the sum, and thus
+ * the resulting value can vary slightly from the actual raw data due to rounding and the rate
+ * at which aggregate values are updated on SolarNet.
+ * 
+ * @class
+ * @param {function} nodeUrlHelper - a {@link sn.nodeUrlHelper}
+ * @returns {sn.util.sumCounter}
+ */
 sn.util.sumCounter = function(nodeUrlHelper) {
 	var that = {
 		version : '1.0.0'
@@ -19,7 +41,7 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 
 	var callback,
 		sourceIds = ['Main'],
-		aggProperty = 'watt_hours',
+		aggProperty = 'wattHours',
 		refreshMs = 60000,
 		timer, 
 		endDate,
@@ -177,159 +199,6 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 		start 	: { value : start },
 		stop 	: { value : stop }
 	});
-	return that;
-};
-
-sn.util.counterfoo = function() {
-	var clock = undefined; // for adjusting "real time"
-	var referenceDate = new Date();
-	
-	function configure(configuration) {
-		var prop = undefined;
-		for ( prop in configuration ) {
-			config[prop] = configuration[prop];
-		}
-	}
-	that.configure = configure;
-	
-	function aggregateValue() {
-		return aggBase + aggPartial;
-	}
-	that.aggregateValue = aggregateValue;
-	
-	function referenceTime() {
-		return referenceDate.getTime();
-	}
-	
-	function now(newDate) {
-		if ( newDate === undefined ) {
-			return (clock === undefined ? new Date() : clock);
-		}
-		if ( clock === undefined ) {
-			// also set reference date to "now"
-			referenceDate = newDate;
-		}
-		clock = newDate;
-		sn.log('Clock set to {0}', newDate);
-		return that;
-	}
-	that.now = now;
-	
-	function update() {
-		var sDate = (endDate === undefined ? config.startingInterval.startDate : endDate);
-		
-		var tDiff = now().getTime() - referenceTime();
-		
-		// for eDate, start with the provided interval end date, and then track time forward from
-		// there, to allow for showing data in other time zones from the browser correctly
-		var eDate = (clock !== undefined 
-			? clock : new Date(config.startingInterval.endDate.getTime() + tDiff));
-		var aggValueBase = aggBase;
-		var aggValueLatest = 0;
-
-		sn.log('Calculating total {0} between {1} and {2}', config.aggProperty, sDate, eDate);
-		
-		var startOfMonth = d3.time.month.floor(eDate);
-		var startOfDay = d3.time.day.floor(eDate);
-		var startOfHour = d3.time.hour.floor(eDate);
-		
-		function handleResult(reqError, results) {
-			if ( !reqError ) {
-				var i = 0;
-				var lastIndex = results.length - 1;
-				// calculate base sum
-				for ( ; i < results.length; i++ ) {
-					var json = results[i];
-					if ( json !== undefined ) {
-						var sum = d3.sum(json.data, function(d) { 
-							var val = Number(d[config.aggProperty]);
-							return (!isNaN(val) && val !== -1 ? val : 0);
-						});
-	
-						sn.log('{0} total {1} found between {2} and {3}', sum, config.aggProperty, 
-							(json.data !== undefined && json.data.length > 0 
-								? (json.data[0].localDate +' ' +json.data[0].localTime) : '?'),
-							(json.data !== undefined && json.data.length > 0 
-								? (json.data[json.data.length-1].localDate +' ' +json.data[json.data.length-1].localTime) : '?'));
-						if ( i < lastIndex ) {
-							aggValueBase += sum;
-						} else {
-							aggValueLatest = sum;
-						}
-					}
-				}
-				if ( results[lastIndex] === undefined ) {
-					// no change to partial
-					aggValueLatest = aggPartial;
-				}
-
-				// update public aggregate values now that all data collected
-				aggBase = aggValueBase;
-				aggPartial = aggValueLatest;
-				sn.log('Base {0} set to {1}, partial to {2}', config.aggProperty, aggBase, aggPartial);
-			
-				// set the endDate to the startOfHour we just calculated with, so next update we start from there
-				endDate = startOfHour;
-			
-				// invoke the client callback so they know the data has been updated
-				if ( config.callback !== undefined ) {
-					try {
-						config.callback.call(that);
-					} catch ( error ) {
-						sn.log('Error in callback: {0}', error);
-					}
-				}
-			} else {
-				sn.log('Error requesting aggregate count data: ' +reqError);
-			}
-			
-			// if timer was defined, keep going as if interval set
-			if ( timer !== undefined ) {
-				timer = setTimeout(update, config.refreshMs);
-			}
-		}
-
-		var q = queue();
-		var noop = function(callback) { callback(null); };
-
-		// pull in up to previous month
-		if ( startOfMonth.getTime() > sDate.getTime() && startOfMonth.getTime() < startOfDay.getTime() ) {
-			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, startOfMonth, 'Month', {exclusiveEndDate:true}));
-			sDate = startOfMonth;
-		} else {
-			q.defer(noop);
-		}
-		
-		// pull in up to previous day
-		if ( startOfDay.getTime() > sDate.getTime() && startOfDay.getTime() < startOfHour.getTime() ) {
-			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, startOfDay, 'Day', {exclusiveEndDate:true}));
-			sDate = startOfDay;
-		} else {
-			q.defer(noop);
-		}
-		
-		// pull in up to previous hour
-		if ( startOfHour.getTime() > sDate.getTime() && startOfHour.getTime() <= eDate.getTime() ) {
-			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, startOfHour, 'Hour', {exclusiveEndDate:true}));
-			sDate = startOfHour;
-		} else {
-			q.defer(noop);
-		}
-		
-		// pull in partial hour, to get just a single hour, this query needs the start date === end date
-		if ( sDate.getTime() < eDate.getTime() ) {
-			q.defer(d3.json, config.nodeUrlHelper.dateTimeQuery(config.dataType, sDate, eDate, 'Hour', {exclusiveEndDate:false}));
-		} else {
-			q.defer(noop);
-		}
-		
-		q.awaitAll(handleResult);
-		
-		return that;
-	}
-	
-
-	configure(configuration);
 	return that;
 };
 
