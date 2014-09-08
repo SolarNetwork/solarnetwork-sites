@@ -163,6 +163,7 @@ function setupUI() {
 			}
 			if ( getAvailable ) {
 				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+					delete sn.runtime.sourceColorMap; // to regenerate
 					setup(reportableInterval);
 				});
 			} else {
