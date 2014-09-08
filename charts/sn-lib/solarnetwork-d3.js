@@ -993,7 +993,7 @@ sn.sourceColorMapping = function(sourceMap, params) {
 		displayColorFn = p.displayColor;
 	} else {
 		displayColorFn = function(dataType) {
-			return (dataType === 'Power' ? colorbrewer.Greens : colorbrewer.Blues);
+			return (dataType === 'Consumption' ? colorbrewer.Blues : colorbrewer.Greens);
 		};
 	}
 	function mapSources(dtype) {
