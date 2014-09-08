@@ -110,7 +110,7 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 			url += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
 		}
 		if ( endDate ) {
-			url += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate));
+			url += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(endDate));
 		}
 		if ( agg ) {
 			url += '&aggregate=' + encodeURIComponent(agg);
