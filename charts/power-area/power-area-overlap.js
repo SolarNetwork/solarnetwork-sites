@@ -100,27 +100,29 @@ function powerAreaOverlapChartSetup(endDate) {
 
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
-	sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
+	if ( sn.runtime.sourceColorMap === undefined ) {
+		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
 	
-	// we make use of sn.colorFn, so stash the required color map where expected
-	sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
+		// we make use of sn.colorFn, so stash the required color map where expected
+		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
 
-	// set up form-based details
-	d3.select('#details .consumption').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]);
-	d3.select('#details .generation').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
+		// set up form-based details
+		d3.select('#details .consumption').style('color', 
+				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]);
+		d3.select('#details .generation').style('color', 
+				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
 
-	// create copy of color data for reverse ordering so labels vertically match chart layers
-	sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
-		if ( sn.env.linkOld === 'true' ) {
-			s.html(function(d) {
-				return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
-			});
-		} else {
-			s.text(Object);
-		}
-	});
+		// create copy of color data for reverse ordering so labels vertically match chart layers
+		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+			if ( sn.env.linkOld === 'true' ) {
+				s.html(function(d) {
+					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
+				});
+			} else {
+				s.text(Object);
+			}
+		});
+	}
 
 	updateRangeSelection();
 
@@ -249,26 +251,16 @@ function onDocumentReady() {
 	setupUI();
 	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
 		setup(reportableInterval);
-	});
-	/*
-	// find our available data range, and then draw our charts!
-	function handleAvailableDataRange(data) {
-		setup(event.data.reportableInterval, event.data.availableSourcesMap);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes, function(data) {
-					var jsonEndDate = data.reportableInterval.eLocalDate;
+				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
-						if ( sn.runtime.powerAreaOverlapChart !== undefined ) {
-							powerAreaOverlapChartSetup(jsonEndDate, sn.runtime.sourceMap);
-						}
+						setup(repInterval);
 					}
 				});
 			}, sn.runtime.wChartRefreshMs);
 		}
-	}
-	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
-	sn.datum.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
-	*/
+	});
 }
