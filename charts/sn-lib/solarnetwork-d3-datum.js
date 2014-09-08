@@ -478,4 +478,58 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	return that;
 };
 
+/**
+ * Load data from multiple {@link sn.datum.loader} objects, invoking a callback function
+ * after all data has been loaded. Call {@link #load()} to start loading the data.
+ * 
+ * @class
+ * @param {sn.datum.loader[]} loaders - array of {@link sn.datum.loader} objects
+ * @returns {sn.datum.multiLoader}
+ */
+sn.datum.multiLoader = function(loaders) {
+	var that = {
+			version : '1.0.0'
+	};
+
+	var finishedCallback,
+		q = queue();
+		
+	/**
+	 * Get or set the callback function, invoked after all data has been loaded. The callback
+	 * function will be passed two arguments: an error and an array of result arrays returned
+	 * from {@link sn.datum.loader#load()} on each supplied loader.
+	 * 
+	 * @param {function} [value] the callback function to use
+	 * @return when used as a getter, the current callback function, otherwise this object
+	 * @memberOf sn.datum.multiLoader
+	 */
+	that.callback = function(value) {
+		if ( !arguments.length ) { return finishedCallback; }
+		if ( typeof value === 'function' ) {
+			finishedCallback = value;
+		}
+		return that;
+	};
+	
+	/**
+	 * Initiate loading the data. This will call {@link sn.datum.loader#load()} on each
+	 * supplied loader, in parallel.
+	 * 
+	 * @memberOf sn.datum.multiLoader
+	 */
+	that.load = function() {
+		loaders.forEach(function(e) {
+			q.defer(e.load);
+		});
+		q.awaitAll(function(error, results) {
+			if ( finishedCallback ) {
+				finishedCallback.call(that, error, results);
+			}
+		});
+		return that;
+	};
+
+	return that;
+};
+
 }());
