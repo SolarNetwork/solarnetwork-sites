@@ -31,7 +31,7 @@ if ( sn.util === undefined ) {
  * at which aggregate values are updated on SolarNet.
  * 
  * @class
- * @param {function} nodeUrlHelper - a {@link sn.nodeUrlHelper}
+ * @param {function} nodeUrlHelper - a {@link sn.datum.nodeUrlHelper}
  * @returns {sn.util.sumCounter}
  */
 sn.util.sumCounter = function(nodeUrlHelper) {
@@ -102,7 +102,7 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 		}
 
 		sn.datum.loader(sourceIds, nodeUrlHelper, endDate, null, aggregateLevel)
-			.callback(function(results) {
+			.callback(function(error, results) {
 				var sum;
 				sum	= sumResults(results, interval);
 				sn.log('Got {0} sum {1} (partial {2}) from {3}', aggregateLevel, sum.sum, sum.partial, 

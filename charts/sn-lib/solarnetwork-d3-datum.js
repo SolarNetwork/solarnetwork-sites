@@ -94,39 +94,6 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 	}
 	
 	/**
-	 * Generate a SolarNet {@code /datum/query} URL.
-	 * 
-	 * @param {String} type a single supported datum type, or an Array of datum types, to query for
-	 * @param {Date} startDate the starting date for the query, or <em>null</em> to omit
-	 * @param {Date} endDate the ending date for the query, or <em>null</em> to omit
-	 * @param {String|Number} agg a supported aggregate type (e.g. Hour, Day, etc) or a minute precision Number
-	 * @param {Array} sourceIds array of source IDs to limit query to
-	 * @return {String} the URL to perform the query with
-	 * @memberOf sn.datum.nodeUrlHelper
-	 */
-	function dateTimeQueryURL(startDate, endDate, agg, sourceIds) {
-		var url = (baseURL() +'/datum/query?nodeId=' +nodeId),
-			aggNum = Number(agg);
-		if ( startDate ) {
-			url += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
-		}
-		if ( endDate ) {
-			url += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL((function() {
-				return (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.utc.offset(endDate, -1) : endDate);
-			}())));
-		}
-		if ( !isNaN(aggNum) ) {
-			url += '&precision=' +aggNum.toFixed(0);
-		} else if ( typeof agg === 'string' && agg.length > 0 ) {
-			url += '&aggregate=' + encodeURIComponent(agg);
-		}
-		if ( Array.isArray(sourceIds) ) {
-			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
-		}
-		return url;
-	}
-		
-	/**
 	 * Generate a SolarNet {@code /datum/list} URL.
 	 * 
 	 * @param {Date} startDate The starting date for the query, or <em>null</em> to omit
@@ -138,17 +105,14 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 	 * @memberOf sn.datum.nodeUrlHelper
 	 */
 	function dateTimeListURL(startDate, endDate, agg, sourceIds, pagination) {
-		var url = (baseURL() +'/datum/list?nodeId=' +nodeId),
-			aggNum = Number(agg);
+		var url = (baseURL() +'/datum/list?nodeId=' +nodeId);
 		if ( startDate ) {
 			url += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
 		}
-		if ( eDate ) {
+		if ( endDate ) {
 			url += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate));
 		}
-		if ( !isNaN(aggNum) ) {
-			url += '&precision=' +aggNum.toFixed(0);
-		} else if ( typeof agg === 'string' && agg.length > 0 ) {
+		if ( agg ) {
 			url += '&aggregate=' + encodeURIComponent(agg);
 		}
 		if ( Array.isArray(sourceIds) ) {
@@ -162,7 +126,7 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 				url += '&offset=' + encodeURIComponent(pagination.offset);
 			}
 		}
-		return dataURL;
+		return url;
 	}
 		
 	/**
@@ -187,7 +151,6 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 		baseURL					: { value : baseURL },
 		reportableIntervalURL 	: { value : reportableIntervalURL },
 		availableSourcesURL		: { value : availableSourcesURL },
-		dateTimeQueryURL		: { value : dateTimeQueryURL },
 		dateTimeListURL			: { value : dateTimeListURL },
 		mostRecentURL			: { value : mostRecentURL }
 	});
@@ -364,7 +327,7 @@ sn.datum.loaderQueryRange = function(aggregate, aggregateTimeCount, endDate) {
 /**
  * Load data for a set of source IDs, date range, and aggregate level. This object is designed 
  * to be used once per query. After creating the object and configuring an asynchronous
- * callback function with {@link #callback(function)}, call call {@link #load()} to start
+ * callback function with {@link #callback(function)}, call {@link #load()} to start
  * loading the data. The callback function will be called once all data has been loaded.
  * 
  * @class
@@ -381,7 +344,6 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 			version : '1.0.0'
 	};
 
-	var requestOptions;
 	var finishedCallback;
 	var holeRemoverCallback;
 
@@ -396,61 +358,36 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 		return (precision === undefined ? 10 : precision);
 	}
 	
-	function requestCompletionHandler() {
+	function requestCompletionHandler(error) {
 		state = 2; // done
 		
 		// check if we're all done loading, and if so call our callback function
 		if ( finishedCallback ) {
-			finishedCallback.call(that, results);
+			finishedCallback.call(that, error, results);
 		}
 	}
 
 	function loadData(offset) {
-		var opts = {},
+		var pagination = {},
 			key,
 			url,
 			dataExtractor,
 			offsetExtractor;
-		if ( requestOptions ) {
-			for ( key in requestOptions ) {
-				if ( requestOptions.hasOwnProperty(key) ) {
-					opts[key] = requestOptions[key];
-				}
-			}
-		}
-		opts.sourceIds = sourceIds;
 		if ( offset ) {
-			opts.offset = offset;
+			pagination.offset = offset;
 		}
-		if ( aggregateValue() === 'Minute' ) {
-			// use /query to normalize minutes; end date is inclusive
-			url = urlHelper.dateTimeQuery(null, start, end, precisionValue(), opts);
-			dataExtractor = function(json) {
-				if ( json.success !== true || Array.isArray(json.data) !== true ) {
-					return undefined;
-				}
-				var result = json.data;
-				if ( holeRemoverCallback ) {
-					result = holeRemoverCallback.call(that, result);
-				}
-				return result;
-			};
-			offsetExtractor = function() { return 0; };
-		} else {
-			// use /list for faster access; end date is exclusive
-			url = urlHelper.dateTimeList(null, start, end, aggregateValue(), opts);
-			dataExtractor = function(json) {
-				if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
-					return undefined;
-				}
-				return json.data.results;
-			};
-			offsetExtractor = function(json) { 
-				return (json.data.returnedResultCount + json.data.startingOffset < json.data.totalResults 
-						? (json.data.returnedResultCount + json.data.startingOffset)
-						: 0);
-			};
-		}
+		url = urlHelper.dateTimeListURL(start, end, aggregateValue(), sourceIds, pagination);
+		dataExtractor = function(json) {
+			if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
+				return undefined;
+			}
+			return json.data.results;
+		};
+		offsetExtractor = function(json) { 
+			return (json.data.returnedResultCount + json.data.startingOffset < json.data.totalResults 
+					? (json.data.returnedResultCount + json.data.startingOffset)
+					: 0);
+		};
 		d3.json(url, function(error, json) {
 			var dataArray,
 				nextOffset;
@@ -461,7 +398,7 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 			dataArray = dataExtractor(json);
 			if ( dataArray === undefined ) {
 				sn.log('No data available for node {0}', urlHelper.nodeId());
-				requestCompletionHandler();
+				requestCompletionHandler(error);
 				return;
 			}
 
@@ -476,24 +413,11 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 			if ( nextOffset > 0 ) {
 				loadData(nextOffset);
 			} else {
-				requestCompletionHandler();
+				requestCompletionHandler(error);
 			}
 		});
 	}
 	
-	/**
-	 * Get or set the request options object.
-	 * 
-	 * @param {object} [value] the options to use
-	 * @return when used as a getter, the current request options, otherwise this object
-	 * @memberOf sn.datumLoader
-	 */
-	that.requestOptions = function(value) {
-		if ( !arguments.length ) { return requestOptions; }
-		requestOptions = value;
-		return that;
-	};
-
 	/**
 	 * Get or set the "hole remover" callback function, invoked on data that has been loaded
 	 * via the /query API, which "fills" in holes for us. For consistency with the /list API,
@@ -516,7 +440,8 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	};
 	
 	/**
-	 * Get or set the callback function, invoked after all data has been loaded.
+	 * Get or set the callback function, invoked after all data has been loaded. The callback
+	 * function will be passed two arguments: an error and the results.
 	 * 
 	 * @param {function} [value] the callback function to use
 	 * @return when used as a getter, the current callback function, otherwise this object

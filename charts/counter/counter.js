@@ -100,7 +100,7 @@ function onDocumentReady() {
 		consumptionNodeId : 11,
 		consumptionSourceIds : 'Main'
 	});
-	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
 	setup();
 }
