@@ -292,7 +292,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	}
 
 	function axisXTickClassMajor(d) {
-		return (aggregateType === 'Minute' && d.getUTCHours() === 0)
+		return (aggregateType.indexOf('Minute') >= 0 && d.getUTCHours() === 0)
 			|| (aggregateType === 'Hour' && d.getUTCHours() === 0)
 			|| (aggregateType === 'Day' && d.getUTCDate() === 1)
 			|| (aggregateType === 'Month' && d.getUTCMonth() === 0);
@@ -436,7 +436,12 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	 */
 	that.aggregate = function(value) { 
 		if ( !arguments.length ) return aggregateType;
-		aggregateType = (value === 'Month' ? 'Month' : value === 'Day' ? 'Day' : value === 'Hour' ? 'Hour' : 'Minute');
+		aggregateType = (value === 'Month' ? 'Month' 
+			: value === 'Day' ? 'Day' 
+			: value === 'FifteenMinute' ? 'FifteenMinute'
+			: value === 'TenMinute' ? 'TenMinute'
+			: value === 'FiveMinute' ? 'FiveMinute'
+			: 'Hour');
 		return me;
 	};
 	
@@ -558,7 +563,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	that.plotProperties = function(value) {
 		if ( !arguments.length ) return plotProperties;
 		var p = {};
-		['Minute', 'Hour', 'Day', 'Month'].forEach(function(e) {
+		['FiveMinute', 'TenMinute','FifteenMinute','Hour', 'Day', 'Month'].forEach(function(e) {
 			p[e] = (value !== undefined && value[e] !== undefined ? value[e] : 'watts');
 		});
 		plotProperties = p;
