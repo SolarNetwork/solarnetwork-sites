@@ -456,11 +456,20 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	};
 	
 	/**
-	 * Initiate loading the data.
+	 * Initiate loading the data. As an alternative to configuring the callback function via
+	 * the {@link #callback(value)} method, a callback function can be passed as an argument
+	 * to this function. This allows this function to be passed to <code>queue.defer</code>,
+	 * for example.
 	 * 
+	 * @param {function} [callback] a callback function to use
+	 * @return this object
 	 * @memberOf sn.datumLoader
 	 */
-	that.load = function() {
+	that.load = function(callback) {
+		// to support queue use, allow callback to be passed directly to this function
+		if ( typeof callback === 'function' ) {
+			finishedCallback = callback;
+		}
 		state = 1;
 		loadData();
 		return that;
