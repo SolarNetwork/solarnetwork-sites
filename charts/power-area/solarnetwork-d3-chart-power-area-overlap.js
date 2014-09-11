@@ -3,6 +3,8 @@
  * @require solarnetwork-d3 0.0.4
  * @require solarnetwork-d3-chart-base 1.0.0
  */
+(function() {
+'use strict';
 
 if ( sn === undefined ) {
 	sn = { chart: {} };
@@ -32,7 +34,6 @@ if ( sn === undefined ) {
  * @returns {sn.chart.powerAreaOverlapChart}
  */
 sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
-	'use strict';
 	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig),
 		superDraw = sn.superMethod.call(parent, 'draw');
 	var that = (function() {
@@ -117,3 +118,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	
 	return that;
 };
+
+
+}());
