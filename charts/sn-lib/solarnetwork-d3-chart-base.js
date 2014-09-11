@@ -140,9 +140,9 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		
 		if ( displayFactorCallback ) {
 			displayFactor = displayFactorCallback.call(me, maxY);
-		} else if ( maxY >= 50000000 ) {
+		} else if ( maxY >= 1000000000 ) {
 			displayFactor = 1000000000;
-		} else if ( maxY >= 500000 ) {
+		} else if ( maxY >= 1000000 ) {
 			displayFactor = 1000000;
 		} else if ( maxY >= 1000 ) {
 			displayFactor = 1000;
