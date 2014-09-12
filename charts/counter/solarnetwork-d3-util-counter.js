@@ -51,13 +51,12 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 	function sumResults(results, interval) {
 		var sum = 0, 
 			partial = 0,
-			date,
 			mostRecentDate,
 			now = new Date().getTime();
 
 		results.forEach(function(d) {
-			var val = Number(d[aggProperty]);
-			date = sn.timestampFormat.parse(d.created);
+			var val = Number(d[aggProperty]),
+				date = sn.timestampFormat.parse(d.created);
 			if ( isNaN(val) ) {
 				val = 0;
 			}
@@ -67,16 +66,21 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 			} else {
 				sum += val;
 			}
-		});
-		if ( results.length > 0 ) {
 			if ( !mostRecentDate || date.getTime() > mostRecentDate.getTime() ) {
 				mostRecentDate = date;
 			}
+		});
+		if ( mostRecentDate && endDate && sum > 0 && mostRecentDate.getTime() === endDate.getTime() ) {
+			// end date has not shifted, i.e. we don't have new data past endDate;
+			// if we put any value into sum, it really is a partial because we haven't shifted
+			// to a new time slot yet
+			partial += sum;
+			sum = 0;
 		}
 		return {sum : sum, partial : partial, mostRecentDate : mostRecentDate};
 	}
 	
-	function performSum(finishedCallback, aggregateLevel) {
+	function performSum(finishedCallback, aggregateLevel, startDate) {
 		var interval,
 			nextAggregateLevel,
 			now = new Date().getTime();
@@ -94,26 +98,26 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 				interval = d3.time.hour.utc;
 				nextAggregateLevel = undefined;
 			}
-			if ( endDate && nextAggregateLevel && interval.offset(endDate, 1).getTime() > now ) {
+			if ( startDate && nextAggregateLevel && interval.offset(startDate, 1).getTime() > now ) {
 				aggregateLevel = nextAggregateLevel;
 			} else {
 				break;
 			}
 		}
 
-		sn.datum.loader(sourceIds, nodeUrlHelper, endDate, null, aggregateLevel)
+		sn.datum.loader(sourceIds, nodeUrlHelper, startDate, null, aggregateLevel)
 			.callback(function(error, results) {
 				var sum;
 				sum	= sumResults(results, interval);
 				sn.log('Got {0} sum {1} (partial {2}) from {3}', aggregateLevel, sum.sum, sum.partial, 
-					(endDate === undefined ? '-' : endDate));
+					(startDate === undefined ? '-' : startDate));
 				aggBase += sum.sum;
 				if ( sum.mostRecentDate ) {
-					endDate = sum.mostRecentDate;
 					if ( nextAggregateLevel ) {
-						performSum(finishedCallback, nextAggregateLevel);
+						performSum(finishedCallback, nextAggregateLevel, sum.mostRecentDate);
 					} else {
 						aggPartial = sum.partial;
+						endDate = sum.mostRecentDate;
 						finishedCallback();
 					}
 				} else {
@@ -132,7 +136,7 @@ sn.util.sumCounter = function(nodeUrlHelper) {
 				timer = setTimeout(update, refreshMs);
 			}
 		}
-		performSum(finished);
+		performSum(finished, 'Month', endDate);
 	}
 	
 	/**
