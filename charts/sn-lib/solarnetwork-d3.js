@@ -981,12 +981,20 @@ sn.sourceColorMapping = function(sourceMap, params) {
 	var colorSlice;
 	var result = {};
 	var displayDataTypeFn;
+	var displaySourceFn;
 	var displayColorFn;
 	if ( typeof p.displayDataType === 'function' ) {
 		displayDataTypeFn = p.displayDataType;
 	} else {
 		displayDataTypeFn = function(dataType) {
 			return (dataType === 'Power' ? 'Generation' : dataType);
+		};
+	}
+	if ( typeof p.displaySource === 'function' ) {
+		displaySourceFn = p.displaySource;
+	} else {
+		displaySourceFn = function(dataType, sourceId) {
+			return sourceId;
 		};
 	}
 	if ( typeof p.displayColor === 'function' ) {
@@ -1002,7 +1010,7 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			if ( el === '' || el === 'Main' ) {
 				mappedSource = displayDataTypeFn(dtype);
 			} else {
-				mappedSource = displayDataTypeFn(dtype) +' / ' +el;
+				mappedSource = displayDataTypeFn(dtype) +' / ' +displaySourceFn(dtype, el);
 			}
 			chartSourceMap[dtype][el] = mappedSource;
 			if ( el === 'Main' ) {
