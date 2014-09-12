@@ -149,9 +149,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		var combinedRollup = [];
 		
 		groupIds.forEach(function(groupId) {
-			var keyFn = (layerKeyCallback ? layerKeyCallback : function(d) { 
-				return (groupId + '-' +d.sourceId).replace(/\W/, '-');
-			});
+			var keyFn = function(d, i) {
+				return (layerKeyCallback 
+					? layerKeyCallback.call(that, groupId, d, i) 
+					: (groupId + '-' +d.sourceId).replace(/\W/, '-'));
+			};
 			var rollup = d3.nest()
 				.key(keyFn)
 				.rollup(function(group) {
