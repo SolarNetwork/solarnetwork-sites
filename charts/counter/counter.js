@@ -29,9 +29,9 @@ function setup() {
 			var getAvailable = false;
 			sn.env[propName] = me.property('value');
 			if ( propName === 'consumptionNodeId' ) {
-				sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
 			} else if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
 			}
 			setupCounters();
 		}).each(function(e) {
