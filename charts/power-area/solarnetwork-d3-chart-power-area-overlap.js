@@ -78,13 +78,12 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			groupedData.push(groupData);
 		});
 		
-		var groups = parent.svgRoot.selectAll("g.data").data(groupedData, function(d, i) {
+		var groups = parent.svgDataRoot.selectAll("g.data").data(groupedData, function(d, i) {
 				return groupedDataIds[i];
 			});
 			
 		groups.enter().append('g')
-				.attr('class', 'data')
-				.attr('transform', "translate(" + parent.padding[3] + ',' + parent.padding[0] + ')');
+				.attr('class', 'data');
 					
 		groups.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
