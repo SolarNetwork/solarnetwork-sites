@@ -548,7 +548,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			return me;
 		}
 		parseConfiguration();
-		setup();
+		that.setup();
 		that.draw();
 		if ( drawAnnotationsCallback ) {
 			drawAnnotationsCallback.call(me, svgAnnotRoot);
