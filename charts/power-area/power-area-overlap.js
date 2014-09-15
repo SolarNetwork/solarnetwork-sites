@@ -41,13 +41,6 @@ function updateRangeSelection() {
 	});
 }
 
-function colorDataTypeSourceMapper(e, i, sourceId) {
-	if ( sourceId === '' ) {
-		sourceId = 'Main';
-	}
-	return sn.runtime.sourceColorMap.displaySourceMap[e][sourceId];
-}
-
 function colorForDataTypeSource(dataType, sourceId, sourceIndex) {
 	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
 	return sn.runtime.colorData[mappedSourceId];
@@ -127,11 +120,6 @@ function setup(repInterval) {
 	updateRangeSelection();
 
 	powerAreaOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceGroupMap);
-}
-
-function urlHelperForAvailbleDataRange(e, i) {
-	if ( !arguments.length ) return sn.runtime.urlHelper;
-	return (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
 }
 
 function setupUI() {
