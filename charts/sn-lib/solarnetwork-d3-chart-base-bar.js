@@ -3,6 +3,8 @@
  * @require solarnetwork-d3 0.0.4
  * @require solarnetwork-d3-chart-base 1.0.0
  */
+(function() {
+'use strict';
 
 if ( sn === undefined ) {
 	sn = { chart: {} };
@@ -315,3 +317,5 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	
 	return that;
 };
+
+}());
