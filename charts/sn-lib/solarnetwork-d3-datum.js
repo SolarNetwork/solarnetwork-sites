@@ -349,14 +349,6 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	var state = 0; // keys are source IDs, values are 1:loading, 2:done
 	var results;
 	
-	function aggregateValue() {
-		return (aggregate === undefined ? 'Hour'  : aggregate);
-	}
-	
-	function precisionValue() {
-		return (precision === undefined ? 10 : precision);
-	}
-	
 	function requestCompletionHandler(error) {
 		state = 2; // done
 		
@@ -375,7 +367,7 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 		if ( offset ) {
 			pagination.offset = offset;
 		}
-		url = urlHelper.dateTimeListURL(start, end, aggregateValue(), sourceIds, pagination);
+		url = urlHelper.dateTimeListURL(start, end, aggregate, sourceIds, pagination);
 		dataExtractor = function(json) {
 			if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
 				return undefined;

@@ -77,19 +77,22 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	// the d3 stack offset method, or function
 	var stackOffset = undefined;
 
-	var svgRoot = undefined,
-		svgTickGroupX = undefined,
-		svgDataRoot = undefined;
+	var svgRoot,
+		svgTickGroupX,
+		svgDataRoot,
+		svgAnnotRoot;
 	
 	var dataCallback = undefined;
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
 	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
 	var layerPostProcessCallback = undefined; // function accepts (groupId, result of d3.nest()) and should return same structure
+	var drawAnnotationsCallback = undefined; // function accepts (svgAnnotRoot)
 	
 	// our computed layer data
 	var groupIds = [];
 	var groupData = {};
+	var otherData = {};
 	var groupLayers = {};
 
 	// display units in kW if domain range > 1000
@@ -107,23 +110,27 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	if ( svgRoot.empty() ) {
 		svgRoot = d3.select(containerSelector).append('svg:svg')
 			.attr('class', 'chart')
-			.attr("width", w + p[1] + p[3])
-			.attr("height", h + p[0] + p[2]);
+			.attr('width', w + p[1] + p[3])
+			.attr('height', h + p[0] + p[2]);
 	} else {
 		svgRoot.selectAll('*').remove();
 	}
 	
 	svgDataRoot = svgRoot.append('g')
-		.attr("class", "data-root")
-		.attr("transform", "translate(" + p[3] +"," +p[0] +")");
+		.attr('class', 'data-root')
+		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+		
+	svgAnnotRoot = svgRoot.append('g')
+		.attr('class', 'annot-root')
+		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
 
-	svgTickGroupX = svgRoot.append("g")
-		.attr("class", "ticks")
-		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
+	svgTickGroupX = svgRoot.append('g')
+		.attr('class', 'ticks')
+		.attr('transform', 'translate(' + p[3] +',' +(h + p[0] + p[2]) +')');
 
-	svgRoot.append("g")
-		.attr("class", "crisp rule")
-		.attr("transform", "translate(0," + p[0] + ")");
+	svgRoot.append('g')
+		.attr('class', 'crisp rule')
+		.attr('transform', 'translate(0,' + p[0] + ')');
 
 	//function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
 
@@ -400,6 +407,24 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	});
 
 	/**
+	 * Scale a date for the x-axis.
+	 * 
+	 * @param {Date} the Date to scale
+	 * @return {Number} the scaled value
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.scaleDate = function(date) { return x(date); };
+
+	/**
+	 * Scale a value for the y-axis.
+	 * 
+	 * @param {Number} the value to scale
+	 * @return {Number} the scaled value
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.scaleValue = function(value) { return y(value); };
+	
+	/**
 	 * Get the x-axis domain (minimum and maximum dates).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
@@ -456,6 +481,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		groupIds = [];
 		groupData = {};
 		groupLayers = {};
+		otherData = {};
 		return me;
 	};
 	
@@ -466,7 +492,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {Array} rawData - the raw chart data to load
 	 * @param {String} groupId - the ID to associate with the data; each stack group must have its own ID
-	 * @return this object
+	 * @returns this object
 	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.load = function(rawData, groupId) {
@@ -474,26 +500,71 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			groupIds.push(groupId);
 			originalData[groupId] = rawData;
 		} else {
-			originalData[groupId].concat(rawData);
+			originalData[groupId] = originalData[groupId].concat(rawData);
 		}
 		return me;
+	};
+	
+	/**
+	 * Get the data for a specific group ID previously loaded via {@link #load()}.
+	 *
+	 * @param {String} groupId - the group ID of the data to get
+	 * @returns the data, or <code>undefined</code>
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.data = function(groupId) {
+		return originalData[groupId];
+	};
+	
+	/**
+	 * Stash data for a single group in the chart. The data is appended if data has 
+	 * already been stashed for the given groupId. This data is auxiliary data that clients
+	 * may want to associate with the chart and draw later, for example via the 
+	 * {@link #drawAnnotationsCallback()} function.
+	 * 
+	 * @param {Array} rawData - the raw chart data to stash
+	 * @param {String} groupId - the group ID to associate with the data
+	 * @returns this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.stash = function(rawData, groupId) {
+		if ( otherData[groupId] === undefined ) {
+			otherData[groupId] = rawData;
+		} else {
+			otherData[groupId] = otherData[groupId].concat(rawData);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get the data for a specific group ID previously stashed via {@link #stash()}.
+	 *
+	 * @param {String} groupId - the group ID of the data to get
+	 * @returns the data, or <code>undefined</code>
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.stashedData = function(groupId) {
+		return otherData[groupId];
 	};
 	
 	/**
 	 * Regenerate the chart, using the current data. This can be called after disabling a
 	 * source 
 	 * 
-	 * @return this object
+	 * @returns this object
 	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
 	that.regenerate = function() {
 		if ( originalData === undefined ) {
 			// did you call load() first?
-			return that;
+			return me;
 		}
 		parseConfiguration();
 		setup();
 		that.draw();
+		if ( drawAnnotationsCallback ) {
+			drawAnnotationsCallback.call(me, svgAnnotRoot);
+		}
 		return me;
 	};
 	
@@ -650,6 +721,23 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return layerPostProcessCallback;
 		if ( typeof value === 'function' ) {
 			layerPostProcessCallback = value;
+		}
+		return me;
+	};
+
+	/**
+	 * Get or set the draw annotations callback function, which is called after the chart completes drawing.
+	 * The function will be passed a SVG <code>&lt;g class="annot-root"&gt;</code> element that
+	 * represents the drawing area for the chart data.
+	 * 
+	 * @param {function} [value] the draw callback
+	 * @return when used as a getter, the current draw callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.drawAnnotationsCallback = function(value) {
+		if ( !arguments.length ) return drawAnnotationsCallback;
+		if ( typeof value === 'function' ) {
+			drawAnnotationsCallback = value;
 		}
 		return me;
 	};

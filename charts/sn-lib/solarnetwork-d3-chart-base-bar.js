@@ -314,6 +314,20 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		}
 	});
 
+	/**
+	 * Scale a date for the x-axis. The values returned are centered within bars.
+	 * 
+	 * @param {Date} the Date to scale
+	 * @return {Number} the scaled value
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.scaleDate = function(date) {
+		var barRange = xBar.range(),
+			ex = xBar.rangeExtent(),
+			x = parent.scaleDate(date);
+		var result = barRange[Math.floor((x / ex[1]) * barRange.length)] + (xBar.rangeBand() / 2);
+		return result;
+	};
 	
 	return that;
 };
