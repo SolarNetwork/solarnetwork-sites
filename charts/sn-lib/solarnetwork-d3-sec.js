@@ -2,11 +2,12 @@
  * @require d3 3.0
  * @require CryptoJS 3.0
  */
+(function() {
+'use strict';
 
 if ( sn === undefined ) {
 	sn = {};
-}
-if ( sn.sec === undefined ) {
+} else if ( sn.sec === undefined ) {
 	/**
 	 * @namespace the SolarNetwork security namespace.
 	 */
@@ -222,3 +223,5 @@ sn.sec.json = function(url, method, callback) {
 	}
 	return xhr;
 };
+
+}());
