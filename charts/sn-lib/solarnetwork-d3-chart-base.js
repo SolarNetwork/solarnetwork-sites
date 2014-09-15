@@ -2,9 +2,7 @@
 (function() {
 'use strict';
 
-if ( sn === undefined ) {
-	sn = { chart: {} };
-} else if ( sn.chart === undefined ) {
+if ( sn.chart === undefined ) {
 	sn.chart = {};
 }
 
@@ -33,8 +31,6 @@ if ( sn === undefined ) {
  * @returns {sn.chart.baseGroupedStackChart}
  */
 sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
-	'use strict';
-	
 	var that = {
 		version : '1.0.0'
 	};
@@ -91,7 +87,6 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	
 	// our computed layer data
 	var groupIds = [];
-	var groupData = {};
 	var otherData = {};
 	var groupLayers = {};
 
@@ -191,7 +186,6 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 				}
 				return y;
 			});
-		groupData = {};
 		groupLayers = {};
 		groupIds.forEach(function(groupId) {
 			var dummy,
@@ -252,17 +246,12 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			if ( maxX === undefined || rangeX[1].getTime() > maxX.getTime() ) {
 				maxX = rangeX[1];
 			}
-			groupData[groupId] = {
-					layerData : layerData,
-					xRange : rangeX
-			};
 			var layers = stack(layerData);
 			groupLayers[groupId] = layers;
 			var rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
 			if ( maxY === undefined || rangeY[1] > maxY ) {
 				maxY = rangeY[1];
 			}
-			groupData[groupId].yRange = rangeY;
 		});
 		
 		// setup X domain
@@ -479,7 +468,6 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	that.reset = function() {
 		originalData = {};
 		groupIds = [];
-		groupData = {};
 		groupLayers = {};
 		otherData = {};
 		return me;
