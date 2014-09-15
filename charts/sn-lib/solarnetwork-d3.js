@@ -1516,15 +1516,18 @@ sn.datumLoaderQueryRange = function(aggregate, precision, aggregateTimeCount, en
  *                            and a <code>values</code> array of data objects.
  * @param {object} fillTemplate - An object to use as a template for any "filled in" data objects.
  *                                The <code>date</code> property will be populated automatically.
+ *
+ * @param {array} copyPropertyNames - An array of property names to copy from another object of the same layer
  * @since 0.0.4
  */
-sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
+sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate, copyPropertyNames) {
 	var i = 0,
 		j,
 		k,
 		jMax = layerData.length - 1,
 		dummy,
-		prop;
+		prop,
+		copyIndex;
 	// fill in "holes" for each stack, if more than one stack. we assume data already sorted by date
 	if ( jMax > 0 ) {
 		while ( i < d3.max(layerData.map(function(e) { return e.values.length; })) ) {
@@ -1545,6 +1548,17 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
 							if ( fillTemplate.hasOwnProperty(prop) ) {
 								dummy[prop] = fillTemplate[prop];
 							}
+						}
+					}
+					if ( copyPropertyNames ) {
+						copyIndex = (layerData[k].values.length > i ? i : i > 0 ? i - 1 : null);
+						if ( copyIndex !== null ) {
+							copyPropertyNames.forEach(function(e) {
+								var val = layerData[k].values[copyIndex][e];
+								if ( val && !dummy.hasOwnProperty(e) ) {
+									dummy[e] = val;
+								}
+							});
 						}
 					}
 					layerData[k].values.splice(i, 0, dummy);
