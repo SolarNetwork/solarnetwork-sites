@@ -345,7 +345,6 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	};
 
 	var finishedCallback;
-	var holeRemoverCallback;
 
 	var state = 0; // keys are source IDs, values are 1:loading, 2:done
 	var results;
@@ -417,27 +416,6 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 			}
 		});
 	}
-	
-	/**
-	 * Get or set the "hole remover" callback function, invoked on data that has been loaded
-	 * via the /query API, which "fills" in holes for us. For consistency with the /list API,
-	 * we can choose to remove those filled in data points, which can often adversely affect
-	 * our desired results.
-	 *
-	 * The function will be passed a raw array of datum objects as its only parameter. It should
-	 * return a new array of datum objects (or an empty array).
-	 * 
-	 * @param {function} [value] the hole remover function to use
-	 * @return when used as a getter, the current hole remover function, otherwise this object
-	 * @memberOf sn.datumLoader
-	 */
-	that.holeRemoverCallback = function(value) {
-		if ( !arguments.length ) { return holeRemoverCallback; }
-		if ( typeof value === 'function' ) {
-			holeRemoverCallback = value;
-		}
-		return that;
-	};
 	
 	/**
 	 * Get or set the callback function, invoked after all data has been loaded. The callback
