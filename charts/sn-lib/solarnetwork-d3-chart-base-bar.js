@@ -311,6 +311,10 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		'draw' : { 
 			get : function() { return parent.draw; },
 			set : function(f) { parent.draw = f; }
+		},
+		'setup' : { 
+			get : function() { return parent.setup; },
+			set : function(f) { parent.setup = f; }
 		}
 	});
 
