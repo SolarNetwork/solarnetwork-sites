@@ -22,7 +22,6 @@ h2 {
 	line-height: 18px;
 	text-align: left;
 	font-weight: normal;
-	margin-left: 20px;
 }
 
 h3 {
@@ -99,7 +98,7 @@ h3:after {
 }
 
 div.chart-container {
-	margin-left: 20px;
+	width: 864px;
 }
 
 svg {
@@ -122,21 +121,36 @@ svg {
 	fill: black;
 }
 
-.chart g.data text,
-.chart g.agg text {
+.chart g.ticks text {
 	text-anchor: middle;
 }
 
-.chart g.agg text {
-	font-weight: bold;
+.chart g.agg text,
+.chart g.ticks text.major {
+	font-weight: 600;
 }
 
 .chart g.rule line {
-	stroke: #ccc;
+	stroke: black;
+	opacity: 0.1;
+}
+
+.chart g.rule line.origin {
+	stroke: black !important;
+	opacity: 1 !important;
+}
+
+.chart g.rule text {
+	text-anchor: end;
+	alignment-baseline: middle;
+}
+
+.chart g.rule text.origin {
+	display: none;
 }
 
 .chart path.area {
-	fill-opacity: 0.8;
+	fill-opacity: 1;
 }
 
 .chart path.line {
@@ -147,7 +161,14 @@ svg {
 	stroke: black;
 }
 
-.chart g.rule g:first-child line {
-	stroke: black !important;
+/* Outdated message */
+
+#outdated-msg {
+	display: none;
+	color: #aaa;
+	font-size: 10px;
+	font-style: italic;
+	margin-top: 12px;
+	text-align: center;
 }
 
