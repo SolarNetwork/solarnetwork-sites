@@ -156,6 +156,35 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 	return that;
 };
 
+/**
+ * Call the {@code /range/sources} web service and invoke a callback function with the results.
+ * 
+ * <p>The callback function will be passed an error object and the array of sources.
+ * 
+ * @param {sn.datum.nodeUrlHelper} nodeUrlHelper A {@link sn.datum.nodeUrlHelper} object.
+ * @param {Function} callback A callback function which will be passed an error object
+ *                            and the result array.
+ */
+sn.datum.availableSources = function(nodeUrlHelper, callback) {
+	if ( !(nodeUrlHelper && callback) ) {
+		return;
+	}
+	var url = nodeUrlHelper.availableSourcesURL();
+	d3.json(url, function(error, json) {
+		var sources;
+		if ( error ) {
+			callback(error);
+		} else if ( !json ) {
+			callback('No data returned from ' +url);
+		} else if ( json.success !== true ) {
+			callback(json.message ? json.message : 'Query not successful.');
+		} else {
+			sources = (Array.isArray(json.data) ? json.data.sort() : []);
+			sources.sort();
+			callback(null, sources);
+		}
+	});
+};
 
 /**
  * Call the {@code /range/interval} web service for a set of source IDs and
