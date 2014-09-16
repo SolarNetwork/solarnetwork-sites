@@ -188,6 +188,15 @@ function setupUI() {
 		}, 500);
 		updateRangeSelection();
 	});
+	
+	// toggle sum lines on/off
+	d3.select('#sumline-toggle').classed('clickable', true).on('click', function(d) {
+		var me = d3.select(this);
+		var off = me.classed('off');
+		me.classed('off', !off);
+		sn.runtime.powerIOAreaChart.showSumLine(off);
+	});
+	
 }
 
 function setupSourceGroupMap() {

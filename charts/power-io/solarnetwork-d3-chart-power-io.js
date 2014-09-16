@@ -41,8 +41,12 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 	}());
 	parent.me = self;
 
+	var svgSumLineGroup = parent.svgRoot.append('g')
+		.attr('class', 'agg-sum')
+		.attr('transform', parent.svgDataRoot.attr('transform'));
+
 	var areaPathGenerator = d3.svg.area()
-		.interpolate("monotone")
+		.interpolate('monotone')
 		.x(function(d) { 
 			return parent.x(d.date);
 		})
@@ -60,12 +64,71 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 		return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
 	}
 
+	/**
+	 * A rollup function for d3.dest(), that aggregates the plot property value and 
+	 * returns objects in the form <code>{ date : Date(..), y : Number, plus : Number, minus : Number }</code>.
+	 */
+	function nestRollupAggregateSum(array) {
+		// Note: we don't use d3.sum here because we want to end up with a null value for "holes"
+		var sum = null, plus = null, minus = null, 
+			d, v, i, len = array.length, groupId, negate = false;
+		for ( i = 0; i < len; i += 1 ) {
+			d = array[i];
+			v = d[parent.plotPropertyName];
+			if ( v !== undefined ) {
+				groupId = d[parent.internalPropName].groupId;
+				negate = negativeGroupMap[groupId] === true;
+				if ( negate ) {
+					minus += v;
+				} else {
+					plus += v;
+				}
+			}
+		}
+		if ( plus !== null || minus !== null ) {
+			sum = plus - minus;
+		}
+		return { date : array[0].date, y : sum, plus : plus, minus : minus };
+	}
+	
+	function ordinalXScale() {
+		var result = d3.scale.ordinal(),
+			x = parent.x,
+			aggregateType = parent.aggregate(),
+			xDomain = x.domain(),
+			interval,
+			step = 1,
+			buckets;
+		if ( aggregateType === 'Month' ) {
+			interval = d3.time.month.utc;
+		} else if ( aggregateType === 'Day' ) {
+			interval = d3.time.day.utc; 
+		} else if ( aggregateType === 'Hour' ) {
+			interval = d3.time.hour.utc; 
+		} else if ( aggregateType.search(/^Ten/) === 0 ) {
+			interval = d3.time.minute.utc;
+			step = 10;
+		} else if ( aggregateType.search(/^Five/) === 0 ) {
+			interval = d3.time.minute.utc;
+			step = 5;
+		} else {
+			// assume FifteenMinute
+			interval = d3.time.minute.utc;
+			step = 15;
+		}
+		buckets = interval.range(xDomain[0], interval.offset(xDomain[1], step), step);
+		result.domain(buckets);//.rangeRoundBands(x.range(), 0.2);
+		return result;
+	}
+	
 	function setupDrawData() {
 		var groupedData = [],
 			groupIds = parent.groupIds,
 			maxPositiveY = 0,
-			maxNegativeY = 0;
-			
+			maxNegativeY = 0,
+			xDates = ordinalXScale(),
+			sumLineData;
+
 		// construct a 3D array of our data, to achieve a dataType/source/datum hierarchy;
 		groupIds.forEach(function(groupId) {
 			var groupLayer = parent.groupLayers[groupId];
@@ -87,9 +150,25 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 				}));
 			}
 		});
+
+		// we use xDates to normalize the data for all dates in chart, so we can show holes in the data
+		var allData = d3.merge(d3.merge(groupedData)).concat(xDates.domain().map(function(e) {
+			return { date : e };
+		}));
+		sumLineData = d3.nest()
+			.key(function(d) { 
+				return d.date.getTime();
+			})
+			.sortKeys(d3.ascending)
+			.rollup(nestRollupAggregateSum)
+			.entries(allData).map(function (e) {
+				return e.values;
+			});
+			
 		
 		return {
-			groupedData : groupedData, 
+			groupedData : groupedData,
+			sumLineData : sumLineData,
 			maxPositiveY : maxPositiveY,
 			maxNegativeY : maxNegativeY
 		};
@@ -154,7 +233,69 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 			.style('opacity', 1e-6)
 			.remove();
 			
+		drawSumLine(drawData.sumLineData);
+
 		superDraw();
+	};
+	
+	function drawSumLine(sumLineData) {
+		var transitionMs = parent.transitionMs();
+		
+		function sumDefined(d) {
+			return d.y !== null;
+		}
+		
+		function valueX(d) {
+			return parent.x(d.date);
+		}
+		
+		var svgLine = d3.svg.line()
+			.x(valueX)
+			.y(function(d) { return parent.y(d.y) - 0.5; })
+			.interpolate('monotone')
+			.defined(sumDefined);
+		
+		var sumLine = svgSumLineGroup.selectAll('path').data([sumLineData]);
+		
+		sumLine.transition().duration(transitionMs)
+			.attr('d', svgLine);
+		
+		sumLine.enter().append('path')
+				.attr('d', d3.svg.line()
+						.x(valueX)
+						.y(function() { return parent.y(0) - 0.5; })
+						.interpolate('monotone')
+						.defined(sumDefined))
+			.transition().duration(transitionMs)
+				.attr('d', svgLine);
+				
+		sumLine.exit().transition().duration(transitionMs)
+				.style('opacity', 1e-6)
+				.remove();
+	}
+
+	/**
+	 * Toggle showing the sum line, or get the current setting.
+	 * 
+	 * @param {boolean} [value] <em>true</em> to show the sum line, <em>false</em> to hide it
+	 * @returns when used as a getter, the current setting
+	 * @memberOf sn.chart.energyIOBarChart
+	 */
+	self.showSumLine = function(value) {
+		if ( !arguments.length ) return !svgSumLineGroup.classed('off');
+		var transitionMs = parent.transitionMs();
+		svgSumLineGroup
+			.style('opacity', (value ? 1e-6 : 1))
+			.classed('off', false)
+		.transition().duration(transitionMs)
+			.style('opacity', (value ? 1 : 1e-6))
+			.each('end', function() {
+				// remove the opacity style
+				d3.select(this)
+					.style('opacity', null)
+					.classed('off', !value);
+			});
+		return parent.me;
 	};
 	
 	/**

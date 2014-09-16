@@ -6,6 +6,7 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 	<title>SolarNetwork Chart - Power I/O</title>
+	<link type="text/css" rel="stylesheet" href="../css/font-awesome.min.css">
 	<link type="text/css" rel="stylesheet" href="power-io.css" />
 	<script type="text/javascript" src="../js-lib/d3-3.min.js"></script>
 	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
@@ -48,10 +49,27 @@
 					<input type="number" name="consumptionNodeId" value=""/><br />
 					<label for="consumptionSourceIds" class="consumption">Sources</label>
 					<input type="text" name="consumptionSourceIds" value="Main"/><br />
-					<div class="range hour">
-						<label for="hours">Hours</label>
+					<div class="range tenminute">
+						<label for="days">Hours</label>
 						<input type="number" name="numHours" value="24" min="1" max="36"/>
 					</div>
+					<div class="range hour">
+						<label for="days">Days</label>
+						<input type="number" name="numDays" value="7" min="1" max="11"/>
+					</div>
+					<div class="range day">
+						<label for="months">Months</label>
+						<input type="number" name="numMonths" value="4" min="1" max="8"/>
+					</div>
+					<div class="range month">
+						<label for="years">Years</label>
+						<input type="number" name="numYears" value="2" min="1" max="5"/>
+					</div>
+				</form>
+				<div class="actions">
+					<i id="range-toggle" class="fa fa-wrench button"></i>
+					<i id="sumline-toggle" class="fa fa-bolt button"></i>
+				</div>
 				</form>
 			</div>
 		</div>
