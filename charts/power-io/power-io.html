@@ -10,25 +10,18 @@
 	<script type="text/javascript" src="../js-lib/d3-3.min.js"></script>
 	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
 	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
-	<script type="text/javascript" src="../js-lib/hmac-sha1-3.min.js"></script>
-	<script type="text/javascript" src="../js-lib/enc-base64-3.min.js"></script>
 	<script type="text/javascript" src="../sn-lib/solarnetwork-d3.js"></script>
-	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-sec.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-datum.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-chart-base.js"></script>
 	<script type="text/javascript" src="solarnetwork-d3-chart-power-io.js"></script>
 	<script type="text/javascript" src="power-io.js"></script>
 	<script type="text/javascript">
-		function startApp() {
-			sn.setDefaultEnv({
-				nodeId : 111,
-			});
-			onDocumentReady();
-		}
 		if ( !window.isLoaded ) {
 			window.addEventListener("load", function() {
-				startApp();
+				onDocumentReady();
 			}, false);
 		} else {
-			startApp();
+			onDocumentReady();
 		}
 	</script>
 </head>
@@ -38,7 +31,7 @@
 		<div class="vbox main">
 			<div class="pane watt-chart">
 				<h2><span class="time-count"></span> <span class="time-unit">hour</span> power <span class="alt"><span class="unit">(kW)</span></span></h2>
-				<div id="watt-chart" class="chart-container"></div>
+				<div id="power-area-chart" class="chart-container"></div>
 			</div>
 		</div>
 		<div class="vbox sub">
@@ -48,9 +41,13 @@
 			<div class="pane">
 				<form id="details">
 					<label for="nodeId" class="generation">Node</label>
-					<input type="number" name="nodeId" value=""/>
+					<input type="number" name="nodeId" value=""/><br />
+					<label for="sourceIds" class="generation">Sources</label>
+					<input type="text" name="sourceIds" value="Main"/><br />
 					<label for="consumptionNodeId" class="consumption">Node</label>
-					<input type="number" name="consumptionNodeId" value=""/>
+					<input type="number" name="consumptionNodeId" value=""/><br />
+					<label for="consumptionSourceIds" class="consumption">Sources</label>
+					<input type="text" name="consumptionSourceIds" value="Main"/><br />
 					<div class="range hour">
 						<label for="hours">Hours</label>
 						<input type="number" name="numHours" value="24" min="1" max="36"/>
