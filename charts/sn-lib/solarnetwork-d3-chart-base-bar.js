@@ -182,9 +182,17 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 
 	function drawAxisX() {
 		var numTicks = axisXTickCount(),
-			fx = parent.x.tickFormat(numTicks),
+			fxDefault = parent.x.tickFormat(numTicks),
 			ticks = parent.x.ticks(numTicks),
 			transitionMs = parent.transitionMs();
+			
+		var fx = function(d, i) {
+			if ( parent.xAxisTickCallback() ) {
+				return parent.xAxisTickCallback().call(parent.me, d, i, parent.x, fxDefault);
+			} else {
+				return fxDefault(d, i);
+			}
+		};
 
 		// Generate x-ticks, centered within bars
 		var labels = parent.svgTickGroupX.selectAll('text').data(ticks, Object)

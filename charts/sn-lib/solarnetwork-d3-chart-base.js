@@ -84,6 +84,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
 	var layerPostProcessCallback = undefined; // function accepts (groupId, result of d3.nest()) and should return same structure
 	var drawAnnotationsCallback = undefined; // function accepts (svgAnnotRoot)
+	var xAxisTickCallback = undefined; // function accepts (d, i, x, numTicks)
 	
 	// our computed layer data
 	var groupIds = [];
@@ -306,8 +307,15 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			d3.event.transform(x);
 		}
 		var numTicks = 12;
-		var fx = x.tickFormat(numTicks);
 		var ticks = x.ticks(numTicks);
+		var fxDefault = x.tickFormat(numTicks);
+		var fx = function(d, i) {
+			if ( xAxisTickCallback ) {
+				return xAxisTickCallback.call(me, d, i, x, fxDefault);
+			} else {
+				return fxDefault(d, i);
+			}
+		}
 
 		// Generate x-ticks
 		var labels = svgTickGroupX.selectAll("text").data(ticks)
@@ -728,6 +736,23 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return drawAnnotationsCallback;
 		if ( typeof value === 'function' ) {
 			drawAnnotationsCallback = value;
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set the x-axis tick callback function, which is called during x-axis rendering.
+	 * The function will be passed a data object, the index, the d3 scale, and the number of 
+	 * ticks requested. The <code>this</code> object will be set to the chart instance.
+	 * 
+	 * @param {function} [value] the draw callback
+	 * @return when used as a getter, the current x-axis tick callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	that.xAxisTickCallback = function(value) {
+		if ( !arguments.length ) return xAxisTickCallback;
+		if ( typeof value === 'function' ) {
+			xAxisTickCallback = value;
 		}
 		return me;
 	};
