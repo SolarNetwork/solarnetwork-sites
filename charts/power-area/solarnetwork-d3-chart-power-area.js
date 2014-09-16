@@ -110,7 +110,8 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 
 		layerData = d3.nest()
 			.key(function(d) {
-				return d[parent.internalPropName].groupId +'-' +d.sourceId;
+				// note we assume groupId has no pipe character in it
+				return d[parent.internalPropName].groupId +'|' +d.sourceId;
 			})
 			.sortKeys(d3.ascending)
 			.entries(allData);
@@ -122,7 +123,11 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		// fill in "holes" for each stack layer, if more than one layer. we assume data already sorted by date
 		dummy = {};
 		dummy[plotPropName] = null;
-		sn.nestedStackDataNormalizeByDate(layerData, dummy, [parent.internalPropName]);
+		sn.nestedStackDataNormalizeByDate(layerData, dummy, function(dummy, key) {
+			var idx = key.indexOf('|');
+			dummy[parent.internalPropName] = { groupId : key.slice(0, idx) };
+			dummy.sourceId = key.slice(idx + 1);
+		});
 		
 		if ( parent.me.layerPostProcessCallback() ) {
 			layerData = parent.me.layerPostProcessCallback().call(parent.me, null, layerData);

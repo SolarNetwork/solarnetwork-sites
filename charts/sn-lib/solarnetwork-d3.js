@@ -1517,10 +1517,10 @@ sn.datumLoaderQueryRange = function(aggregate, precision, aggregateTimeCount, en
  * @param {object} fillTemplate - An object to use as a template for any "filled in" data objects.
  *                                The <code>date</code> property will be populated automatically.
  *
- * @param {array} copyPropertyNames - An array of property names to copy from another object of the same layer
+ * @param {array} fillFn - An optional function to fill in objects with.
  * @since 0.0.4
  */
-sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate, copyPropertyNames) {
+sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate, fillFn) {
 	var i = 0,
 		j,
 		k,
@@ -1550,16 +1550,9 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate, copyProper
 							}
 						}
 					}
-					if ( copyPropertyNames ) {
+					if ( fillFn ) {
 						copyIndex = (layerData[k].values.length > i ? i : i > 0 ? i - 1 : null);
-						if ( copyIndex !== null ) {
-							copyPropertyNames.forEach(function(e) {
-								var val = layerData[k].values[copyIndex][e];
-								if ( val && !dummy.hasOwnProperty(e) ) {
-									dummy[e] = val;
-								}
-							});
-						}
+						fillFn(dummy, layerData[k].key, (copyIndex !== null ? layerData[k].values[copyIndex] : undefined));
 					}
 					layerData[k].values.splice(i, 0, dummy);
 				}
