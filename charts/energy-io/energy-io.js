@@ -75,35 +75,6 @@ function setupEnergyIOChart(container, chart, parameters, endDate, sourceMap) {
 		sn.log("Energy Bar chart time range: {0}", chart.xDomain());
 		sn.adjustDisplayUnits(container, 'Wh', chart.yScale());
 	}).load();
-	/*
-	var queryRange = sn.datumLoaderQueryRange(sn.runtime.energyBarIOParameters.aggregate,
-		(sn.env.minutePrecision || 10), sn.env, endDate);
-	
-	d3.select('.energy-bar-chart .time-count').text(queryRange.timeCount);
-	d3.select('.energy-bar-chart .time-unit').text(queryRange.timeUnit);
-	
-	var plotPropName = sn.runtime.energyBarIOParameters.plotProperties[sn.runtime.energyBarIOParameters.aggregate];
-	
-	sn.datumLoader(sn.env.dataTypes, urlHelperForAvailbleDataRange, 
-			queryRange.start, queryRange.end, sn.runtime.energyBarIOParameters.aggregate)
-		.holeRemoverCallback(function(data) {
-			// filter out any data where data value === -1
-			return data.filter(function(e) {
-				return (e[plotPropName] >= 0);
-			});
-		})
-		.callback(function(results) {
-			sn.runtime.energyBarIOChart.reset();
-			sn.env.dataTypes.forEach(function(e, i) {
-				var dataTypeResults = results[e];
-				sn.runtime.energyBarIOChart.load(dataTypeResults, e);
-			});
-			sn.runtime.energyBarIOChart.regenerate();
-			adjustChartDisplayUnits('.energy-bar-chart', 'Wh',  sn.runtime.energyBarIOChart.yScale(), 'energy');
-			sn.log("Energy Bar I/O chart watt range: {0}", sn.runtime.energyBarIOChart.yDomain());
-			sn.log("Energy Bar I/O chart time range: {0}", sn.runtime.energyBarIOChart.xDomain());
-		}).load();
-	*/
 }
 
 function energyBarIOChartSetup(endDate) {
