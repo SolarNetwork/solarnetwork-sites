@@ -5,9 +5,6 @@
 (function() {
 'use strict';
 
-if ( sn === undefined ) {
-	sn = {};
-}
 if ( sn.util === undefined ) {
 	sn.util = {};
 }
