@@ -60,7 +60,7 @@ function sourceExcludeCallback(dataType, sourceId) {
 }
 
 // Watt stacked area chart
-function powerMinuteChartSetup(container, chart, parameters, endDate, sourceMap) {
+function setupGroupedLayerChart(container, chart, parameters, endDate, sourceMap) {
 	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	
@@ -72,7 +72,7 @@ function powerMinuteChartSetup(container, chart, parameters, endDate, sourceMap)
 			queryRange.start, queryRange.end, parameters.aggregate)
 	]).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 1) ) {
-			sn.log("Unable to load data for Power Area chart: {0}", error);
+			sn.log("Unable to load data for {0} chart: {1}", parameters.aggregate, error);
 			return;
 		}
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
@@ -614,12 +614,18 @@ function setup(repInterval) {
 		});
 	}
 
-	powerMinuteChartSetup(sn.runtime.powerMinuteContainer, 
+	setupGroupedLayerChart(sn.runtime.powerMinuteContainer, 
 		sn.runtime.powerMinuteChart, 
 		sn.runtime.powerMinuteParameters, 
 		sn.runtime.reportableEndDate, 
 		sn.runtime.sourceGroupMap);
 	
+	setupGroupedLayerChart(sn.runtime.energyHourContainer,
+		sn.runtime.energyHourChart,
+		sn.runtime.energyHourParameters,
+		sn.runtime.reportableEndDate,
+		sn.runtime.sourceGroupMap);
+
 	// every minute update reading values
 	if ( sn.runtime.updateTimer === undefined ) {
 		updateReadings();
@@ -763,7 +769,6 @@ function onDocumentReady() {
 	sn.runtime.powerMinuteContainer = d3.select(d3.select('#day-watt').node().parentNode);
 	sn.runtime.powerMinuteParameters = new sn.Configuration({
 		aggregate : 'TenMinute',
-		excludeSources : sn.runtime.excludeSources,
 		wiggle : (sn.env.wiggle === 'true'),
 		plotProperties : {TenMinute : 'watts', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
@@ -772,6 +777,16 @@ function onDocumentReady() {
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 		
+	sn.runtime.energyHourContainer = d3.select(d3.select('#week-watthour').node().parentNode);
+	sn.runtime.energyHourParameters = new sn.Configuration({
+		aggregate : 'Hour',
+		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+	});
+	sn.runtime.energyHourChart = sn.chart.energyBarOverlapChart('#week-watthour', sn.runtime.energyHourParameters)
+		.dataCallback(chartDataCallback)
+		.colorCallback(colorForDataTypeSource)
+		.sourceExcludeCallback(sourceExcludeCallback);
+
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
 
 	setupUI();
