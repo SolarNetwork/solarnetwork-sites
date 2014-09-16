@@ -240,9 +240,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		
 		centerYLoc = parent.y(0);
 		
-		function dataTypeGroupTransformFn(d) {
+		function dataTypeGroupTransformFn(d, i) {
 			var yShift = 0;
-			if ( d.length > 0 && d[0].length > 0 && negativeGroupMap[d[0][0][parent.internalPropName].groupId] ) {
+			if ( negativeGroupMap[groupIds[i]] === true ) {
 				yShift = -(centerYLoc * 2);
 				return ('scale(1, -1) translate(0,' + yShift +')');
 			} else {
