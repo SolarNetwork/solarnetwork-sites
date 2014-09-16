@@ -348,7 +348,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	
 	function drawAxisY() {
 		var yTicks = (that.wiggle() ? [] : y.ticks(5));
-		var axisLines = svgRoot.select("g.rule").selectAll("g").data(yTicks);
+		var axisLines = svgRoot.select("g.rule").selectAll("g").data(yTicks, Object);
 		var axisLinesT = axisLines.transition().duration(transitionMs);
 		
 		axisLinesT.attr("transform", axisYTransform).select("text")
