@@ -11,7 +11,7 @@ sn.runtime.excludeSources = new sn.Configuration();
 
 //adjust display units as needed (between W and kW, etc)
 function adjustChartDisplayUnits(chartKey, baseUnit, scale, unitKind) {
-	var unit = (scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
+	var unit = (scale === 1000000000 ? 'G' : scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
 	d3.selectAll(chartKey +' .unit').text(unit);
 	if ( unitKind !== undefined ) {
 		d3.selectAll(chartKey + ' .unit-kind').text(unitKind);
@@ -26,9 +26,9 @@ function legendClickHandler(d, i) {
 		setTimeout(function() {
 			sn.runtime.powerAreaChart.regenerate();
 			adjustChartDisplayUnits('.power-area-chart', 
-					(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'W' : 'Wh'), 
+					(sn.runtime.powerAreaChart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
 					sn.runtime.powerAreaChart.yScale(),
-					(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'power' : 'energy'));
+					(sn.runtime.powerAreaChart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
 		}, sn.runtime.powerAreaChart.transitionMs() * 0.5);
 	}
 }
@@ -40,216 +40,221 @@ function updateRangeSelection() {
 	});
 }
 
-// Watt stacked area chart
-function powerAreaChartSetup(endDate, sourceMap) {
-	var end;
-	var start;
-	var timeCount;
-	var timeUnit;
-	var precision = (sn.env.minutePrecision || 10);
-	// for aggregate time ranges, the 'end' date in inclusive
-	if ( sn.runtime.powerAreaParameters.aggregate === 'Month' ) {
-		timeCount = (sn.env.numYears || 1);
-		timeUnit = 'year';
-		end = d3.time.month.utc.floor(endDate);
-		start = d3.time.year.utc.offset(end, -timeCount);
-	} else if ( sn.runtime.powerAreaParameters.aggregate === 'Day' ) {
-		timeCount = (sn.env.numMonths || 4);
-		timeUnit = 'month';
-		end = d3.time.day.utc.floor(endDate);
-		start = d3.time.month.utc.offset(end, -timeCount);
-	} else if ( sn.runtime.powerAreaParameters.aggregate === 'Hour' ) {
-		timeCount = (sn.env.numDays || 7);
-		timeUnit = 'day';
-		end = d3.time.hour.utc.floor(endDate);
-		start = d3.time.day.utc.offset(end, -timeCount);
+function chartDataCallback(dataType, datum) {
+	// create date property
+	if ( datum.localDate ) {
+		datum.date = sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
+	} else if ( datum.created ) {
+		datum.date = sn.timestampFormat.parse(datum.created);
 	} else {
-		// assume Minute
-		timeCount = (sn.env.numHours || 24);
-		timeUnit = 'hour';
-		end = d3.time.minute.utc.ceil(endDate);
-		end.setUTCMinutes((end.getUTCMinutes() + precision - (end.getUTCMinutes() % precision)), 0, 0);
-		start = d3.time.hour.utc.offset(end, -timeCount);
+		datum.date = null;
 	}
-	
-	d3.select('.power-area-chart .time-count').text(timeCount);
-	d3.select('.power-area-chart .time-unit').text(timeUnit);
-	
-	var q = queue();
-	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, 
-				(sn.runtime.powerAreaParameters.aggregate === 'Minute' 
-					? precision 
-					: sn.runtime.powerAreaParameters.aggregate)));
-	});
-	q.awaitAll(function(error, results) {
-		if ( error ) {
-			sn.log('Error requesting data: ' +error);
-			return;
-		}
-		var combinedData = [];
-		var i, iMax, j, jMax, json, datum, mappedSourceId;
-		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-			json = results[i];
-			if ( json.success !== true || Array.isArray(json.data) !== true ) {
-				sn.log('No data available for node {0} data type {1}', sn.runtime.urlHelper.nodeId(), sn.env.dataTypes[i]);
-				return;
-			}
-			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
-				datum = json.data[j];
-				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
-				if ( mappedSourceId !== undefined ) {
-					datum.sourceId = mappedSourceId;
-				}
-			}
-			combinedData = combinedData.concat(json.data);
-		}
-		sn.runtime.powerAreaChart.load(combinedData);
-		sn.log("Power Area chart watt range: {0}", sn.runtime.powerAreaChart.yDomain());
-		sn.log("Power Area chart time range: {0}", sn.runtime.powerAreaChart.xDomain());
-		adjustChartDisplayUnits('.power-area-chart', 
-				(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'W' : 'Wh'), 
-				sn.runtime.powerAreaChart.yScale(),
-				(sn.runtime.powerAreaChart.aggregate() === 'Minute' ? 'power' : 'energy'));
-	});
 }
 
-function setup(repInterval, sourceMap) {
-	sn.runtime.reportableEndDate = repInterval.eLocalDate;
-	sn.runtime.sourceMap = sourceMap;
-	sn.runtime.sourceColorMap = sn.sourceColorMapping(sourceMap);
+function sourceExcludeCallback(dataType, sourceId) {
+	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
+	return sn.runtime.excludeSources.enabled(mappedSourceId);
+}
+
+function colorForDataTypeSource(dataType, sourceId, sourceIndex) {
+	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
+	return sn.runtime.colorData[mappedSourceId];
+}
+
+// Watt stacked area chart
+function powerAreaChartSetup(endDate, chart, parameters) {
+	var sourceMap = sn.runtime.sourceGroupMap;
+	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	
-	// we make use of sn.colorFn, so stash the required color map where expected
-	sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
-
-	// set up form-based details
-	d3.select('#details .consumption').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sourceMap['Consumption'][0]]]);
-	d3.select('#details .generation').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Power'][sourceMap['Power'][0]]]);
-
-	// create copy of color data for reverse ordering so labels vertically match chart layers
-	sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
-		if ( sn.env.linkOld === 'true' ) {
-			s.html(function(d) {
-				return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
-			});
-		} else {
-			s.text(Object);
+	d3.select('.power-area-chart .time-count').text(queryRange.timeCount);
+	d3.select('.power-area-chart .time-unit').text(queryRange.timeUnit);
+	
+	var plotPropName = parameters.plotProperties[parameters.aggregate];
+	
+	sn.datum.multiLoader([
+		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+			queryRange.start, queryRange.end, parameters.aggregate),
+		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+			queryRange.start, queryRange.end, parameters.aggregate)
+	]).callback(function(error, results) {
+		if ( !(Array.isArray(results) && results.length === 2) ) {
+			sn.log("Unable to load data for Power Area chart: {0}", error);
+			return;
 		}
-	});
+		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
+		chart.reset()
+			.load(results[0], 'Consumption')
+			.load(results[1], 'Generation')
+			.regenerate();
+		sn.log("Power Area chart watt range: {0}", chart.yDomain());
+		sn.log("Power Area chart time range: {0}", chart.xDomain());
+		adjustChartDisplayUnits('.power-area-chart', 
+				(chart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
+				chart.yScale(),
+				(chart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
+	}).load();
+}
+
+function setupSourceGroupMap() {
+	var map = {},
+		sourceArray;
+	sourceArray = sn.env.sourceIds.split(/\s*,\s*/);
+	map['Generation'] = sourceArray;
+	
+	sourceArray = sn.env.consumptionSourceIds.split(/\s*,\s*/);
+	map['Consumption'] = sourceArray;
+	
+	sn.runtime.sourceGroupMap = map;
+}
+
+function sourceSets(regenerate) {
+	if ( !sn.runtime.sourceGroupMap || regenerate ) {
+		setupSourceGroupMap();
+	}
+	return [
+		{ nodeUrlHelper : sn.runtime.urlHelper, sourceIds : sn.runtime.sourceGroupMap['Generation'] },
+		{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Consumption'] }
+	];
+}
+
+function setup(repInterval) {
+	sn.runtime.reportableEndDate = repInterval.eDate;
+	if ( sn.runtime.sourceColorMap === undefined ) {
+		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
+	
+		// we make use of sn.colorFn, so stash the required color map where expected
+		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
+
+		// set up form-based details
+		d3.select('#details .consumption').style('color', 
+				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]);
+		d3.select('#details .generation').style('color', 
+				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
+
+		// create copy of color data for reverse ordering so labels vertically match chart layers
+		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+			if ( sn.env.linkOld === 'true' ) {
+				s.html(function(d) {
+					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
+				});
+			} else {
+				s.text(Object);
+			}
+		});
+	}
 
 	updateRangeSelection();
 
-	powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
-}
-
-function urlHelperForAvailbleDataRange(e, i) {
-	if ( !arguments.length ) return sn.runtime.urlHelper;
-	return (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
+	powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.powerAreaChart, sn.runtime.powerAreaParameters);
 }
 
 function setupUI() {
 	d3.selectAll('.node-id').text(sn.env.nodeId);
 
 	// update details form based on env
-	['nodeId', 'consumptionNodeId', 'numHours', 'numDays', 'numMonths', 'numYears'].forEach(function(e) {
-		d3.select('input[name='+e+']').property('value', sn.env[e]);
-	});
-	d3.select('input[name=wiggle]').attr('checked', function() {
-		return (sn.env.wiggle === 'true' ? 'checked' : null);
-	});
+	d3.selectAll('#details input')
+		.on('change', function(e) {
+			var me = d3.select(this);
+			var propName = me.attr('name');
+			var getAvailable = false;
+			if ( this.type === 'checkbox' ) {
+				sn.env[propName] = me.property('checked');
+			} else {
+				sn.env[propName] = me.property('value');
+			}
+			if ( propName === 'consumptionNodeId' ) {
+				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'nodeId' ) {
+				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
+				getAvailable = true;
+			} else if ( propName === 'wiggle' ) {
+				sn.runtime.powerAreaParameters.value(propName, sn.env[propName]);
+				sn.runtime.powerAreaChart.regenerate();
+				return;
+			}
+			if ( getAvailable ) {
+				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+					delete sn.runtime.sourceColorMap; // to regenerate
+					setup(reportableInterval);
+				});
+			} else {
+				powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.powerAreaChart, sn.runtime.powerAreaParameters);
+			}
+		}).each(function(e) {
+			var input = d3.select(this);
+			var name = input.attr('name');
+			if ( sn.env[name] !== undefined ) {
+				if ( input.property('type') === 'checkbox' ) {
+					input.attr('checked', (sn.env[name] === 'true' ? 'checked' : null));
+				} else {
+					input.property('value', sn.env[name]);
+				}
+			}
+		});
 
 	// toggle between supported aggregate levels
 	d3.select('#range-toggle').classed('clickable', true).on('click', function(d, i) {
 		var me = d3.select(this);
 		me.classed('hit', true);
 		var currAgg = sn.runtime.powerAreaChart.aggregate();
-		sn.runtime.powerAreaParameters.aggregate = (currAgg === 'Minute' ? 'Hour' : currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Minute');
-		powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		sn.runtime.powerAreaParameters.aggregate = (currAgg === 'TenMinute' ? 'Hour' : currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'TenMinute');
+		powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.powerAreaChart, sn.runtime.powerAreaParameters);
 		setTimeout(function() {
 			me.classed('hit', false);
 		}, 500);
 		updateRangeSelection();
-	});
-	
-	// update the chart details
-	d3.selectAll('#details input').on('change', function(e) {
-		var me = d3.select(this);
-		var propName = me.attr('name');
-		var getAvailable = false;
-		if ( this.type === 'checkbox' ) {
-			sn.env[propName] = me.property('checked');
-		} else {
-			sn.env[propName] = me.property('value');
-		}
-		if ( propName === 'consumptionNodeId' ) {
-			sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
-			getAvailable = true;
-		} else if ( propName === 'nodeId' ) {
-			sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
-			getAvailable = true;
-		} else if ( propName === 'wiggle' ) {
-			sn.runtime.powerAreaParameters.value(propName, sn.env[propName]);
-			sn.runtime.powerAreaChart.regenerate();
-			return;
-		}
-		if ( getAvailable ) {
-			sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
-		} else {
-			powerAreaChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
-		}
 	});
 }
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
+		sourceIds : 'Power',
 		consumptionNodeId : 108,
+		consumptionSourceIds : 'A,B,C',
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
 		numMonths : 4,
 		numYears : 2,
 		wiggle : 'true',
-		linkOld : 'false',
-		dataTypes: ['Consumption', 'Power']
+		linkOld : 'false'
 	});
 	
 	sn.runtime.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
 
 	sn.runtime.powerAreaParameters = new sn.Configuration({
-		aggregate : 'Minute',
+		aggregate : 'TenMinute',
 		excludeSources : sn.runtime.excludeSources,
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false),
 		wiggle : (sn.env.wiggle === 'true'),
 		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	
-	sn.runtime.powerAreaChart = sn.chart.powerAreaChart('#power-area-chart', sn.runtime.powerAreaParameters);
-	
-	setupUI();
+	sn.runtime.powerAreaChart = sn.chart.powerAreaChart('#power-area-chart', sn.runtime.powerAreaParameters)
+		.dataCallback(chartDataCallback)
+		.colorCallback(colorForDataTypeSource)
+		.sourceExcludeCallback(sourceExcludeCallback);
+		
+	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
 
-	// find our available data range, and then draw our charts!
-	function handleAvailableDataRange(event) {
-		setup(event.data.reportableInterval, event.data.availableSourcesMap);
+	setupUI();
+	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes, function(data) {
-					var jsonEndDate = data.reportableInterval.eLocalDate;
+				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
-						if ( sn.runtime.powerAreaChart !== undefined ) {
-							powerAreaChartSetup(jsonEndDate, sn.runtime.sourceMap);
-						}
+						setup(repInterval);
 					}
 				});
 			}, sn.runtime.wChartRefreshMs);
 		}
-	}
-	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
-	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
-	sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
+	});
 }

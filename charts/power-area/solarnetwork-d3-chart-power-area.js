@@ -1,12 +1,13 @@
 /**
  * @require d3 3.0
- * @require queue 1.0
- * @require solarnetwork-d3 0.0.3
+ * @require solarnetwork-d3 0.0.4
+ * @require solarnetwork-d3-chart-base 1.0.0
  */
+(function() {
+'use strict';
 
-if ( sn === undefined ) {
-	sn = { chart: {} };
-} else if ( sn.chart === undefined ) {
+
+if ( sn.chart === undefined ) {
 	sn.chart = {};
 }
 
@@ -25,43 +26,163 @@ if ( sn === undefined ) {
 /**
  * An power stacked area chart.
  * 
- * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
- * in the chart. After changing the configuration call {@link sn.chart.powerAreaChart#regenerate()}
- * to re-draw the chart.
- * 
- * Note that the global {@link sn.colorFn} function is used to map sources to colors, so that
- * must be set up previously.
- * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.powerAreaChartParameters} [chartConfig] - the chart parameters
  * @returns {sn.chart.powerAreaChart}
  */
 sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
-	var that = {
-		version : "1.0.0"
+	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig),
+		superDraw = sn.superMethod.call(parent, 'draw');
+	var self = (function() {
+		var	me = sn.util.copy(parent);
+		return me;
+	}());
+	parent.me = self;
+
+	var areaPathGenerator = d3.svg.area()
+		.interpolate('monotone')
+		.x(function(d) { 
+			return parent.x(d.date);
+		})
+		.y0(function(d) { 
+			return parent.y(d.y0);
+		})
+		.y1(function(d) { 
+			return parent.y(d.y0 + d.y);
+		});
+
+	function areaFillFn(d, i, j) {
+		return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
+	}
+	
+	function setup() {
+		var allData = [],
+			layerData,
+			dummy,
+			rangeX,
+			rangeY,
+			layers,
+			plotPropName = parent.plotPropertyName;
+		var stack = d3.layout.stack()
+			.offset(self.stackOffset())
+			.values(function(d) { 
+				return d.values;
+			})
+			.x(function(d) { 
+				return d.date; 
+			})
+			.y(function(d) { 
+				var y = d[plotPropName];
+				if ( y === undefined || y < 0 || y === null ) {
+					y = 0;
+				}
+				return y;
+			});
+		parent.groupIds.forEach(function(groupId) {
+			var rawGroupData = self.data(groupId),
+				i,
+				len,
+				d;
+			if ( !rawGroupData || !rawGroupData.length > 1 ) {
+				return;
+			}
+			
+			for ( i = 0, len = rawGroupData.length; i < len; i += 1 ) {
+				d = rawGroupData[i];
+				if ( !d.hasOwnProperty(parent.internalPropName) ) {
+					d[parent.internalPropName] = {};
+					d[parent.internalPropName].groupId = groupId;
+					if ( self.dataCallback() ) {
+						self.dataCallback().call(parent.me, groupId, d);
+					}
+					if ( d.sourceId === '' ) {
+						d.sourceId = 'Main';
+					}
+				}
+				// remove excluded sources...
+				if ( self.sourceExcludeCallback() && self.sourceExcludeCallback().call(parent.me, groupId, d.sourceId) ) {
+					continue;
+				}
+				allData.push(d);
+			}
+		});
+
+		layerData = d3.nest()
+			.key(function(d) {
+				return d[parent.internalPropName].groupId +'-' +d.sourceId;
+			})
+			.sortKeys(d3.ascending)
+			.entries(allData);
+		
+		if ( layerData.length < 1 ) {
+			return;
+		}
+		
+		// fill in "holes" for each stack layer, if more than one layer. we assume data already sorted by date
+		dummy = {};
+		dummy[plotPropName] = null;
+		sn.nestedStackDataNormalizeByDate(layerData, dummy, [parent.internalPropName]);
+		
+		if ( parent.me.layerPostProcessCallback() ) {
+			layerData = parent.me.layerPostProcessCallback().call(parent.me, null, layerData);
+		}
+		
+		rangeX = (allData.length > 0 ? [allData[0].date, allData[allData.length - 1].date] : undefined);
+		layers = stack(layerData);
+		parent.groupLayers['All'] = layers;
+		rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
+		
+		// setup X domain
+		if ( rangeX !== undefined ) {
+			parent.x.domain(rangeX);
+		}
+		
+		// setup Y domain
+		if ( rangeY !== undefined ) {
+			parent.y.domain(rangeY).nice();
+		}
+		
+		parent.computeUnitsY();
+	}
+	
+	function draw() {
+		var transitionMs = parent.transitionMs();
+		var data = parent.groupLayers['All'].map(function(e) { return e.values; });
+		
+		var area = parent.svgDataRoot.selectAll('path.area').data(data, function(d) {
+			return (d.length ? d[0][parent.internalPropName].groupId + '-' + d[0].sourceId : null);
+		});
+		
+		area.transition().duration(transitionMs)
+			.attr('d', areaPathGenerator)
+			.style('fill', areaFillFn);
+
+		area.enter().append('path')
+				.attr('class', 'area')
+				.style('fill', areaFillFn)
+				.attr('d', areaPathGenerator)
+				.style('opacity', 1e-6)
+			.transition().duration(transitionMs)
+				.style('opacity', 1);
+		
+		area.exit().transition().duration(transitionMs)
+			.style('opacity', 1e-6)
+			.remove();
+			
+		superDraw();
 	};
-	var sources = [];
-	var config = (chartConfig || new sn.Configuration());
 	
-	// default to container's width, if we can
-	var containerWidth = sn.pixelWidth(containerSelector);
+	// override our setup funciton
+	parent.setup = setup;
 	
-	var p = (config.padding || [10, 0, 20, 30]),
-		w = (config.width || containerWidth || 812) - p[1] - p[3],
-		h = (config.height || 300) - p[0] - p[2],
-    	x = d3.time.scale.utc().range([0, w]),
-		y = d3.scale.linear().range([h, 0]),
-		format = d3.time.format("%H");
+	// define our drawing function
+	parent.draw = draw;
+	
+	return self;
 
-	// String, one of supported SolarNet aggregate types: Month, Day, Hour, or Minute
-	var aggregateType = undefined;
+	function foo() {
 	
-	// mapping of aggregateType keys to associated data property names, e.g. 'watts' or 'wattHours'
-	var plotProperties = undefined;
-	
-	var transitionMs = undefined;
-
 	// the d3 stack offset method, or function
 	var stackOffset = undefined;
 
@@ -74,20 +195,9 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	var layers = undefined;
 	var minY = 0;
 
-	// Set y-axis  unit label
-	// setup display units in kW if domain range > 1000
-	var displayFactor = 1;
-	var displayFormatter = d3.format(',d');
-
-	var areaPathGenerator = d3.svg.area()
-		.interpolate("monotone")
-		.x(function(d) { return x(d.x); })
-		.y0(function(d) { return y(d.y0); })
-		.y1(function(d) { return y(d.y0 + d.y); });
-
 	function parseConfiguration() {
-		that.aggregate(config.aggregate);
-		that.plotProperties(config.plotProperties);
+		self.aggregate(config.aggregate);
+		self.plotProperties(config.plotProperties);
 		transitionMs = (config.transitionMs || 600);
 		vertRuleOpacity = (config.vertRuleOpacity || 0.05);
 		stackOffset = (config.wiggle === true ? 'wiggle' : 'zero');
@@ -223,7 +333,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 
 	function adjustAxisY() {
 		var axisLines = svgRoot.select("g.rule").selectAll("g").data(
-				that.wiggle() ? [] : y.ticks(5));
+				self.wiggle() ? [] : y.ticks(5));
 		var axisLinesT = axisLines.transition().duration(transitionMs);
 		axisLinesT.attr("transform", axisYTransform)
 			.select("text")
@@ -254,7 +364,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 				});
 	}
 	
-	that.sources = sources;
+	self.sources = sources;
 	
 	/**
 	 * Get the x-axis domain (minimum and maximum dates).
@@ -262,7 +372,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.xDomain = function() { return x.domain(); };
+	self.xDomain = function() { return x.domain(); };
 
 	/**
 	 * Get the y-axis domain (minimum and maximum values).
@@ -270,7 +380,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.yDomain = function() { return y.domain(); };
+	self.yDomain = function() { return y.domain(); };
 	
 	/**
 	 * Get the scaling factor the y-axis is using. By default this will return {@code 1}.
@@ -281,7 +391,7 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @return the y-axis scale factor
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.yScale = function() { return displayFactor; };
+	self.yScale = function() { return displayFactor; };
 
 	/**
 	 * Get the current {@code aggregate} value in use.
@@ -291,10 +401,10 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @returns the {@code aggregate} value
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.aggregate = function(value) { 
+	self.aggregate = function(value) { 
 		if ( !arguments.length ) return aggregateType;
 		aggregateType = (value === 'Month' ? 'Month' : value === 'Day' ? 'Day' : value === 'Hour' ? 'Hour' : 'Minute');
-		return that;
+		return self;
 	};
 	
 	/**
@@ -305,13 +415,13 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @return this object
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.load = function(rawData) {
+	self.load = function(rawData) {
 		parseConfiguration();
 		setup(rawData);
 		adjustAxisX();
 		adjustAxisY();
 		redraw();
-		return that;
+		return self;
 	};
 	
 	/**
@@ -321,18 +431,18 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @return this object
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.regenerate = function() {
+	self.regenerate = function() {
 		if ( layerGenerator === undefined ) {
 			// did you call load() first?
-			return that;
+			return self;
 		}
 		parseConfiguration();
-		layerGenerator.offset(that.stackOffset());
+		layerGenerator.offset(self.stackOffset());
 		layers = layerGenerator();
 		computeDomainY();
 		adjustAxisY();
 		redraw();
-		return that;
+		return self;
 	};
 	
 	/**
@@ -342,10 +452,10 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the millisecond value, otherwise this object
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.transitionMs = function(value) {
+	self.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
 		transitionMs = +value; // the + used to make sure we have a Number
-		return that;
+		return self;
 	};
 
 	/**
@@ -357,10 +467,10 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the stack offset value, otherwise this object
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.stackOffset = function(value) {
+	self.stackOffset = function(value) {
 		if ( !arguments.length ) return stackOffset;
 		stackOffset = value;
-		return that;
+		return self;
 	};
 
 	/**
@@ -374,9 +484,9 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 *         when used as a setter, this object
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.wiggle = function(value) {
+	self.wiggle = function(value) {
 		if ( !arguments.length ) return (stackOffset === 'wiggle');
-		return that.stackOffset(value === true ? 'wiggle' : 'zero');
+		return self.stackOffset(value === true ? 'wiggle' : 'zero');
 	};
 	
 	/**
@@ -398,16 +508,19 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
 	 * @memberOf sn.chart.powerAreaChart
 	 */
-	that.plotProperties = function(value) {
+	self.plotProperties = function(value) {
 		if ( !arguments.length ) return plotProperties;
 		var p = {};
 		['Minute', 'Hour', 'Day', 'Month'].forEach(function(e) {
 			p[e] = (value !== undefined && value[e] !== undefined ? value[e] : 'watts');
 		});
 		plotProperties = p;
-		return that;
+		return self;
 	};
 
 	parseConfiguration();
-	return that;
+	return self;
+	};
 };
+
+}());
