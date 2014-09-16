@@ -227,11 +227,11 @@ function onDocumentReady() {
 	sn.runtime.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
 
 	sn.runtime.powerAreaParameters = new sn.Configuration({
-		aggregate : 'TenMinute',
+		aggregate : 'Hour',
 		excludeSources : sn.runtime.excludeSources,
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false),
 		wiggle : (sn.env.wiggle === 'true'),
-		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+		plotProperties : {TenMinute : 'watts', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	
 	sn.runtime.powerAreaChart = sn.chart.powerAreaChart('#power-area-chart', sn.runtime.powerAreaParameters)
