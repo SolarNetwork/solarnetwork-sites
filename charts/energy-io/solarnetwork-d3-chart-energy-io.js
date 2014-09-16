@@ -62,9 +62,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	// object keys define group IDs to treat as "negative" or consumption values, below the X axis
 	var negativeGroupMap = { Consumption : true };
 	
-	// calculated drawing data
-	var drawData = {};
-
 	var svgAggBandGroup = parent.svgDataRoot.append('g')
 		.attr('class', 'agg-band')
 		.attr('transform', 'translate(0,' +(parent.height + parent.padding[2] - 25) + '.5)'); // .5 for odd-width stroke
@@ -177,7 +174,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		var allData = d3.merge(d3.merge(groupedData)).concat(parent.xBar.domain().map(function(e) {
 			return { date : e };
 		}));
-		drawData.allData = allData;
 		sumLineData = d3.nest()
 			.key(function(d) { 
 				return d.date.getTime();
@@ -212,6 +208,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			});
 			
 		return {
+			allData : allData,
 			groupedData : groupedData, 
 			sumLineData : sumLineData,
 			timeAggregateData : timeAggregateData,
@@ -226,7 +223,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			groups,
 			sources,
 			centerYLoc,
-			yDomain = parent.y.domain();
+			yDomain = parent.y.domain(),
+			drawData;
 			
 		// calculate our bar metrics
 		parent.computeDomainX();
