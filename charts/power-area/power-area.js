@@ -1,8 +1,8 @@
 /**
  * @require d3 3.0
  * @require queue 1.0
- * @require solarnetwork-d3 0.0.3
- * @require solarnetwork-d3-chart-power-io 1.0.0
+ * @require solarnetwork-d3 0.0.4
+ * @require solarnetwork-d3-chart-power-area 1.0.0
  */
 
 sn.config.debug = true;
