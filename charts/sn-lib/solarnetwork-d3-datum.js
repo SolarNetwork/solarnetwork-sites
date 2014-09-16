@@ -138,7 +138,6 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 	 */
 	function mostRecentURL(sourceIds) {
 		var url = (baseURL() + '/datum/mostRecent?nodeId=' + nodeId);
-		url += nodeId;
 		if ( Array.isArray(sourceIds) ) {
 			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
 		}
