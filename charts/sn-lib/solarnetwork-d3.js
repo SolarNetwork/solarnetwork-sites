@@ -1574,14 +1574,20 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate, fillFn) {
  * @param {string} baseUnit - The base unit, for example <b>W</b> or <b>Wh</b>.
  * @param {number} scale - The unit scale, which must be a recognized SI scale, such 
  *                         as <b>1000</b> for <b>k</b>.
+ * @param {string} unitKind - Optional text to replace all occurrences of <code>.unit-kind</code>
+ *                            elements with.
  * @since 0.0.4
  */
-sn.adjustDisplayUnits = function(selection, baseUnit, scale) {
+sn.adjustDisplayUnits = function(selection, baseUnit, scale, unitKind) {
 	var unit = (scale === 1000000000 ? 'G' 
 		: scale === 1000000 ? 'M' 
 		: scale === 1000 ? 'k' 
 		: '') + baseUnit;
 	selection.selectAll('.unit').text(unit);
+	if ( unitKind !== undefined ) {
+		selection.selectAll('.unit-kind').text(unitKind);
+	}
+
 };
 
 /**
