@@ -3,10 +3,10 @@
  * @require solarnetwork-d3 0.0.4
  * @require solarnetwork-d3-chart-base-bar 1.0.0
  */
+(function() {
+'use strict';
 
-if ( sn === undefined ) {
-	sn = { chart: {} };
-} else if ( sn.chart === undefined ) {
+if ( sn.chart === undefined ) {
 	sn.chart = {};
 }
 
@@ -114,3 +114,5 @@ sn.chart.energyBarOverlapChart = function(containerSelector, chartConfig) {
 	
 	return that;
 };
+
+}());
