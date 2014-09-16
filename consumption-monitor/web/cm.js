@@ -49,14 +49,58 @@ function datumDate(datum) {
 	return null;
 }
 
+function datumDayKey(datum) {
+	if ( datum.localDate ) {
+		return datum.localDate;
+	}
+	if ( datum.date ) {
+		return (datum.date.getUTCFullYear() + '-' 
+			+ (datum.date.getUTCMonth() < 9 ? '0' : '') + (datum.date.getUTCMonth()+1)
+			+ (datum.date.getUTCDate() < 10 ? '0' : '') + datum.date.getUTCDate());
+	}
+	return null;
+}
+
 function chartDataCallback(dataType, datum) {
+	var dayAgg = this.stashedData('dayAgg'),
+		key,
+		dayGroup;
+	
 	// create date property
 	datum.date = datumDate(datum);
+	
+	key = datumDayKey(datum);
+	if ( !key ) {
+		return;
+	}
+	dayGroup = dayAgg[key];
+	if ( !dayGroup ) {
+		dayGroup = { key : key, sum : 0, count : 0 };
+		dayAgg[key] = dayGroup;
+	}
+	if ( datum.wattHours ) {
+		dayGroup.sum += datum.wattHours;
+		dayGroup.count += 1;
+	}
 }
 
 function sourceExcludeCallback(dataType, sourceId) {
 	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
 	return sn.runtime.excludeSources.enabled(mappedSourceId);
+}
+
+function xAxisTickAggregateCallback(d, i, x, fmt) {
+	var chart = this,
+		dayAgg, dayGroup;
+	if ( d.getUTCHours() === 12 ) {
+		dayAgg = chart.stashedData('dayAgg');
+		dayGroup = (dayAgg ? dayAgg[sn.dateFormat(d)] : undefined);
+		// only show the aggregate value for days we have complete data for
+		if ( dayGroup !== undefined && d3.time.day.utc.floor(d).getTime() >= x.domain()[0].getTime() ) {
+			return String(d3.round(dayGroup.sum / chart.yScale(), 2));
+		}
+	}
+	return fmt(d, i);
 }
 
 // Watt stacked area chart
@@ -75,8 +119,10 @@ function setupGroupedLayerChart(container, chart, parameters, endDate, sourceMap
 			sn.log("Unable to load data for {0} chart: {1}", parameters.aggregate, error);
 			return;
 		}
+		
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
 		chart.reset()
+			.stash({}, 'dayAgg')
 			.load(results[0], sn.env.dataType)
 			.regenerate();
 		sn.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
@@ -755,7 +801,7 @@ function setupUI() {
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 11,
-		sourceIds : '',
+		sourceIds : 'Main',
 		dataType : 'Consumption',
 		minutePrecision : 10,
 		numHours : 24,
@@ -773,8 +819,8 @@ function onDocumentReady() {
 		plotProperties : {TenMinute : 'watts', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	sn.runtime.powerMinuteChart = sn.chart.powerAreaChart('#day-watt', sn.runtime.powerMinuteParameters)
-		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
+		.dataCallback(chartDataCallback)
 		.sourceExcludeCallback(sourceExcludeCallback);
 		
 	sn.runtime.energyHourContainer = d3.select(d3.select('#week-watthour').node().parentNode);
@@ -783,8 +829,9 @@ function onDocumentReady() {
 		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	sn.runtime.energyHourChart = sn.chart.energyBarOverlapChart('#week-watthour', sn.runtime.energyHourParameters)
-		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
+		.dataCallback(chartDataCallback)
+		.xAxisTickCallback(xAxisTickAggregateCallback)
 		.sourceExcludeCallback(sourceExcludeCallback);
 
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
