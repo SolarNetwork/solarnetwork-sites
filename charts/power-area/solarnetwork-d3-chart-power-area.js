@@ -153,7 +153,8 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 	
 	function draw() {
 		var transitionMs = parent.transitionMs();
-		var data = parent.groupLayers['All'].map(function(e) { return e.values; });
+		var layerData = parent.groupLayers['All'];
+		var data = (layerData ? layerData.map(function(e) { return e.values; }) : []);
 		
 		var area = parent.svgDataRoot.selectAll('path.area').data(data, function(d) {
 			return (d.length ? d[0][parent.internalPropName].groupId + '-' + d[0].sourceId : null);
