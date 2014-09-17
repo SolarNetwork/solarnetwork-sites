@@ -40,23 +40,7 @@ var sn = {
 			]
 	},
 	
-	// parse URL parameters into sn.env
-	// support passing nodeId and other values as URL parameter, e.g. ?nodeId=11
-	env : (function() {
-			var env = {};
-			if ( window !== undefined && window.location.search !== undefined ) {
-				var match = window.location.search.match(/\w+=[^&]+/g);
-				var i;
-				var keyValue;
-				if ( match !== null ) {
-					for ( i = 0; i < match.length; i += 1 ) {
-						keyValue = match[i].split('=', 2);
-						env[keyValue[0]] = keyValue[1];
-					}
-				}
-			}
-			return env;
-		}()),
+	env : {},
 		
 	setDefaultEnv : function(defaults) {
 		var prop;
@@ -187,6 +171,46 @@ var sn = {
 			return (obj.source === d.source ? obj.color : c);
 		}, sn.runtime.colorData[0].color);
 	}
+};
+
+/**
+ * Parse the query portion of a URL string, and return a parameter object for the
+ * parsed key/value pairs.
+ * 
+ * <p>Multiple parameters of the same name will be stored as an array on the returned object.</p>
+ * 
+ * @param {String} search the query portion of the URL, which may optionally include 
+ *                        the leading '?' character
+ * @return {Object} the parsed query parameters, as a parameter object
+ */
+sn.parseURLQueryTerms = function(search) {
+	var params = {};
+	var pairs;
+	var pair;
+	var i, len, k, v;
+	if ( search !== undefined && search.length > 0 ) {
+		// remove any leading ? character
+		if ( search.match(/^\?/) ) {
+			search = search.substring(1);
+		}
+		pairs = search.split('&');
+		for ( i = 0, len = pairs.length; i < len; i++ ) {
+			pair = pairs[i].split('=', 2);
+			if ( pair.length === 2 ) {
+				k = decodeURIComponent(pair[0]);
+				v = decodeURIComponent(pair[1]);
+				if ( params[k] ) {
+					if ( !Array.isArray(params[k]) ) {
+						params[k] = [params[k]]; // turn into array;
+					}
+					params[k].push(v);
+				} else {
+					params[k] = v;
+				}
+			}
+		}
+	}
+	return params;
 };
 
 /**
@@ -1699,6 +1723,10 @@ sn.util.copy = function(obj1, obj2) {
 	return obj2;
 };
 
+// parse URL parameters into sn.env, e.g. ?nodeId=11 puts sn.env.nodeId === '11'
+if ( window !== undefined && window.location.search !== undefined ) {
+	sn.env = sn.parseURLQueryTerms(window.location.search);
+}
 if (typeof define === "function" && define.amd) {
 	define(sn);
 } else if (typeof module === "object" && module.exports) {
