@@ -1,3 +1,4 @@
+/*global sn,d3 */
 /**
  * @require d3 3.0
  * @require queue 1.0
