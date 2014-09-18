@@ -6,7 +6,6 @@
 (function() {
 'use strict';
 
-
 if ( sn.chart === undefined ) {
 	sn.chart = {};
 }
