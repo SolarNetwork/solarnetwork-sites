@@ -789,12 +789,14 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		format = d3.time.format("%H");
 
 	// String, one of supported SolarNet aggregate types: Month, Day, Hour, or Minute
-	var aggregateType = undefined;
+	var aggregateType;
 	
 	// mapping of aggregateType keys to associated data property names, e.g. 'watts' or 'wattHours'
-	var plotProperties = undefined;
+	var plotProperties;
 	
-	var transitionMs = undefined;
+	var transitionMs; // will default to 600
+	var ruleOpacity; // will default to 0.1
+	var vertRuleOpacity; // will default to 0.05
 	
 	// raw data, by groupId
 	var originalData = {};
@@ -805,6 +807,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	var svgRoot,
 		svgTickGroupX,
 		svgDataRoot,
+		svgRuleRoot,
 		svgAnnotRoot;
 	
 	var dataCallback = undefined;
@@ -823,10 +826,15 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	var displayFactor = 1;
 	var displayFormatter = d3.format(',d');
 
+	var xAxisTickCount = 12;
+	var yAxisTickCount = 5;
+
 	function parseConfiguration() {
 		self.aggregate(config.aggregate);
 		self.plotProperties(config.value('plotProperties'));
 		transitionMs = (config.value('transitionMs') || 600);
+		ruleOpacity = (config.value('ruleOpacity') || 0.1);
+		vertRuleOpacity = (config.value('vertRuleOpacity') || 0.05);
 	}
 	
 	svgRoot = d3.select(containerSelector).select('svg');
@@ -843,10 +851,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		.attr('class', 'data-root')
 		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
 		
-	svgAnnotRoot = svgRoot.append('g')
-		.attr('class', 'annot-root')
-		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
-
 	svgTickGroupX = svgRoot.append('g')
 		.attr('class', 'ticks')
 		.attr('transform', 'translate(' + p[3] +',' +(h + p[0] + p[2]) +')');
@@ -854,6 +858,14 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	svgRoot.append('g')
 		.attr('class', 'crisp rule')
 		.attr('transform', 'translate(0,' + p[0] + ')');
+
+	svgRuleRoot = svgRoot.append('g')
+		.attr('class', 'rule')
+		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+		
+	svgAnnotRoot = svgRoot.append('g')
+		.attr('class', 'annot-root')
+		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
 
 	function computeUnitsY() {
 		var fmt;
@@ -919,96 +931,111 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 			|| (aggregateType === 'Day' && d.getUTCDate() === 1)
 			|| (aggregateType === 'Month' && d.getUTCMonth() === 0);
 	}
-
+	
 	function draw() {	
 		// extending classes should do something here...
 		
 		drawAxisX();
 		drawAxisY();
 	}
-
-	function drawAxisX() {
-		if ( d3.event && d3.event.transform ) {
-			d3.event.transform(x);
-		}
-		var numTicks = 12;
-		var ticks = x.ticks(numTicks);
-		var fxDefault = x.tickFormat(numTicks);
-		var fx = function(d, i) {
+	
+	function xAxisTicks() {
+		return x.ticks(xAxisTickCount);
+	}
+	
+	function xAxisTickFormatter() {
+		var fxDefault = x.tickFormat(xAxisTickCount);
+		return function(d, i) {
 			if ( xAxisTickCallback ) {
 				return xAxisTickCallback.call(me, d, i, x, fxDefault);
 			} else {
 				return fxDefault(d, i);
 			}
+		};
+	}
+
+	function drawAxisX() {
+		if ( d3.event && d3.event.transform ) {
+			d3.event.transform(x);
 		}
+		var ticks = xAxisTicks();
+		var fx = xAxisTickFormatter();
 
 		// Generate x-ticks
-		var labels = svgTickGroupX.selectAll("text").data(ticks)
+		var labels = svgTickGroupX.selectAll('text').data(ticks)
 				.classed({
 						major : axisXTickClassMajor
 					});
 		
 		labels.transition().duration(transitionMs)
-				.attr("x", x)
+				.attr('x', x)
 				.text(fx);
 		
-		labels.enter().append("text")
-				.attr("dy", "-0.5em") // needed so descenders not cut off
-				.style("opacity", 1e-6)
-				.attr("x", x)
+		labels.enter().append('text')
+				.attr('dy', '-0.5em') // needed so descenders not cut off
+				.style('opacity', 1e-6)
+				.attr('x', x)
 				.classed({
 						major : axisXTickClassMajor
 					})
 			.transition().duration(transitionMs)
-				.style("opacity", 1)
+				.style('opacity', 1)
 				.text(fx)
 				.each('end', function() {
 						// remove the opacity style
-						d3.select(this).style("opacity", null);
+						d3.select(this).style('opacity', null);
 					});
 		labels.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
+			.style('opacity', 1e-6)
 			.remove();
 	}
 	
+	function axisYTicks() {
+		return y.ticks(yAxisTickCount);
+	}
+	
 	function drawAxisY() {
-		var yTicks = y.ticks(5);
-		var axisLines = svgRoot.select("g.rule").selectAll("g").data(yTicks, Object);
+		var yTicks = axisYTicks();
+		var axisLines = svgRoot.select('g.rule').selectAll('g').data(yTicks, Object);
 		var axisLinesT = axisLines.transition().duration(transitionMs);
 		
-		axisLinesT.attr("transform", axisYTransform).select("text")
+		axisLinesT.attr('transform', axisYTransform).select('text')
 				.text(displayFormat)
 				.attr('class', axisTextClassY);
-		axisLinesT.select("line")
+		axisLinesT.select('line')
 				.attr('class', axisRuleClassY);
 		
 	  	axisLines.exit().transition().duration(transitionMs)
-	  			.style("opacity", 1e-6)
+	  			.style('opacity', 1e-6)
 	  			.remove();
 	  			
 		var entered = axisLines.enter()
-				.append("g")
-				.style("opacity", 1e-6)
-	  			.attr("transform", axisYTransform);
-		entered.append("line")
-				.attr("x2", w + p[3])
+				.append('g')
+				.style('opacity', 1e-6)
+	  			.attr('transform', axisYTransform);
+		entered.append('line')
+				.attr('x2', w + p[3])
 				.attr('x1', p[3])
 				.attr('class', axisRuleClassY);
-		entered.append("text")
-				.attr("x", p[3] - 10)
+		entered.append('text')
+				.attr('x', p[3] - 10)
 				.text(displayFormat)
 				.attr('class', axisTextClassY);
 		entered.transition().duration(transitionMs)
-				.style("opacity", 1)
+				.style('opacity', 1)
 				.each('end', function() {
 					// remove the opacity style
-					d3.select(this).style("opacity", null);
+					d3.select(this).style('opacity', null);
 				});
 	}
 	
 	Object.defineProperties(self, {
-		x : { value : x, writable : true },
-		y : { value : y, writable : true },
+		x : { get : function() { return x; }, set : function(v) { x = v; } },
+		y : { get : function() { return y; }, set : function(v) { y = v; } },
+		xAxisTickCount : { get : function() { return xAxisTickCount; }, set : function(v) { xAxisTickCount = v; } },
+		xAxisTicks : { get : function() { return xAxisTicks; }, set : function(v) { xAxisTicks = v; } },
+		xAxisTickFormatter : { get : function() { return xAxisTickFormatter; }, set : function(v) { xAxisTickFormatter = v; } },
+		yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
 		config : { value : config },
 		fillColor : { value : fillColor },
 		internalPropName : { value : internalPropName },
@@ -1018,6 +1045,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		height : { value : h },
 		svgRoot : { value : svgRoot },
 		svgDataRoot : { value : svgDataRoot },
+		svgRuleRoot : { value : svgRuleRoot },
 		svgTickGroupX : { value : svgTickGroupX },
 		groupIds : { get : function() { return groupIds; } },
 		computeUnitsY : { value : computeUnitsY },
@@ -1346,6 +1374,34 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		if ( typeof value === 'function' ) {
 			xAxisTickCallback = value;
 		}
+		return me;
+	};
+
+	/**
+	 * Get or set the axis rule opacity value, which is used during axis rendering.
+	 * Defaults to <b>0.1</b>.
+	 * 
+	 * @param {function} [value] the opacity value
+	 * @return when used as a getter, the current axis rule opacity value, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.ruleOpacity = function(value) {
+		if ( !arguments.length ) return ruleOpacity;
+		ruleOpacity = value;
+		return me;
+	};
+
+	/**
+	 * Get or set the vertical axis rule opacity value, which is used during axis rendering.
+	 * Defaults to <b>0.05</b>.
+	 * 
+	 * @param {function} [value] the opacity value
+	 * @return when used as a getter, the current vertical axis rule opacity value, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.vertRuleOpacity = function(value) {
+		if ( !arguments.length ) return vertRuleOpacity;
+		vertRuleOpacity = value;
 		return me;
 	};
 
