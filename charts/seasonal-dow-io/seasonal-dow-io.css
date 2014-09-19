@@ -276,7 +276,7 @@ svg {
 	opacity: 0.1;
 }
 
-.chart g.vertrule line {
+.chart g.rule line.vert {
 	opacity: 0.05;
 	stroke-dasharray: 2 1;
 }
