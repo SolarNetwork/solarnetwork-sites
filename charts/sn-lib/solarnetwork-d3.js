@@ -40,6 +40,8 @@ var sn = {
 			]
 	},
 	
+	seasonColors : ['#5c8726', '#e9a712', '#762123', '#80a3b7'],
+	
 	env : {},
 		
 	setDefaultEnv : function(defaults) {
