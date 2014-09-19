@@ -1,6 +1,6 @@
 /**
  * @require d3 3.0
- * @require solarnetwork-d3 0.0.3
+ * @require solarnetwork-d3 0.0.6
  */
 (function() {
 'use strict';
