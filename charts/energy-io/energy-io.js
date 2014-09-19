@@ -230,12 +230,12 @@ function onDocumentReady() {
 	});
 	sn.runtime.wChartRefreshMs = 30 * 60 * 1000;
 	
-	sn.runtime.energyBarIOContainer = d3.select(d3.select('#energy-io-chart').node().parentNode);
 	sn.runtime.energyBarIOParameters = new sn.Configuration({
 		aggregate : 'Hour',
 		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false),
 		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
+	sn.runtime.energyBarIOContainer = d3.select(d3.select('#energy-io-chart').node().parentNode);
 	sn.runtime.energyBarIOChart = sn.chart.energyIOBarChart('#energy-io-chart', sn.runtime.energyBarIOParameters)
 		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
@@ -259,6 +259,4 @@ function onDocumentReady() {
 			}, sn.runtime.wChartRefreshMs);
 		}
 	});
-
-	setupUI();
 }
