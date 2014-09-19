@@ -41,14 +41,17 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	}());
 	parent.me = self;
 	
-	var dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+	var hourNames = ['Midnight', 
+					'1am', '2am', '3am', '4am', '5am', '6am', '7am', '8am', '9am', '10am', '11am',
+					'Noon',
+					'1pm', '2pm', '3pm', '4pm', '5pm', '6pm', '7pm', '8pm', '9pm', '10pm', '11pm'];
 
 	// change x scale to ordinal DOW, with a slight inset for first/last labels to fit more nicely
 	parent.x = d3.scale.ordinal()
 		.rangePoints([0, parent.width], 0.2);
 	
 	parent.xAxisTicks = function() {
-		return parent.x.domain();
+		return parent.x.domain().filter(function(d, i) { return (i % 2) === 0; });
 	}
 	
 	parent.xAxisTickFormatter = function() {
@@ -56,7 +59,7 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 			if ( parent.xAxisTickCallback() ) {
 				return xAxisTickCallback().call(parent.me, d, i, parent.x);
 			} else {
-				return dayNames[i];
+				return hourNames[parent.x.domain().indexOf(d)];
 			}
 		};
 	}
@@ -92,8 +95,8 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		return null;
 	}
 	
-	function dayOfWeekDate(offset) {
-		return new Date(Date.UTC(2001, 0, 1 + offset));
+	function hourOfDayDate(offset) {
+		return new Date(Date.UTC(2001, 0, 1, offset));
 	}
 		
 	/**
@@ -137,11 +140,12 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 		if ( plus !== null || minus !== null ) {
 			sum = plus - minus;
 		}
-		return { date : dayOfWeekDate(array[0].dow), y : sum, 
+		return { date : hourOfDayDate(array[0].hod), 
+			y : sum, 
 			plus : plus, 
 			minus : minus, 
 			season : array[0].season, 
-			dow : array[0].dow,
+			hod : array[0].hod,
 			groupId : array[0][parent.internalPropName].groupId };
 	}
 	
@@ -150,7 +154,8 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 			groupIds = parent.groupIds,
 			rangeX = [new Date(), new Date()],
 			rangeY = [0, 0],
-			interval = d3.time.day.utc;
+			interval = d3.time.hour.utc,
+			keyFormatter = d3.format('02g'); // ensure 10 sorts after 9
 		
 		groupLayers = {};
 
@@ -175,13 +180,13 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 							d.date = sn.datum.datumDate(d);
 						}
 						d.season = sn.seasonForDate(d.date);
-						d.dow = ((d.date.getUTCDay() + 6) % 7); // group into DOW, with Monday as 0
+						d.hod = d.date.getUTCHours(); // group into HOD
 					}
 					
 					return d.season;
 				})
 				.key(function(d) {
-					return d.dow;
+					return keyFormatter(d.hod);
 				})
 				.sortKeys(d3.ascending)
 				.rollup(nestRollupAggregateSum)
@@ -366,17 +371,17 @@ sn.chart.seasonalHourOfDayLineChart = function(containerSelector, chartConfig) {
 	};
 
 	/**
-	 * Get/set the day of the week names.
+	 * Get/set the hour of day names.
 	 * 
-	 * @param {String[]} [value] the 7 day of week names
-	 * @return if used as a getter an array with the days of the weeks, which are used as labels,
+	 * @param {String[]} [value] the 24 hour of day names
+	 * @return if used as a getter an array with the hours of day, which are used as labels,
 	 *         otherwise this object
 	 * @memberOf sn.chart.seasonalHourOfDayLineChart
 	 */
-	self.dayNames = function(value) { 
-		if ( !arguments.length ) return dayNames;
+	self.hourNames = function(value) { 
+		if ( !arguments.length ) return hourNames;
 		if ( Array.isArray(value) ) {
-			dayNames = value;
+			hourNames = value;
 		}
 		return parent.me;
 	};
