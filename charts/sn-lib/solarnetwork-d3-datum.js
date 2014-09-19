@@ -13,7 +13,7 @@ if ( sn === undefined ) {
  * @namespace the SolarNetwork Datum namespace
  * @require d3 3.0
  * @require queue 1.0
- * @require solarnetwork-d3 0.0.5
+ * @require solarnetwork-d3 0.0.6
  */
 sn.datum = {};
 
@@ -364,15 +364,14 @@ sn.datum.loaderQueryRange = function(aggregate, aggregateTimeCount, endDate) {
  * @param {date} start - the start date, or {@code null}
  * @param {date} end - the end date, or {@code null}
  * @param {string} aggregate - aggregate level
- * @returns {sn.datumLoader}
+ * @returns {sn.datum.loader}
  */
 sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	
-	var that = {
-			version : '1.0.0'
-	};
+	var that = { version : '1.0.0' };
 
 	var finishedCallback;
+	var urlParameters;
 
 	var state = 0; // keys are source IDs, values are 1:loading, 2:done
 	var results;
@@ -396,6 +395,14 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 			pagination.offset = offset;
 		}
 		url = urlHelper.dateTimeListURL(start, end, aggregate, sourceIds, pagination);
+		if ( urlParameters ) {
+			(function() {
+				var tmp = sn.encodeURLQueryTerms(urlParameters);
+				if ( tmp.length ) {
+					url += '&' + tmp;
+				}
+			}());
+		}
 		dataExtractor = function(json) {
 			if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
 				return undefined;
@@ -443,7 +450,7 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	 * 
 	 * @param {function} [value] the callback function to use
 	 * @return when used as a getter, the current callback function, otherwise this object
-	 * @memberOf sn.datumLoader
+	 * @memberOf sn.datum.loader
 	 */
 	that.callback = function(value) {
 		if ( !arguments.length ) { return finishedCallback; }
@@ -454,6 +461,22 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	};
 	
 	/**
+	 * Get or set additional URL parameters. The parameters are set as object properties.
+	 * If a property value is an array, multiple parameters for that property will be added.
+	 * 
+	 * @param {object} [value] the URL parameters to include with the JSON request
+	 * @return when used as a getter, the URL parameters, otherwise this object
+	 * @memberOf sn.datum.loader
+	 */
+	that.urlParameters = function(value) {
+		if ( !arguments.length ) return urlParameters;
+		if ( typeof value === 'object' ) {
+			urlParameters = value;
+		}
+		return that;
+	};
+
+	/**
 	 * Initiate loading the data. As an alternative to configuring the callback function via
 	 * the {@link #callback(value)} method, a callback function can be passed as an argument
 	 * to this function. This allows this function to be passed to <code>queue.defer</code>,
@@ -461,7 +484,7 @@ sn.datum.loader = function(sourceIds, urlHelper, start, end, aggregate) {
 	 * 
 	 * @param {function} [callback] a callback function to use
 	 * @return this object
-	 * @memberOf sn.datumLoader
+	 * @memberOf sn.datum.loader
 	 */
 	that.load = function(callback) {
 		// to support queue use, allow callback to be passed directly to this function
