@@ -19,7 +19,7 @@ if ( sn.chart === undefined ) {
  */
 
 /**
- * A power stacked area chart that overlaps two or more data sets.
+ * An abstract class to support groups of stacked layer charts.
  * 
  * Extending classes should re-define the <code>me</code> property to themselves, so that
  * method chaining works correctly.
@@ -203,9 +203,6 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 						d[internalPropName].groupId = groupId;
 						if ( dataCallback ) {
 							dataCallback.call(that, groupId, d);
-						}
-						if ( d.sourceId === '' ) {
-							d.sourceId = 'Main';
 						}
 					}
 					
@@ -759,6 +756,601 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 
 	parseConfiguration();
 	return that;
+};
+
+sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
+	var self = {
+		version : '1.0.0'
+	};
+	
+	var me = self;
+	
+	// extending classes should re-define this property so method chaining works
+	Object.defineProperty(self, 'me', {
+						enumerable : false,
+						get : function() { return me; },
+						set : function(obj) { me = obj; }
+					});
+
+	var internalPropName = '__internal__';
+	var aggregates = ['FiveMinute', 'TenMinute','FifteenMinute','Hour', 'HourOfDay', 'SeasonalHourOfDay', 
+			'Day', 'DayOfWeek', 'SeasonalDayOfWeek', 'Month'];
+
+	var config = (chartConfig || new sn.Configuration());
+	
+	// default to container's width, if we can
+	var containerWidth = sn.pixelWidth(containerSelector);
+	
+	var p = (config.padding || [10, 0, 20, 30]),
+		w = (config.width || containerWidth || 812) - p[1] - p[3],
+		h = (config.height || 300) - p[0] - p[2],
+    	x = d3.time.scale.utc().range([0, w]),
+		y = d3.scale.linear().range([h, 0]),
+		format = d3.time.format("%H");
+
+	// String, one of supported SolarNet aggregate types: Month, Day, Hour, or Minute
+	var aggregateType = undefined;
+	
+	// mapping of aggregateType keys to associated data property names, e.g. 'watts' or 'wattHours'
+	var plotProperties = undefined;
+	
+	var transitionMs = undefined;
+	
+	// raw data, by groupId
+	var originalData = {};
+
+	// the d3 stack offset method, or function
+	var stackOffset = undefined;
+
+	var svgRoot,
+		svgTickGroupX,
+		svgDataRoot,
+		svgAnnotRoot;
+	
+	var dataCallback = undefined;
+	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
+	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
+	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
+	var layerPostProcessCallback = undefined; // function accepts (groupId, result of d3.nest()) and should return same structure
+	var drawAnnotationsCallback = undefined; // function accepts (svgAnnotRoot)
+	var xAxisTickCallback = undefined; // function accepts (d, i, x, numTicks)
+	
+	// our computed layer data
+	var groupIds = [];
+	var otherData = {};
+
+	// display units in kW if domain range > 1000
+	var displayFactor = 1;
+	var displayFormatter = d3.format(',d');
+
+	function parseConfiguration() {
+		self.aggregate(config.aggregate);
+		self.plotProperties(config.value('plotProperties'));
+		transitionMs = (config.value('transitionMs') || 600);
+	}
+	
+	svgRoot = d3.select(containerSelector).select('svg');
+	if ( svgRoot.empty() ) {
+		svgRoot = d3.select(containerSelector).append('svg:svg')
+			.attr('class', 'chart')
+			.attr('width', w + p[1] + p[3])
+			.attr('height', h + p[0] + p[2]);
+	} else {
+		svgRoot.selectAll('*').remove();
+	}
+	
+	svgDataRoot = svgRoot.append('g')
+		.attr('class', 'data-root')
+		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+		
+	svgAnnotRoot = svgRoot.append('g')
+		.attr('class', 'annot-root')
+		.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+
+	svgTickGroupX = svgRoot.append('g')
+		.attr('class', 'ticks')
+		.attr('transform', 'translate(' + p[3] +',' +(h + p[0] + p[2]) +')');
+
+	svgRoot.append('g')
+		.attr('class', 'crisp rule')
+		.attr('transform', 'translate(0,' + p[0] + ')');
+
+	function computeUnitsY() {
+		var fmt;
+		var maxY = d3.max(y.domain(), function(v) { return Math.abs(v); });
+		displayFactor = 1;
+		
+		if ( displayFactorCallback ) {
+			displayFactor = displayFactorCallback.call(me, maxY);
+		} else if ( maxY >= 1000000000 ) {
+			displayFactor = 1000000000;
+		} else if ( maxY >= 1000000 ) {
+			displayFactor = 1000000;
+		} else if ( maxY >= 1000 ) {
+			displayFactor = 1000;
+		}
+
+		if ( displayFactor === 1 ) {
+			fmt = ',d';
+		} else {
+			fmt = ',g';
+		}
+		
+		displayFormatter = d3.format(fmt);
+	}
+	
+	function displayFormat(d) {
+		return displayFormatter(d / displayFactor);
+	}
+	
+	function plotPropertyName() {
+		return plotProperties[aggregateType];
+	}
+
+	function setup() {
+		// extending classes should do something here...
+				
+		computeUnitsY();
+	}
+	
+	function fillColor(groupId, d, i) {
+		if ( colorCallback === undefined ) {
+			return 'black';
+		}
+		return colorCallback(groupId, d.sourceId, i);
+	}
+
+	function axisYTransform(d) {
+		// align to half-pixels, to 1px line is aligned to pixels and crisp
+		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
+	}
+
+	function axisRuleClassY(d) {
+		return (d === 0 ? 'origin' : 'm');
+	}
+
+	function axisTextClassY(d) {
+		return (d === 0 ? 'origin' : null);
+	}
+
+	function axisXTickClassMajor(d) {
+		return (aggregateType.indexOf('Minute') >= 0 && d.getUTCHours() === 0)
+			|| (aggregateType === 'Hour' && d.getUTCHours() === 0)
+			|| (aggregateType === 'Day' && d.getUTCDate() === 1)
+			|| (aggregateType === 'Month' && d.getUTCMonth() === 0);
+	}
+
+	function draw() {	
+		// extending classes should do something here...
+		
+		drawAxisX();
+		drawAxisY();
+	}
+
+	function drawAxisX() {
+		if ( d3.event && d3.event.transform ) {
+			d3.event.transform(x);
+		}
+		var numTicks = 12;
+		var ticks = x.ticks(numTicks);
+		var fxDefault = x.tickFormat(numTicks);
+		var fx = function(d, i) {
+			if ( xAxisTickCallback ) {
+				return xAxisTickCallback.call(me, d, i, x, fxDefault);
+			} else {
+				return fxDefault(d, i);
+			}
+		}
+
+		// Generate x-ticks
+		var labels = svgTickGroupX.selectAll("text").data(ticks)
+				.classed({
+						major : axisXTickClassMajor
+					});
+		
+		labels.transition().duration(transitionMs)
+				.attr("x", x)
+				.text(fx);
+		
+		labels.enter().append("text")
+				.attr("dy", "-0.5em") // needed so descenders not cut off
+				.style("opacity", 1e-6)
+				.attr("x", x)
+				.classed({
+						major : axisXTickClassMajor
+					})
+			.transition().duration(transitionMs)
+				.style("opacity", 1)
+				.text(fx)
+				.each('end', function() {
+						// remove the opacity style
+						d3.select(this).style("opacity", null);
+					});
+		labels.exit().transition().duration(transitionMs)
+			.style("opacity", 1e-6)
+			.remove();
+	}
+	
+	function drawAxisY() {
+		var yTicks = y.ticks(5);
+		var axisLines = svgRoot.select("g.rule").selectAll("g").data(yTicks, Object);
+		var axisLinesT = axisLines.transition().duration(transitionMs);
+		
+		axisLinesT.attr("transform", axisYTransform).select("text")
+				.text(displayFormat)
+				.attr('class', axisTextClassY);
+		axisLinesT.select("line")
+				.attr('class', axisRuleClassY);
+		
+	  	axisLines.exit().transition().duration(transitionMs)
+	  			.style("opacity", 1e-6)
+	  			.remove();
+	  			
+		var entered = axisLines.enter()
+				.append("g")
+				.style("opacity", 1e-6)
+	  			.attr("transform", axisYTransform);
+		entered.append("line")
+				.attr("x2", w + p[3])
+				.attr('x1', p[3])
+				.attr('class', axisRuleClassY);
+		entered.append("text")
+				.attr("x", p[3] - 10)
+				.text(displayFormat)
+				.attr('class', axisTextClassY);
+		entered.transition().duration(transitionMs)
+				.style("opacity", 1)
+				.each('end', function() {
+					// remove the opacity style
+					d3.select(this).style("opacity", null);
+				});
+	}
+	
+	Object.defineProperties(self, {
+		x : { value : x, writable : true },
+		y : { value : y, writable : true },
+		config : { value : config },
+		fillColor : { value : fillColor },
+		internalPropName : { value : internalPropName },
+		plotPropertyName : { get : plotPropertyName },
+		padding : { value : p },
+		width : { value : w },
+		height : { value : h },
+		svgRoot : { value : svgRoot },
+		svgDataRoot : { value : svgDataRoot },
+		svgTickGroupX : { value : svgTickGroupX },
+		groupIds : { get : function() { return groupIds; } },
+		computeUnitsY : { value : computeUnitsY },
+		drawAxisX : { value : drawAxisX },
+		drawAxisY : { value : drawAxisY },
+		draw : { value : draw, writable : true },
+		setup : { value : setup, writable : true }
+	});
+
+	/**
+	 * Scale a date for the x-axis.
+	 * 
+	 * @param {Date} the Date to scale
+	 * @return {Number} the scaled value
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.scaleDate = function(date) { return x(date); };
+
+	/**
+	 * Scale a value for the y-axis.
+	 * 
+	 * @param {Number} the value to scale
+	 * @return {Number} the scaled value
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.scaleValue = function(value) { return y(value); };
+	
+	/**
+	 * Get the x-axis domain (minimum and maximum dates).
+	 * 
+	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.xDomain = function() { return x.domain(); };
+
+	/**
+	 * Get the y-axis domain (minimum and maximum values).
+	 * 
+	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.yDomain = function() { return y.domain(); };
+	
+	/**
+	 * Get the scaling factor the y-axis is using. By default this will return {@code 1}.
+	 * After calling the {@link #load()} method, however, the chart may decide to scale
+	 * the y-axis for clarity. You can call this method to find out the scaling factor the
+	 * chart ended up using.
+	 *  
+	 * @return the y-axis scale factor
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.yScale = function() { return displayFactor; };
+
+	/**
+	 * Get the current {@code aggregate} value in use.
+	 * 
+	 * @param {number} [value] the number of consumption sources to use
+	 * @returns when used as a getter, the count number, otherwise this object
+	 * @returns the {@code aggregate} value
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.aggregate = function(value) { 
+		if ( !arguments.length ) return aggregateType;
+		var idx = aggregates.indexOf(value);
+		aggregateType = (idx < 0 ? 'Hour' : value);
+		return me;
+	};
+	
+	/**
+	 * Clear out all data associated with this chart. Does not redraw.
+	 * 
+	 * @return this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.reset = function() {
+		originalData = {};
+		groupIds = [];
+		otherData = {};
+		return me;
+	};
+	
+	/**
+	 * Add data for a single group in the chart. The data is appended if data has 
+	 * already been loaded for the given groupId. This does not redraw the chart. 
+	 * Once all groups have been loaded, call {@link #regenerate()} to redraw.
+	 * 
+	 * @param {Array} rawData - the raw chart data to load
+	 * @param {String} groupId - the ID to associate with the data; each stack group must have its own ID
+	 * @returns this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.load = function(rawData, groupId) {
+		if ( originalData[groupId] === undefined ) {
+			groupIds.push(groupId);
+			originalData[groupId] = rawData;
+		} else {
+			originalData[groupId] = originalData[groupId].concat(rawData);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get the data for a specific group ID previously loaded via {@link #load()}.
+	 *
+	 * @param {String} groupId - the group ID of the data to get
+	 * @returns the data, or <code>undefined</code>
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.data = function(groupId) {
+		return originalData[groupId];
+	};
+	
+	/**
+	 * Stash data for a single group in the chart. The data is appended if data has 
+	 * already been stashed for the given groupId. This data is auxiliary data that clients
+	 * may want to associate with the chart and draw later, for example via the 
+	 * {@link #drawAnnotationsCallback()} function.
+	 * 
+	 * @param {Array} rawData - the raw chart data to stash
+	 * @param {String} groupId - the group ID to associate with the data
+	 * @returns this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.stash = function(rawData, groupId) {
+		if ( otherData[groupId] === undefined ) {
+			otherData[groupId] = rawData;
+		} else {
+			otherData[groupId] = otherData[groupId].concat(rawData);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get the data for a specific group ID previously stashed via {@link #stash()}.
+	 *
+	 * @param {String} groupId - the group ID of the data to get
+	 * @returns the data, or <code>undefined</code>
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.stashedData = function(groupId) {
+		return otherData[groupId];
+	};
+	
+	/**
+	 * Regenerate the chart, using the current data. This can be called after disabling a
+	 * source 
+	 * 
+	 * @returns this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.regenerate = function() {
+		if ( originalData === undefined ) {
+			// did you call load() first?
+			return me;
+		}
+		parseConfiguration();
+		self.setup();
+		self.draw();
+		if ( drawAnnotationsCallback ) {
+			drawAnnotationsCallback.call(me, svgAnnotRoot);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set the animation transition time, in milliseconds.
+	 * 
+	 * @param {number} [value] the number of milliseconds to use
+	 * @return when used as a getter, the millisecond value, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.transitionMs = function(value) {
+		if ( !arguments.length ) return transitionMs;
+		transitionMs = +value; // the + used to make sure we have a Number
+		return me;
+	};
+
+	/**
+	 * Get or set the plot property names for all supported aggregate levels.
+	 * 
+	 * When used as a setter, an Object with properties of the following names are supported:
+	 * 
+	 * <ul>
+	 *   <li>FiveMinute</li>
+	 *   <li>TenMinute</li>
+	 *   <li>FifteenMinute</li>
+	 *   <li>Hour</li>
+	 *   <li>HourOfDay</li>
+	 *   <li>SeasonalHourOfDay</li>
+	 *   <li>Day</li>
+	 *   <li>DayOfWeek</li>
+	 *   <li>SeasonalDayOfWeek</li>
+	 *   <li>Month</li>
+	 * </ul>
+	 * 
+	 * Each value should be the string name of the datum property to plot on the y-axis of the chart.
+	 * If an aggregate level is not defined, it will default to {@code watts}.
+	 * 
+	 * @param {object} [value] the aggregate property names to use
+	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.plotProperties = function(value) {
+		if ( !arguments.length ) return plotProperties;
+		var p = {};
+		aggregates.forEach(function(e) {
+			p[e] = (value !== undefined && value[e] !== undefined ? value[e] : 'watts');
+		});
+		plotProperties = p;
+		return me;
+	};
+
+	/**
+	 * Get or set the data callback function. This function will be called as the
+	 * chart iterates over the raw input data as it performs grouping and normalization
+	 * operations. The callback will be passed the group ID and the data as arguments.
+	 * 
+	 * @param {function} [value] the data callback
+	 * @return when used as a getter, the current data callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.dataCallback = function(value) {
+		if ( !arguments.length ) return dataCallback;
+		if ( typeof value === 'function' ) {
+			dataCallback = value;
+		}
+		return me;
+	};
+
+	/**
+	 * Get or set the color callback function. The callback will be passed the group ID 
+	 * and a source ID as arguments.
+	 * 
+	 * @param {function} [value] the color callback
+	 * @return when used as a getter, the current color callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.colorCallback = function(value) {
+		if ( !arguments.length ) return colorCallback;
+		if ( typeof value === 'function' ) {
+			colorCallback = value;
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set the source exclude callback function. The callback will be passed the group ID 
+	 * and a source ID as arguments. It should true <em>true</em> if the data set for the given
+	 * group ID and source ID should be excluded from the chart.
+	 * 
+	 * @param {function} [value] the source exclude callback
+	 * @return when used as a getter, the current source exclude callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.sourceExcludeCallback = function(value) {
+		if ( !arguments.length ) return sourceExcludeCallback;
+		if ( typeof value === 'function' ) {
+			sourceExcludeCallback = value;
+		}
+		return me;
+	};
+
+	/**
+	 * Get or set the display factor callback function. The callback will be passed the absolute maximum 
+	 * Y domain value as an argument. It should return a number representing the scale factor to use
+	 * in Y-axis labels.
+	 * 
+	 * @param {function} [value] the display factor exclude callback
+	 * @return when used as a getter, the current display factor callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.displayFactorCallback = function(value) {
+		if ( !arguments.length ) return displayFactorCallback;
+		if ( typeof value === 'function' ) {
+			displayFactorCallback = value;
+		}
+		return me;
+	};
+
+	/**
+	 * Get or set the layer post-process callback function. The callback will be passed a 
+	 * group ID and that group's result of the d3.nest() operator, after all layer data 
+	 * arrays have been normalized to contain the same number of elements. 
+	 * 
+	 * @param {function} [value] the layer post-process callback
+	 * @return when used as a getter, the current layer post-process callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.layerPostProcessCallback = function(value) {
+		if ( !arguments.length ) return layerPostProcessCallback;
+		if ( typeof value === 'function' ) {
+			layerPostProcessCallback = value;
+		}
+		return me;
+	};
+
+	/**
+	 * Get or set the draw annotations callback function, which is called after the chart completes drawing.
+	 * The function will be passed a SVG <code>&lt;g class="annot-root"&gt;</code> element that
+	 * represents the drawing area for the chart data.
+	 * 
+	 * @param {function} [value] the draw callback
+	 * @return when used as a getter, the current draw callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.drawAnnotationsCallback = function(value) {
+		if ( !arguments.length ) return drawAnnotationsCallback;
+		if ( typeof value === 'function' ) {
+			drawAnnotationsCallback = value;
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set the x-axis tick callback function, which is called during x-axis rendering.
+	 * The function will be passed a data object, the index, the d3 scale, and the number of 
+	 * ticks requested. The <code>this</code> object will be set to the chart instance.
+	 * 
+	 * @param {function} [value] the draw callback
+	 * @return when used as a getter, the current x-axis tick callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.xAxisTickCallback = function(value) {
+		if ( !arguments.length ) return xAxisTickCallback;
+		if ( typeof value === 'function' ) {
+			xAxisTickCallback = value;
+		}
+		return me;
+	};
+
+	parseConfiguration();
+	return self;
 };
 
 }());
