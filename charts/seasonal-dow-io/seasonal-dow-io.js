@@ -4,147 +4,118 @@
  * @require solarnetwork-d3 0.0.3
  * @require solarnetwork-d3-chart-seasonal-dow-io 1.0.0
  */
-
 sn.config.debug = true;
 sn.config.host = 'data.solarnetwork.net';
 sn.runtime.excludeSources = new sn.Configuration();
 
-// adjust display units as needed (between W and kW, etc)
-function adjustChartDisplayUnits(chartKey, baseUnit, scale) {
-	var unit = (scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
-	d3.selectAll(chartKey +' .unit').text(unit);
-}
-
-// handle clicks on legend handler
-function legendClickHandler(d, i) {
-	sn.runtime.excludeSources.toggle(d.source);
-	if ( sn.runtime.seasonalDayOfWeekChart !== undefined ) {
-		// use a slight delay, otherwise transitions can be jittery
-		setTimeout(function() {
-			sn.runtime.seasonalDayOfWeekChart.regenerate();
-			adjustChartDisplayUnits('.seasonal-dow-chart', 'Wh', sn.runtime.seasonalDayOfWeekChart.yScale());
-		}, sn.runtime.seasonalDayOfWeekChart.transitionMs() * 0.5);
-	}
-}
-
-// seasonal day of week line chart
-function seasonalDayOfWeekChartSetup(sourceMap) {
-	var q = queue();
-	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeList(e, null, null, 'SeasonalDayOfWeek'));
-	});
-	q.awaitAll(function(error, results) {
-		if ( error ) {
-			sn.log('Error requesting data: ' +error);
+function setupSeasonalDayOfWeekChart(container, chart, parameters, endDate, sourceMap) {
+	var plotPropName = parameters.plotProperties[parameters.aggregate];
+	var urlParams = { dataPath : 'a.wattHours' };
+	
+	sn.datum.multiLoader([
+		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+			null, null, parameters.aggregate).urlParameters(urlParams),
+		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+			null, null, parameters.aggregate).urlParameters(urlParams)
+	]).callback(function(error, results) {
+		if ( !(Array.isArray(results) && results.length === 2) ) {
+			sn.log("Unable to load data for Energy Bar chart: {0}", error);
 			return;
 		}
-		var combinedData = [];
-		var i, iMax, j, jMax, json, datum, mappedSourceId;
-		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-			json = results[i];
-			if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
-				sn.log('No data available for node {0} data type {1}', urlHelperForAvailbleDataRange(null, i).nodeId(), sn.env.dataTypes[i]);
-				return;
-			}
-			for ( j = 0, jMax = json.data.results.length; j < jMax; j++ ) {
-				datum = json.data.results[j];
-				mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]][datum.sourceId];
-				if ( mappedSourceId !== undefined ) {
-					datum.sourceId = mappedSourceId;
-				}
-			}
-			combinedData = combinedData.concat(json.data.results);
-		}
-		
-		sn.runtime.seasonalDayOfWeekChart.load(combinedData, sn.runtime.seasonalDayOfWeekParameters);
-		sn.log("Seasonal DOW IO chart watt hour range: {0}", sn.runtime.seasonalDayOfWeekChart.yDomain());
-		sn.log("Seasonal DOW IO chart time range: {0}", sn.runtime.seasonalDayOfWeekChart.xDomain());
-		adjustChartDisplayUnits('.seasonal-dow-chart', 'Wh', sn.runtime.seasonalDayOfWeekChart.yScale());
-	});
+		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
+		chart.reset()
+			.load(results[0], 'Consumption')
+			.load(results[1], 'Generation')
+			.regenerate();
+		sn.log("Seasonal DOW IO chart watt range: {0}", chart.yDomain());
+		sn.log("Seasonal DOW IO chart time range: {0}", chart.xDomain());
+		sn.adjustDisplayUnits(container, 'Wh', chart.yScale());
+	}).load();
 }
 
-function setup(repInterval, sourceMap) {
-	sn.runtime.reportableEndDate = repInterval.eLocalDate;
-	sn.runtime.sourceMap = sourceMap;
-	sn.runtime.sourceColorMap = sn.sourceColorMapping(sourceMap);
-	
-	// we make use of sn.colorFn, so stash the required color map where expected
-	sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
+function seasonalDayOfWeekChartSetup(endDate) {
+	setupSeasonalDayOfWeekChart(
+		sn.runtime.seasonalDayOfWeekContainer,
+		sn.runtime.seasonalDayOfWeekChart,
+		sn.runtime.seasonalDayOfWeekParameters,
+		endDate,
+		sn.runtime.sourceGroupMap);
+}
 
-	// pass our source mapping to the chart, to know what source IDs are consumption vs generation
-	var dataType = undefined;
-	var sourceId = undefined;
-	var sourceIdDataTypeMap = {};
-	for ( dataType in sn.runtime.sourceColorMap.displaySourceMap ) {
-		sourceIdDataTypeMap[dataType] = {};
-		for ( sourceId in sn.runtime.sourceColorMap.displaySourceMap[dataType] ) {
-			sourceIdDataTypeMap[sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId]] = dataType;
-		}
+function setupSourceGroupMap() {
+	var map = {},
+		sourceArray;
+	sourceArray = sn.env.sourceIds.split(/\s*,\s*/);
+	map['Generation'] = sourceArray;
+	
+	sourceArray = sn.env.consumptionSourceIds.split(/\s*,\s*/);
+	map['Consumption'] = sourceArray;
+	
+	sn.runtime.sourceGroupMap = map;
+}
+
+function sourceSets(regenerate) {
+	if ( !sn.runtime.sourceGroupMap || !sn.runtime.sourceSets || regenerate ) {
+		setupSourceGroupMap();
+		sn.runtime.sourceSets = [
+			{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, 
+				sourceIds : sn.runtime.sourceGroupMap['Consumption'], 
+				dataType : 'Consumption' },
+			{ nodeUrlHelper : sn.runtime.urlHelper, 
+				sourceIds : sn.runtime.sourceGroupMap['Generation'], 
+				dataType : 'Generation' }
+		];
 	}
-	sn.runtime.seasonalDayOfWeekChart.sourceIdDataTypeMap(sourceIdDataTypeMap);
-
-
-	// set up form-based details
-	d3.select('#details .consumption').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sourceMap['Consumption'][0]]]);
-	d3.select('#details .generation').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Power'][sourceMap['Power'][0]]]);
-
-	// create copy of color data for reverse ordering so labels vertically match chart layers
-	sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
-		if ( sn.env.linkOld === 'true' ) {
-			s.html(function(d) {
-				return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
-			});
-		} else {
-			s.text(Object);
-		}
-	});
-	
-	seasonalDayOfWeekChartSetup(sn.runtime.sourceMap);
+	return sn.runtime.sourceSets;
 }
 
-function urlHelperForAvailbleDataRange(e, i) {
-	if ( !arguments.length ) return sn.runtime.urlHelper;
-	return (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
+function setup(repInterval) {
+	sn.runtime.reportableEndDate = repInterval.eDate;
+	seasonalDayOfWeekChartSetup(sn.runtime.reportableEndDate);
 }
 
 function setupUI() {
 	d3.selectAll('.node-id').text(sn.env.nodeId);
 	
 	// update details form based on env
-	['nodeId', 'consumptionNodeId'].forEach(function(e) {
-		d3.select('input[name='+e+']').property('value', sn.env[e]);
-	});
-
-	// update the chart details
-	d3.selectAll('#details input').on('change', function(e) {
-		var me = d3.select(this);
-		var propName = me.attr('name');
-		var getAvailable = false;
-		sn.env[propName] = me.property('value');
-		if ( propName === 'consumptionNodeId' ) {
-			sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
-			getAvailable = true;
-		} else if ( propName === 'nodeId' ) {
-			sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
-			getAvailable = true;
-		}
-		if ( getAvailable ) {
-			sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
-		} else {
-			seasonalDayOfWeekChartSetup(sn.runtime.sourceMap);
-		}
-	});
-
-	// toggle sum lines on/off
-	d3.select('#sumline-toggle').classed('clickable', true).on('click', function(d) {
-		var me = d3.select(this);
-		var off = me.classed('off');
-		me.classed('off', !off);
-		sn.runtime.seasonalDayOfWeekChart.showSumLine(off);
-	});
+	d3.selectAll('#details input')
+		.on('change', function(e) {
+			var me = d3.select(this);
+			var propName = me.attr('name');
+			var getAvailable = false;
+			if ( this.type === 'checkbox' ) {
+				sn.env[propName] = me.property('checked');
+			} else {
+				sn.env[propName] = me.property('value');
+			}
+			if ( propName === 'consumptionNodeId' ) {
+				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'nodeId' ) {
+				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
+				getAvailable = true;
+			}
+			if ( getAvailable ) {
+				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+					delete sn.runtime.sourceColorMap; // to regenerate
+					setup(reportableInterval);
+				});
+			} else {
+				seasonalDayOfWeekChartSetup(sn.runtime.reportableEndDate);
+			}
+		}).each(function(e) {
+			var input = d3.select(this);
+			var name = input.attr('name');
+			if ( sn.env[name] !== undefined ) {
+				if ( input.property('type') === 'checkbox' ) {
+					input.attr('checked', (sn.env[name] === 'true' ? 'checked' : null));
+				} else {
+					input.property('value', sn.env[name]);
+				}
+			}
+		});
 	
 	// toggle hemispheres
 	d3.select('#hemisphere-toggle').classed('clickable', true).on('click', function(d) {
@@ -158,50 +129,37 @@ function setupUI() {
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
+		sourceIds : 'Main',
 		consumptionNodeId : 108,
-		numDays : 7,
-		numMonths : 4,
-		numYears : 2,
-		northernHemisphere : 'false',
-		dataTypes: ['Consumption', 'Power']
+		consumptionSourceIds : 'A,B,C',
+		northernHemisphere : 'false'
 	});
-	sn.runtime.wChartRefreshMs = 10 * 60 * 1000;
+	sn.runtime.chartRefreshMs = 10 * 60 * 1000;
 
 	sn.runtime.seasonalDayOfWeekParameters = new sn.Configuration({
-		excludeSources : sn.runtime.excludeSources,
-		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
+		aggregate : 'SeasonalDayOfWeek',
+		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false),
+		plotProperties : {SeasonalDayOfWeek : 'wattHours'}
 	});
-
+	sn.runtime.seasonalDayOfWeekContainer = d3.select(d3.select('#seasonal-dow-chart').node().parentNode);
 	sn.runtime.seasonalDayOfWeekChart = sn.chart.seasonalDayOfWeekLineChart('#seasonal-dow-chart', sn.runtime.seasonalDayOfWeekParameters);
 	
+	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+	
 	setupUI();
-
-	// find our available data range, and then draw our charts!
-	function handleAvailableDataRange(event) {
-		setup(event.data.reportableInterval, event.data.availableSourcesMap);
-		//document.removeEventListener('snAvailableDataRange', handleAvailableDataRange, false);
-		
+	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				d3.json(sn.runtime.urlHelper.reportableInterval(sn.env.dataTypes), function(error, json) {
-					if ( json.data === undefined || json.data.endDateMillis === undefined ) {
-						sn.log('No data available for node {0}: {1}', sn.runtime.urlHelper.nodeId(), (error ? error : 'unknown reason'));
-						return;
-					}
-					if ( sn.runtime.seasonalDayOfWeekChart !== undefined ) {
-						var jsonEndDate = sn.dateTimeFormatLocal.parse(json.data.endDate);
-						if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
-							sn.runtime.reportableEndDate = jsonEndDate;
-							seasonalDayOfWeekChartSetup(sn.runtime.sourceMap);
-						}
+				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+					var jsonEndDate = repInterval.eDate;
+					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
+						setup(repInterval);
 					}
 				});
-			}, sn.runtime.wChartRefreshMs);
+			}, sn.runtime.chartRefreshMs);
 		}
-	}
-	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
-	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
-	sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
+	});
 }
