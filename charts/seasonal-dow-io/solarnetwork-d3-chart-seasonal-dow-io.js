@@ -41,13 +41,25 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 	}());
 	parent.me = self;
 	
-	// one name for consumption, one for generation
-	var layerNames = ['Consumption', 'Generation'];
+	var dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+	// change x scale to ordinal DOW, with a slight inset for first/last labels to fit more nicely
+	parent.x = d3.scale.ordinal()
+		.rangePoints([0, parent.width], 0.2);
 	
-	var sourceIdDataTypeMap = {Consumption : 'Consumption', Power : 'Generation'};
+	parent.xAxisTicks = function() {
+		return parent.x.domain();
+	}
 	
-	// Array of string color values representing spring, summer, autumn, winter
-	var seasonColors;
+	parent.xAxisTickFormatter = function() {
+		return function(d, i) {
+			if ( parent.xAxisTickCallback() ) {
+				return xAxisTickCallback().call(parent.me, d, i, parent.x);
+			} else {
+				return dayNames[i];
+			}
+		};
+	}
 	
 	// Boolean, true for northern hemisphere seasons, false for southern.
 	var northernHemisphere;
@@ -61,15 +73,14 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 	var linePathGenerator = d3.svg.line()
 		.interpolate('monotone')
 		.x(function(d) {
-			return parent.x(d.date); 
+			return (Math.round(parent.x(d.date) + 0.5) - 0.5);
 		})
-		.y(function(d) { return parent.y(d.y) - 0.5; });
-
-	// x-domain is static as day-of-week
-	//parent.x.domain(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+		.y(function(d) { 
+			return (Math.round(parent.y(d.y) + 0.5) - 0.5);
+		});
 
 	function seasonColorFn(d, i) {
-		var seasonColors = (parent.config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
+		var seasonColors = (parent.config.seasonColors || sn.seasonColors);
 		var season = ((i + (northernHemisphere ? 0 : 2)) % 4);
 		return seasonColors[season];
 	}
@@ -126,8 +137,11 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 		if ( plus !== null || minus !== null ) {
 			sum = plus - minus;
 		}
-		return { date : dayOfWeekDate(array[0].dow), y : sum, plus : plus, minus : minus, 
-			season: array[0].season, 
+		return { date : dayOfWeekDate(array[0].dow), y : sum, 
+			plus : plus, 
+			minus : minus, 
+			season : array[0].season, 
+			dow : array[0].dow,
 			groupId : array[0][parent.internalPropName].groupId };
 	}
 	
@@ -135,7 +149,8 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 		var plotPropName = parent.plotPropertyName,
 			groupIds = parent.groupIds,
 			rangeX = [new Date(), new Date()],
-			rangeY = [0, 0];
+			rangeY = [0, 0],
+			interval = d3.time.day.utc;
 		
 		groupLayers = {};
 
@@ -204,8 +219,8 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 			}
 		});
 		
-		// setup X domain
-		parent.x.domain(rangeX);
+		// setup X domain		
+		parent.x.domain(interval.range(rangeX[0], interval.offset(rangeX[1], 1)));
 		
 		// setup Y domain
 		parent.y.domain(rangeY).nice();
@@ -214,66 +229,37 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 	}
 	
 	function axisXVertRule(d) {
-		return (Math.round(x(d) + 0.5) - 0.5);
+		return (Math.round(parent.x(d) + 0.5) - 0.5);
 	}
 	
-	function adjustAxisX() {
-		var ticks = x.domain();
-		adjustAxisXTicks(ticks);
-		adjustAxisXRules(ticks);
-	}
-	
-	function adjustAxisXTicks(ticks) {
-		// Add hour labels, centered within associated band
-		var labels = svgTickGroupX.selectAll("text").data(ticks);
-
-		labels.transition().duration(transitionMs)
-		  	.attr("x", axisXVertRule)
-		  	.text(Object);
-		
-		labels.enter().append("text")
-			.attr("dy", "-0.5em") // needed so descenders not cut off
-			.style("opacity", 1e-6)
-			.attr("x", axisXVertRule)
-		.transition().duration(transitionMs)
-				.style("opacity", 1)
-				.text(Object)
-				.each('end', function() {
-						// remove the opacity style
-						d3.select(this).style("opacity", null);
-					});
-		
-		labels.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-			.remove();
-	}
-	
-	function adjustAxisXRules(vertRuleTicks) {
-		var axisLines = svgRoot.select("g.vertrule").selectAll("line").data(vertRuleTicks);
+	function drawAxisXRules() {
+		var transitionMs = parent.transitionMs();
+		var axisLines = parent.svgRuleRoot.selectAll('line.vert').data(parent.x.domain());
 		axisLines.transition().duration(transitionMs)
-	  		.attr("x1", axisXVertRule)
-	  		.attr("x2", axisXVertRule);
+	  		.attr('x1', axisXVertRule)
+	  		.attr('x2', axisXVertRule);
 		
-		axisLines.enter().append("line")
-			.style("opacity", 1e-6)
-			.attr("x1", axisXVertRule)
-	  		.attr("x2", axisXVertRule)
-	  		.attr("y1", 0)
-	  		.attr("y2", h + 10)
+		axisLines.enter().append('line')
+			.style('opacity', 1e-6)
+			.classed('vert', true)
+			.attr('x1', axisXVertRule)
+	  		.attr('x2', axisXVertRule)
+	  		.attr('y1', 0)
+	  		.attr('y2', parent.height)
 		.transition().duration(transitionMs)
-			.style("opacity", vertRuleOpacity)
+			.style('opacity', parent.vertRuleOpacity())
 			.each('end', function() {
 				// remove the opacity style
-				d3.select(this).style("opacity", null);
+				d3.select(this).style('opacity', null);
 			});
 		
 		axisLines.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
+			.style('opacity', 1e-6)
 			.remove();
 	}
 	
 	function setupDrawData() {
-		var groupedData = [[],[],[],[]],
+		var groupedData = [[],[],[],[]], // one group per season
 			groupIds = parent.groupIds;
 
 		// construct a 3D array of our data, to achieve a group/source/datum hierarchy;
@@ -327,22 +313,8 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 			.remove();
 		
 		superDraw();
+		drawAxisXRules();
 	}
-
-	/**
-	 * Get/set the x-axis domain (days of the week). You can use a different language by
-	 * setting the domain to something else.
-	 * 
-	 * @param {String[]} [value] the 7 day of week names
-	 * @return if used as a getter an array with the days of the weeks, which are used as labels,
-	 *         otherwise this object
-	 * @memberOf sn.chart.seasonalDayOfWeekLineChart
-	 */
-	self.xDomain = function(value) { 
-		if ( !arguments.length ) return parent.x.domain();
-		parent.x.domain(value);
-		return parent.me;
-	};
 
 	/**
 	 * Toggle between nothern/southern hemisphere seasons, or get the current setting.
@@ -371,7 +343,7 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param {Array} [value] the array of group IDs to use
 	 * @return {Array} when used as a getter, the list of group IDs currently used, otherwise this object
-	 * @memberOf sn.chart.energyIOBarChart
+	 * @memberOf sn.chart.seasonalDayOfWeekLineChart
 	 */
 	self.negativeGroupIds = function(value) {
 		if ( !arguments.length ) {
@@ -393,6 +365,22 @@ sn.chart.seasonalDayOfWeekLineChart = function(containerSelector, chartConfig) {
 		return parent.me;
 	};
 
+	/**
+	 * Get/set the day of the week names.
+	 * 
+	 * @param {String[]} [value] the 7 day of week names
+	 * @return if used as a getter an array with the days of the weeks, which are used as labels,
+	 *         otherwise this object
+	 * @memberOf sn.chart.seasonalDayOfWeekLineChart
+	 */
+	self.dayNames = function(value) { 
+		if ( !arguments.length ) return dayNames;
+		if ( Array.isArray(value) ) {
+			dayNames = value;
+		}
+		return parent.me;
+	};
+	
 	// override our setup funciton
 	parent.setup = setup;
 	
