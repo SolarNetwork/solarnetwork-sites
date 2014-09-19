@@ -7,7 +7,7 @@
  * @require queue 1.0
  */
 var sn = {
-	version : '0.0.5',
+	version : '0.0.6',
 	
 	/**
 	 * @namespace the SolarNetwork chart namespace.
@@ -211,6 +211,43 @@ sn.parseURLQueryTerms = function(search) {
 		}
 	}
 	return params;
+};
+
+/**
+ * Encode the properties of an object as a URL query string.
+ * 
+ * <p>If an object property has an array value, multiple URL parameters will be encoded for that property.</p>
+ * 
+ * @param {Object} an object to encode as URL parameters
+ * @return {String} the encoded query parameters
+ */
+sn.encodeURLQueryTerms = function(parameters) {
+	var result = '',
+		prop,
+		val,
+		i,
+		len;
+	function handleValue(k, v) {
+		if ( result.length ) {
+			result += '&';
+		}
+		result += encodeURIComponent(k) + '=' + encodeURIComponent(v);
+	}
+	if ( parameters ) {
+		for ( prop in parameters ) {
+			if ( parameters.hasOwnProperty(prop) ) {
+				val = parameters[prop];
+				if ( Array.isArray(val) ) {
+					for ( i = 0, len = val.length; i < len; i++ ) {
+						handleValue(prop, val[i]);
+					}
+				} else {
+					handleValue(prop, val);
+				}
+			}
+		}
+	}
+	return result;
 };
 
 /**
@@ -1138,6 +1175,27 @@ sn.pixelWidth = function(selector) {
 		return null;
 	}
 	return result;
+};
+
+/**
+ * Get a UTC season constant for a date. Seasons are groups of 3 months, e.g. 
+ * Spring, Summer, Autumn, Winter. The returned value will be a number between
+ * 0 and 3, where (Dec, Jan, Feb) = 0, (Mar, Apr, May) = 1, (Jun, Jul, Aug) = 2,
+ * and (Sep, Oct, Nov) = 3.
+ * 
+ * @param {Date} date The date to get the season for.
+ * @returns a season constant number, from 0 - 3
+ */
+ sn.seasonForDate = function(date) {
+	if ( date.getUTCMonth() < 2 || date.getUTCMonth() === 11 ) {
+		return 3;
+	} else if ( date.getUTCMonth() < 5 ) {
+		return 0;
+	} else if ( date.getUTCMonth() < 8 ) {
+		return 1;
+	} else {
+		return 2;
+	}
 };
 
 /**
