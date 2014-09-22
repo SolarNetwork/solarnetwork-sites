@@ -300,10 +300,11 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		valueY : { value : valueY },
 		heightY : { value : heightY },
 	
-		drawAxisX : { value : drawAxisX },
 		drawAxisXRules : { value : drawAxisXRules },
 		drawBarsForSources : { value : drawBarsForSources },
 	});
+	
+	parent.drawAxisX = drawAxisX;
 	
 	return self;
 };
