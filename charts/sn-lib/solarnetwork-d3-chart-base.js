@@ -37,13 +37,6 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	
 	var me = that;
 	
-	// extending classes should re-define this property so method chaining works
-	Object.defineProperty(that, 'me', {
-						enumerable : false,
-						get : function() { return me; },
-						set : function(obj) { me = obj; }
-					});
-
 	var internalPropName = '__internal__';
 	var discardId = '__discard__';
 
@@ -378,29 +371,35 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 				});
 	}
 	
-	Object.defineProperties(that, {
-		x : { value : x },
-		y : { value : y },
-		config : { value : config },
-		fillColor : { value : fillColor },
-		groupOpacityFn : { value : groupOpacityFn },
-		internalPropName : { value : internalPropName },
-		plotPropertyName : { get : plotPropertyName },
-		discardId : { value : discardId },
-		padding : { value : p },
-		width : { value : w },
-		height : { value : h },
-		svgRoot : { value : svgRoot },
-		svgDataRoot : { value : svgDataRoot },
-		svgTickGroupX : { value : svgTickGroupX },
-		groupIds : { get : function() { return groupIds; } },
-		groupLayers : { get : function() { return groupLayers; } },
-		computeUnitsY : { value : computeUnitsY },
-		drawAxisX : { value : drawAxisX },
-		drawAxisY : { value : drawAxisY },
-		draw : { value : draw, writable : true },
-		setup : { value : setup, writable : true }
-	});
+	function makeExtend(obj) {
+		Object.defineProperties(obj, {
+			// extending classes should re-define this property so method chaining works
+			me : { get : function() { return me; }, set : function(obj) { me = obj; } },
+	
+			x : { value : x },
+			y : { value : y },
+			config : { value : config },
+			fillColor : { value : fillColor },
+			groupOpacityFn : { value : groupOpacityFn },
+			internalPropName : { value : internalPropName },
+			plotPropertyName : { get : plotPropertyName },
+			discardId : { value : discardId },
+			padding : { value : p },
+			width : { value : w },
+			height : { value : h },
+			svgRoot : { value : svgRoot },
+			svgDataRoot : { value : svgDataRoot },
+			svgTickGroupX : { value : svgTickGroupX },
+			groupIds : { get : function() { return groupIds; } },
+			groupLayers : { get : function() { return groupLayers; } },
+			computeUnitsY : { value : computeUnitsY },
+			drawAxisX : { value : drawAxisX, configurable : true },
+			drawAxisY : { value : drawAxisY, configurable : true },
+			
+			draw : { get : function() { return draw; }, set : function(v) { draw = v; } },
+			setup : { get : function() { return setup; }, set : function(v) { setup = v; } }
+		});
+	}
 
 	/**
 	 * Scale a date for the x-axis.
@@ -754,6 +753,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return me;
 	};
 
+	makeExtend(that);
 	parseConfiguration();
 	return that;
 };
@@ -765,13 +765,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	
 	var me = self;
 	
-	// extending classes should re-define this property so method chaining works
-	Object.defineProperty(self, 'me', {
-						enumerable : false,
-						get : function() { return me; },
-						set : function(obj) { me = obj; }
-					});
-
 	var internalPropName = '__internal__';
 	var aggregates = ['FiveMinute', 'TenMinute','FifteenMinute','Hour', 'HourOfDay', 'SeasonalHourOfDay', 
 			'Day', 'DayOfWeek', 'SeasonalDayOfWeek', 'Month'];
@@ -1027,36 +1020,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 					// remove the opacity style
 					d3.select(this).style('opacity', null);
 				});
-	}
-
-	function makeExtend(obj) {
-		Object.defineProperties(obj, {
-			x : { get : function() { return x; }, set : function(v) { x = v; } },
-			y : { get : function() { return y; }, set : function(v) { y = v; } },
-			xAxisTickCount : { get : function() { return xAxisTickCount; }, set : function(v) { xAxisTickCount = v; } },
-			xAxisTicks : { get : function() { return xAxisTicks; }, set : function(v) { xAxisTicks = v; } },
-			xAxisTickFormatter : { get : function() { return xAxisTickFormatter; }, set : function(v) { xAxisTickFormatter = v; } },
-			yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
-			config : { value : config },
-			fillColor : { value : fillColor },
-			internalPropName : { value : internalPropName },
-			plotPropertyName : { get : plotPropertyName },
-			padding : { value : p },
-			width : { value : w },
-			height : { value : h },
-			svgRoot : { value : svgRoot },
-			svgDataRoot : { value : svgDataRoot },
-			svgRuleRoot : { value : svgRuleRoot },
-			svgTickGroupX : { value : svgTickGroupX },
-			groupIds : { get : function() { return groupIds; } },
-			computeUnitsY : { value : computeUnitsY },
-			drawAxisX : { value : drawAxisX },
-			drawAxisY : { value : drawAxisY },
-			
-			makeExtend : { value : makeExtend, writable : true },
-			draw : { value : draw, writable : true },
-			setup : { value : setup, writable : true }
-		});
 	}
 
 	/**
@@ -1409,7 +1372,33 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		return me;
 	};
 
-	makeExtend(self);
+	Object.defineProperties(self, {
+		// extending classes should re-define this property so method chaining works
+		me : { get : function() { return me; }, set : function(obj) { me = obj; } },
+		x : { get : function() { return x; }, set : function(v) { x = v; } },
+		y : { get : function() { return y; }, set : function(v) { y = v; } },
+		xAxisTickCount : { get : function() { return xAxisTickCount; }, set : function(v) { xAxisTickCount = v; } },
+		xAxisTicks : { get : function() { return xAxisTicks; }, set : function(v) { xAxisTicks = v; } },
+		xAxisTickFormatter : { get : function() { return xAxisTickFormatter; }, set : function(v) { xAxisTickFormatter = v; } },
+		yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
+		config : { value : config },
+		fillColor : { value : fillColor },
+		internalPropName : { value : internalPropName },
+		plotPropertyName : { get : plotPropertyName },
+		padding : { value : p },
+		width : { value : w },
+		height : { value : h },
+		svgRoot : { value : svgRoot },
+		svgDataRoot : { value : svgDataRoot },
+		svgRuleRoot : { value : svgRuleRoot },
+		svgTickGroupX : { value : svgTickGroupX },
+		groupIds : { get : function() { return groupIds; } },
+		computeUnitsY : { value : computeUnitsY },
+		drawAxisX : { value : drawAxisX },
+		drawAxisY : { value : drawAxisY },
+		draw : { get : function() { return draw; }, set : function(v) { draw = v; } },
+		setup : { get : function() { return setup; }, set : function(v) { setup = v; } }
+	});
 	parseConfiguration();
 	return self;
 };

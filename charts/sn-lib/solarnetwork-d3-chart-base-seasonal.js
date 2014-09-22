@@ -21,22 +21,10 @@ if ( sn.chart === undefined ) {
  */
 sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseGroupedChart(containerSelector, chartConfig),
-		superDraw = sn.superMethod.call(parent, 'draw'),
-		superMakeExtend = sn.superMethod.call(parent, 'makeExtend');
-	var self = (function() {
-		var	me = sn.util.copy(parent);
-		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
-		return me;
-	}());
-	parent.me = self;
+		superDraw = sn.superMethod.call(parent, 'draw');
+	var self = sn.util.copyAll(parent, {version : '1.0.0'});
+	self.me = self;
 	
-	// extending classes should re-define this property so method chaining works
-	Object.defineProperty(self, 'me', {
-						enumerable : false,
-						get : function() { return parent.me; },
-						set : function(obj) { parent.me = obj; }
-					});
-
 	var timeKeyLabels = ['Midnight', 
 						'1am', '2am', '3am', '4am', '5am', '6am', '7am', '8am', '9am', '10am', '11am',
 						'Noon',
@@ -318,15 +306,6 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 		drawAxisXRules();
 	}
 
-	function makeExtend(obj) {
-		superMakeExtend(obj);
-		Object.defineProperties(obj, {
-			dateForTimeKey : { get : function() { return dateForTimeKey; }, set : function(v) { dateForTimeKey = v; } },
-			timeKeyForDate : { get : function() { return timeKeyForDate; }, set : function(v) { timeKeyForDate = v; } },
-			timeKeyInterval : { get : function() { return timeKeyInterval; }, set : function(v) { timeKeyInterval = v; } }
-		});
-	}
-	
 	/**
 	 * Toggle between nothern/southern hemisphere seasons, or get the current setting.
 	 * 
@@ -392,10 +371,11 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 		return parent.me;
 	};
 	
-	makeExtend(self);
-	
-	// extend
-	parent.makeExtend = makeExtend;
+	Object.defineProperties(self, {
+		dateForTimeKey : { get : function() { return dateForTimeKey; }, set : function(v) { dateForTimeKey = v; } },
+		timeKeyForDate : { get : function() { return timeKeyForDate; }, set : function(v) { timeKeyForDate = v; } },
+		timeKeyInterval : { get : function() { return timeKeyInterval; }, set : function(v) { timeKeyInterval = v; } }
+	});
 	
 	// override our setup funciton
 	parent.setup = setup;

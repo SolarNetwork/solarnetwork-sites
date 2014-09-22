@@ -35,27 +35,10 @@ if ( sn === undefined ) {
  * @returns {sn.chart.baseGroupedStackBarChart}
  */
 sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
-	'use strict';
 	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig);
-	var that = (function() {
-		var	me = sn.util.copy(parent);
-		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
-		return me;
-	}());
-	parent.me = that;
+	var self = sn.util.copyAll(parent);
+	self.me = self;
 	
-	var me = that;
-	
-	// extending classes should re-define this property so method chaining works
-	Object.defineProperty(that, 'me', {
-						enumerable : false,
-						get : function() { return me; },
-						set : function(obj) { 
-							me = obj;
-							parent.me = obj;
-						}
-					});
-
 	// an ordinal x-axis scale, to render precise bars with
 	var xBar = d3.scale.ordinal();
 
@@ -159,7 +142,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	/**
-	 * Remove data that falls outside the X domain.
+	 * Remove data self falls outside the X domain.
 	 * 
 	 * @param {Array} array The array to inspect.
 	 * @returns {Array} Either a copy of the array with some elements removed, or the original array
@@ -286,53 +269,6 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 			.remove();
 	}
 	
-	Object.defineProperties(that, {
-		'x' : { value : parent.x },
-		'y' : { value : parent.y },
-		'config' : { value : parent.config },
-		'fillColor' : { value : parent.fillColor },
-		'groupOpacityFn' : { value : parent.groupOpacityFn },
-		'internalPropName' : { value : parent.internalPropName },
-		'discardId' : { value : parent.discardId },
-		'plotPropertyName' : { get : function() { return parent.plotPropertyName; } },
-		'padding' : { value : parent.padding },
-		'width' : { value : parent.width },
-		'height' : { value: parent.height },
-		'svgRoot' : { value : parent.svgRoot },
-		'svgDataRoot' : { value : parent.svgDataRoot },
-		'svgTickGroupX' : { value : parent.svgTickGroupX },
-		'groupIds' : { get : function() { return parent.groupIds; } },
-		'groupLayers' : { get : function() { return parent.groupLayers; } },
-		
-		'svgVertRuleGroup' : { value : svgVertRuleGroup },
-		'xBar' : { value : xBar },
-		'xBarPadding' : { value : xBarPadding },
-		'trimToXDomain' : { value : trimToXDomain },
-		'computeDomainX' : { value : computeDomainX },
-		'groupFillFn' : { value : groupFillFn },
-		
-		// the following functions accept a data element, e.g. { date : Date, y : Number, y0 : Number }
-		'keyX' : { value : keyX },
-		'valueX' : { value : valueX },
-		'valueXMidBar' : { value : valueXMidBar },
-		'valueXVertRule' : { value : valueXVertRule },
-		'valueY' : { value : valueY },
-		'heightY' : { value : heightY },
-		
-		'drawAxisX' : { value : drawAxisX },
-		'drawAxisXRules' : { value : drawAxisXRules },
-		'drawBarsForSources' : { value : drawBarsForSources },
-		'drawAxisY' : { value : parent.drawAxisY },
-		'draw' : { 
-			get : function() { return parent.draw; },
-			set : function(f) { parent.draw = f; }
-		},
-		'setup' : { 
-			get : function() { return parent.setup; },
-			set : function(f) { parent.setup = f; }
-		}
-	});
-
 	/**
 	 * Scale a date for the x-axis. The values returned are centered within bars.
 	 * 
@@ -340,7 +276,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	 * @return {Number} the scaled value
 	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
-	that.scaleDate = function(date) {
+	self.scaleDate = function(date) {
 		var barRange = xBar.range(),
 			ex = xBar.rangeExtent(),
 			x = parent.scaleDate(date);
@@ -348,7 +284,28 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		return result;
 	};
 	
-	return that;
+	Object.defineProperties(self, {
+		svgVertRuleGroup : { value : svgVertRuleGroup },
+		xBar : { value : xBar },
+		xBarPadding : { value : xBarPadding },
+		trimToXDomain : { value : trimToXDomain },
+		computeDomainX : { value : computeDomainX },
+		groupFillFn : { value : groupFillFn },
+	
+		// the following functions accept a data element, e.g. { date : Date, y : Number, y0 : Number }
+		keyX : { value : keyX },
+		valueX : { value : valueX },
+		valueXMidBar : { value : valueXMidBar },
+		valueXVertRule : { value : valueXVertRule },
+		valueY : { value : valueY },
+		heightY : { value : heightY },
+	
+		drawAxisX : { value : drawAxisX },
+		drawAxisXRules : { value : drawAxisXRules },
+		drawBarsForSources : { value : drawBarsForSources },
+	});
+	
+	return self;
 };
 
 }());
