@@ -828,7 +828,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 
 	var xAxisTickCount = 12;
 	var yAxisTickCount = 5;
-
+	
 	function parseConfiguration() {
 		self.aggregate(config.aggregate);
 		self.plotProperties(config.value('plotProperties'));
@@ -1028,32 +1028,36 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 					d3.select(this).style('opacity', null);
 				});
 	}
-	
-	Object.defineProperties(self, {
-		x : { get : function() { return x; }, set : function(v) { x = v; } },
-		y : { get : function() { return y; }, set : function(v) { y = v; } },
-		xAxisTickCount : { get : function() { return xAxisTickCount; }, set : function(v) { xAxisTickCount = v; } },
-		xAxisTicks : { get : function() { return xAxisTicks; }, set : function(v) { xAxisTicks = v; } },
-		xAxisTickFormatter : { get : function() { return xAxisTickFormatter; }, set : function(v) { xAxisTickFormatter = v; } },
-		yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
-		config : { value : config },
-		fillColor : { value : fillColor },
-		internalPropName : { value : internalPropName },
-		plotPropertyName : { get : plotPropertyName },
-		padding : { value : p },
-		width : { value : w },
-		height : { value : h },
-		svgRoot : { value : svgRoot },
-		svgDataRoot : { value : svgDataRoot },
-		svgRuleRoot : { value : svgRuleRoot },
-		svgTickGroupX : { value : svgTickGroupX },
-		groupIds : { get : function() { return groupIds; } },
-		computeUnitsY : { value : computeUnitsY },
-		drawAxisX : { value : drawAxisX },
-		drawAxisY : { value : drawAxisY },
-		draw : { value : draw, writable : true },
-		setup : { value : setup, writable : true }
-	});
+
+	function makeExtend(obj) {
+		Object.defineProperties(obj, {
+			x : { get : function() { return x; }, set : function(v) { x = v; } },
+			y : { get : function() { return y; }, set : function(v) { y = v; } },
+			xAxisTickCount : { get : function() { return xAxisTickCount; }, set : function(v) { xAxisTickCount = v; } },
+			xAxisTicks : { get : function() { return xAxisTicks; }, set : function(v) { xAxisTicks = v; } },
+			xAxisTickFormatter : { get : function() { return xAxisTickFormatter; }, set : function(v) { xAxisTickFormatter = v; } },
+			yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
+			config : { value : config },
+			fillColor : { value : fillColor },
+			internalPropName : { value : internalPropName },
+			plotPropertyName : { get : plotPropertyName },
+			padding : { value : p },
+			width : { value : w },
+			height : { value : h },
+			svgRoot : { value : svgRoot },
+			svgDataRoot : { value : svgDataRoot },
+			svgRuleRoot : { value : svgRuleRoot },
+			svgTickGroupX : { value : svgTickGroupX },
+			groupIds : { get : function() { return groupIds; } },
+			computeUnitsY : { value : computeUnitsY },
+			drawAxisX : { value : drawAxisX },
+			drawAxisY : { value : drawAxisY },
+			
+			makeExtend : { value : makeExtend, writable : true },
+			draw : { value : draw, writable : true },
+			setup : { value : setup, writable : true }
+		});
+	}
 
 	/**
 	 * Scale a date for the x-axis.
@@ -1405,6 +1409,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		return me;
 	};
 
+	makeExtend(self);
 	parseConfiguration();
 	return self;
 };
