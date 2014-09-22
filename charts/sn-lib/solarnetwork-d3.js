@@ -1783,6 +1783,36 @@ sn.util.copy = function(obj1, obj2) {
 	return obj2;
 };
 
+/**
+ * Copy the enumerable and non-enumerable own properties of `obj` onto `obj2` and return `obj2`.
+ * 
+ * @param {Object} obj1 - The object to copy enumerable properties from.
+ * @param {Object} [obj2] - The optional object to copy the properties to. If not
+ *                          provided a new object will be created.
+ * @returns {Object} The object whose properties were copied to.
+ * @since 0.0.5
+ */
+sn.util.copyAll = function(obj1, obj2) {
+	var prop,
+		keys = Object.getOwnPropertyNames(obj1),
+		i, len,
+		key,
+		desc;
+	if ( obj2 === undefined ) {
+		obj2 = {};
+	}
+	for ( i = 0, len = keys.length; i < len; i += 1 ) {
+		key = keys[i];
+		desc = Object.getOwnPropertyDescriptor(obj1, key);
+		if ( desc ) {
+			Object.defineProperty(obj2, key, desc);
+		} else {
+			obj2[key] = obj1[key];
+		}
+	}
+	return obj2;
+};
+
 // parse URL parameters into sn.env, e.g. ?nodeId=11 puts sn.env.nodeId === '11'
 if ( window !== undefined && window.location.search !== undefined ) {
 	sn.env = sn.parseURLQueryTerms(window.location.search);
