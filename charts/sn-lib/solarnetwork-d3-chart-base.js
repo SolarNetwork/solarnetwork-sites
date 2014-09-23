@@ -88,6 +88,9 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 						d[self.internalPropName] = {groupId : groupId};
 						if ( self.dataCallback() ) {
 							self.dataCallback().call(self.me, groupId, d);
+						} else if ( d.date === undefined ) {
+							// automatically create Date
+							d.date = sn.datum.datumDate(d);
 						}
 					}
 					

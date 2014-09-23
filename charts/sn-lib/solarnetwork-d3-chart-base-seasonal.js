@@ -160,7 +160,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 						d[parent.internalPropName] = { groupId : groupId };
 						if ( parent.dataCallback() ) {
 							parent.dataCallback().call(me, groupId, d);
-						} else {
+						} else if ( d.date === undefined ) {
 							// automatically create Date
 							d.date = sn.datum.datumDate(d);
 						}
