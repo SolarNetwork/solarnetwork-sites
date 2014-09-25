@@ -94,9 +94,9 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 					d[parent.internalPropName].groupId = groupId;
 					if ( self.dataCallback() ) {
 						self.dataCallback().call(parent.me, groupId, d);
-					}
-					if ( d.sourceId === '' ) {
-						d.sourceId = 'Main';
+					} else if ( d.date === undefined ) {
+						// automatically create Date
+						d.date = sn.datum.datumDate(d);
 					}
 				}
 				// remove excluded sources...
