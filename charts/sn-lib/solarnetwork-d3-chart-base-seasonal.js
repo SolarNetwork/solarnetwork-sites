@@ -130,7 +130,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 			plus : plus, 
 			minus : minus, 
 			season : array[0].season, 
-			hod : array[0].hod,
+			timeKey : array[0].timeKey,
 			groupId : array[0][parent.internalPropName].groupId };
 	}
 	
