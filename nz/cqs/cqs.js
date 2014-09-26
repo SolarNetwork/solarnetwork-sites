@@ -782,7 +782,8 @@ function onDocumentReady() {
 	sn.runtime.overviewAreaContainer = d3.select(d3.select('#overview-chart').node().parentNode);
 	sn.runtime.overviewAreaChart = sn.chart.powerAreaChart('#overview-chart', sn.runtime.overviewAreaParameters)
 		.colorCallback(colorForDataTypeSource)
-		.sourceExcludeCallback(sourceExcludeCallback);
+		.sourceExcludeCallback(sourceExcludeCallback)
+		.layerPostProcessCallback(layerPostProcessCallback);
 	
 	sn.runtime.energyBarParameters = new sn.Configuration({
 		height : mainChartHeight,
@@ -883,7 +884,7 @@ function onDocumentReady() {
 						setupOutdatedMessage(jsonEndDate);
 					}
 				});
-			}, sn.runtime.wChartRefreshMs);
+			}, sn.runtime.refreshMs);
 		}
 	});
 }
