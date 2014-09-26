@@ -43,233 +43,35 @@ function layerPostProcessCallback(dataType, layerData) {
 		{sourceId : displayNameForDataType(dataType)});
 }
 
+function regenerateChart(container, chart, parameters) {
+	chart.regenerate();
+	sn.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
+}
+
 // handle clicks on legend handler
 function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.source);
-	if ( sn.runtime.energyBarChart !== undefined ) {
-		// use a slight delay, otherwise transitions can be jittery
-		setTimeout(function() {
-			sn.runtime.energyBarChart.regenerate();
-			adjustChartDisplayUnits('.watthour-chart', 'Wh', sn.runtime.energyBarChart.yScale());
-		}, sn.runtime.energyBarChart.transitionMs() * 0.5);
-	}
 	if ( sn.runtime.powerAreaChart !== undefined ) {
-		// use a slight delay, otherwise transitions can be jittery
-		setTimeout(function() {
-			sn.runtime.powerAreaChart.regenerate();
-			adjustChartDisplayUnits('.watt-chart', 'W', sn.runtime.powerAreaChart.yScale());
-		}, sn.runtime.powerAreaChart.transitionMs() * 0.5);
+		regenerateChart(
+			sn.runtime.powerAreaContainer,
+			sn.runtime.powerAreaChart,
+			sn.runtime.powerAreaParameters);
+	}
+	if ( sn.runtime.energyBarChart !== undefined ) {
+		regenerateChart(
+			sn.runtime.energyBarContainer,
+			sn.runtime.energyBarChart,
+			sn.runtime.energyBarParameters);
 	}
 	if ( sn.runtime.overviewAreaChart !== undefined ) {
-		// use a slight delay, otherwise transitions can be jittery
-		setTimeout(function() {
-			sn.runtime.overviewAreaChart.regenerate();
-			adjustChartDisplayUnits('.overview-chart', 'Wh', sn.runtime.overviewAreaChart.yScale());
-		}, sn.runtime.overviewAreaChart.transitionMs() * 0.5);
+		regenerateChart(
+			sn.runtime.overviewAreaContainer,
+			sn.runtime.overviewAreaChart,
+			sn.runtime.overviewAreaParameters);
 	}
 }
 
-//Watt hour stacked bar chart
-function wattHourChartSetup(endDate, sourceMap) {
-	var end;
-	var start;
-	var timeCount;
-	var timeUnit;
-	// for aggregate time ranges, the 'end' date in inclusive
-	if ( sn.runtime.energyBarParameters.aggregate === 'Month' ) {
-		timeCount = (sn.env.numYears || 1);
-		timeUnit = 'year';
-		end = d3.time.month.utc.floor(endDate);
-		start = d3.time.year.utc.offset(end, -timeCount);
-	} else if ( sn.runtime.energyBarParameters.aggregate === 'Day' ) {
-		timeCount = (sn.env.numMonths || 4);
-		timeUnit = 'month';
-		end = d3.time.day.utc.floor(endDate);
-		start = d3.time.month.utc.offset(end, -timeCount);
-	} else {
-		// assume Hour
-		timeCount = (sn.env.numDays || 7);
-		timeUnit = 'day';
-		end = d3.time.hour.utc.floor(endDate);
-		start = d3.time.day.utc.offset(end, -timeCount);
-	}
-	
-	d3.select('.watthour-chart .time-count').text(timeCount);
-	d3.select('.watthour-chart .time-unit').text(timeUnit);
-	
-	var q = queue();
-	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, sn.runtime.energyBarParameters.aggregate));
-	});
-	q.awaitAll(function(error, results) {
-		if ( error ) {
-			sn.log('Error requesting data: ' +error);
-			return;
-		}
-		var combinedData = [];
-		var i, iMax, j, jMax, json, datum, mappedSourceId;
-		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-			json = results[i];
-			if ( json.success !== true || Array.isArray(json.data) !== true ) {
-				sn.log('No data available for node {0} data type {1}', sn.runtime.urlHelper.nodeId(), sn.env.dataTypes[i]);
-				return;
-			}
-			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
-				datum = json.data[j];
-				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
-				if ( mappedSourceId !== undefined ) {
-					datum.sourceId = mappedSourceId;
-				}
-			}
-			combinedData = combinedData.concat(json.data);
-		}
-		sn.runtime.energyBarChart.consumptionSourceCount(consumptionSourceCount(sourceMap));
-		sn.runtime.energyBarChart.load(combinedData, {
-			aggregate : sn.runtime.energyBarParameters.aggregate
-		});
-		sn.log("Energy IO chart watt hour range: {0}", sn.runtime.energyBarChart.yDomain());
-		sn.log("Energy IO chart time range: {0}", sn.runtime.energyBarChart.xDomain());
-		adjustChartDisplayUnits('.watthour-chart', 'Wh', sn.runtime.energyBarChart.yScale());
-	});
-}
-
-function consumptionSourceCount(sourceMap) {
-	var array = sourceMap[sn.env.dataTypes[0]];
-	return ( array !== undefined ? array.length : 0);
-}
-
-function mappedSourceIdForDataType(i, sourceId) {
-	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[sn.env.dataTypes[i]];
-	if ( mappedSourceId !== undefined ) {
-		mappedSourceId = mappedSourceId[sourceId];
-	}
-	return mappedSourceId;
-}
-
-//Watt stacked area chart
-function wattChartSetup(endDate, sourceMap) {
-	var precision = (sn.env.minutePrecision || 10);
-	var timeCount = (sn.env.numHours || 24);
-	var timeUnit = 'hour';
-	var end = d3.time.minute.utc.ceil(endDate);
-	end.setUTCMinutes((end.getUTCMinutes() + precision - (end.getUTCMinutes() % precision)), 0, 0);
-	var start = d3.time.hour.utc.offset(end, -timeCount);
-	
-	d3.select('.watt-chart .time-count').text(timeCount);
-	d3.select('.watt-chart .time-unit').text(timeUnit);
-	
-	var q = queue();
-	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, sn.env.minutePrecision));
-	});
-	q.awaitAll(function(error, results) {
-		if ( error ) {
-			sn.log('Error requesting data: ' +error);
-			return;
-		}
-		var combinedData = [];
-		var i, iMax, j, jMax, json, datum, mappedSourceId;
-		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-			json = results[i];
-			if ( json.success !== true || Array.isArray(json.data) !== true ) {
-				sn.log('No data available for node {0} data type {1}', sn.runtime.urlHelper.nodeId(), sn.env.dataTypes[i]);
-				return;
-			}
-			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
-				datum = json.data[j];
-				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
-				if ( mappedSourceId !== undefined ) {
-					datum.sourceId = mappedSourceId;
-				}
-			}
-			combinedData = combinedData.concat(json.data);
-		}
-		sn.runtime.powerAreaChart.consumptionSourceCount(consumptionSourceCount(sourceMap));
-		sn.runtime.powerAreaChart.load(combinedData);
-		sn.log("Power IO chart watt range: {0}", sn.runtime.powerAreaChart.yDomain());
-		sn.log("Power IO chart time range: {0}", sn.runtime.powerAreaChart.xDomain());
-		adjustChartDisplayUnits('.watt-chart', 'W', sn.runtime.powerAreaChart.yScale());
-	});
-}
-
-//seasonal hour-of-day line chart
-function seasonalHourOfDayChartSetup(sourceMap) {
-	var q = queue();
-	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeList(e, null, null, 'SeasonalHourOfDay'));
-	});
-	q.awaitAll(function(error, results) {
-		if ( error ) {
-			sn.log('Error requesting data: ' +error);
-			return;
-		}
-		var combinedData = [];
-		var i, iMax, j, jMax, json, datum, mappedSourceId;
-		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-			json = results[i];
-			if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
-				sn.log('No data available for node {0} data type {1}', urlHelperForAvailbleDataRange(null, i).nodeId(), sn.env.dataTypes[i]);
-				return;
-			}
-			for ( j = 0, jMax = json.data.results.length; j < jMax; j++ ) {
-				datum = json.data.results[j];
-				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
-				if ( mappedSourceId !== undefined ) {
-					datum.sourceId = mappedSourceId;
-				}
-			}
-			combinedData = combinedData.concat(json.data.results);
-		}
-		
-		sn.runtime.seasonalHourOfDayChart.load(combinedData, sn.runtime.seasonalHourOfDayParameters);
-		sn.log("Seasonal HOD IO chart watt hour range: {0}", sn.runtime.seasonalHourOfDayChart.yDomain());
-		sn.log("Seasonal HOD IO chart time range: {0}", sn.runtime.seasonalHourOfDayChart.xDomain());
-		adjustChartDisplayUnits('.seasonal-hod-chart', 'Wh', sn.runtime.seasonalHourOfDayChart.yScale());
-	});
-}
-
-//seasonal day of week line chart
-function seasonalDayOfWeekChartSetup(sourceMap) {
-	var q = queue();
-	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeList(e, null, null, 'SeasonalDayOfWeek'));
-	});
-	q.awaitAll(function(error, results) {
-		if ( error ) {
-			sn.log('Error requesting data: ' +error);
-			return;
-		}
-		var combinedData = [];
-		var i, iMax, j, jMax, json, datum, mappedSourceId;
-		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-			json = results[i];
-			if ( json.success !== true || json.data === undefined || Array.isArray(json.data.results) !== true ) {
-				sn.log('No data available for node {0} data type {1}', urlHelperForAvailbleDataRange(null, i).nodeId(), sn.env.dataTypes[i]);
-				return;
-			}
-			for ( j = 0, jMax = json.data.results.length; j < jMax; j++ ) {
-				datum = json.data.results[j];
-				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
-				if ( mappedSourceId !== undefined ) {
-					datum.sourceId = mappedSourceId;
-				}
-			}
-			combinedData = combinedData.concat(json.data.results);
-		}
-		
-		sn.runtime.seasonalDayOfWeekChart.load(combinedData, sn.runtime.seasonalDayOfWeekParameters);
-		sn.log("Seasonal DOW IO chart watt hour range: {0}", sn.runtime.seasonalDayOfWeekChart.yDomain());
-		sn.log("Seasonal DOW IO chart time range: {0}", sn.runtime.seasonalDayOfWeekChart.xDomain());
-		adjustChartDisplayUnits('.seasonal-dow-chart', 'Wh', sn.runtime.seasonalDayOfWeekChart.yScale());
-	});
-}
-
-// Wh stacked area chart over whole range
-function overviewAreaChartSetup(container, chart, parameters, endDate, sourceMap) {
+function setupGroupedLayerChart(container, chart, parameters, endDate, sourceMap) {
 	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	
@@ -283,7 +85,7 @@ function overviewAreaChartSetup(container, chart, parameters, endDate, sourceMap
 			queryRange.start, queryRange.end, parameters.aggregate)
 	]).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 2) ) {
-			sn.log("Unable to load data for Power Area chart: {0}", error);
+			sn.log("Unable to load data for chart: {0}", error);
 			return;
 		}
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
@@ -291,51 +93,33 @@ function overviewAreaChartSetup(container, chart, parameters, endDate, sourceMap
 			.load(results[0], 'Consumption')
 			.load(results[1], 'Generation')
 			.regenerate();
-		sn.log("Power Area chart watt range: {0}", chart.yDomain());
-		sn.log("Power Area chart time range: {0}", chart.xDomain());
 		sn.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
 	}).load();
-	return;
-	var end = reportableInterval.eLocalDate;
-	var start = reportableInterval.sLocalDate;
-	var precision = (sn.env.minutePrecision || 10);
+}
+
+function setupSeasonalEnergyChart(container, chart, parameters, endDate, sourceMap) {
+	var plotPropName = parameters.plotProperties[parameters.aggregate];
+	var urlParams = { dataPath : 'a.wattHours' };
 	
-	var q = queue();
-	sn.env.dataTypes.forEach(function(e, i) {
-		var urlHelper = (i === 0 ? sn.runtime.consumptionUrlHelper : sn.runtime.urlHelper);
-		q.defer(d3.json, urlHelper.dateTimeQuery(e, start, end, 
-				(sn.runtime.overviewAreaParameters.aggregate === 'Minute' 
-					? precision
-					: sn.runtime.overviewAreaParameters.aggregate)));
-	});
-	q.awaitAll(function(error, results) {
-		if ( error ) {
-			sn.log('Error requesting data: ' +error);
+	sn.datum.multiLoader([
+		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+			null, null, parameters.aggregate).urlParameters(urlParams),
+		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+			null, null, parameters.aggregate).urlParameters(urlParams)
+	]).callback(function(error, results) {
+		if ( !(Array.isArray(results) && results.length === 2) ) {
+			sn.log("Unable to load data for seasonal chart: {0}", error);
 			return;
 		}
-		var combinedData = [];
-		var i, iMax, j, jMax, json, datum, mappedSourceId;
-		for ( i = 0, iMax = results.length; i < iMax; i++ ) {
-			json = results[i];
-			if ( json.success !== true || Array.isArray(json.data) !== true ) {
-				sn.log('No data available for node {0} data type {1}', sn.runtime.urlHelper.nodeId(), sn.env.dataTypes[i]);
-				return;
-			}
-			for ( j = 0, jMax = json.data.length; j < jMax; j++ ) {
-				datum = json.data[j];
-				mappedSourceId = mappedSourceIdForDataType(i, datum.sourceId);
-				if ( mappedSourceId !== undefined ) {
-					datum.sourceId = mappedSourceId;
-				}
-			}
-			combinedData = combinedData.concat(json.data);
-		}
-		sn.runtime.overviewAreaChart.load(combinedData);
-		sn.log("Overview chart Wh range: {0}", sn.runtime.overviewAreaChart.yDomain());
-		sn.log("Overview chart time range: {0}", sn.runtime.overviewAreaChart.xDomain());
-		adjustChartDisplayUnits('.overview-chart', 'Wh', sn.runtime.overviewAreaChart.yScale());
-	});
+		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
+		chart.reset()
+			.load(results[0], 'Consumption')
+			.load(results[1], 'Generation')
+			.regenerate();
+		sn.adjustDisplayUnits(container, 'Wh', chart.yScale());
+	}).load();
 }
+
 
 function updateReadings() {
 	d3.json(sn.runtime.urlHelper.mostRecentURL(sn.runtime.sourceGroupMap['Generation']), function(json) {
@@ -367,11 +151,11 @@ function swapChart(direction) {
 		if ( sn.runtime.energyBarParameters.aggregate === 'Hour' ) {
 			// we'll swap to W chart now, but switch this back to Hour for next time it appears
 			setTimeout(function() {
-				wattHourChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+				energyBarChartSetup();
 				setupActionStates();
 			}, 3000);
 		} else {
-			wattHourChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+			energyBarChartSetup();
 			setupActionStates();
 			return;
 		}
@@ -486,9 +270,9 @@ function actionDecrease() {
 	sn.env[props.propName] = newVal;
 	setupActionStates();
 	if ( props.chart === sn.runtime.powerAreaChart ) {
-		wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		powerAreaChartSetup();
 	} else {
-		wattHourChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		energyBarChartSetup();
 	}
 }
 
@@ -503,9 +287,9 @@ function actionIncrease() {
 	sn.env[props.propName] = newVal;
 	setupActionStates();
 	if ( props.chart === sn.runtime.powerAreaChart ) {
-		wattChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		powerAreaChartSetup();
 	} else {
-		wattHourChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		energyBarChartSetup();
 	}
 }
 
@@ -575,6 +359,51 @@ function sourceSets(regenerate) {
 	return sn.runtime.sourceSets;
 }
 
+function overviewAreaChartSetup() {
+	setupGroupedLayerChart(
+		sn.runtime.overviewAreaContainer, 
+		sn.runtime.overviewAreaChart, 
+		sn.runtime.overviewAreaParameters, 
+		sn.runtime.reportableEndDate, 
+		sn.runtime.sourceGroupMap);
+}
+
+function powerAreaChartSetup() {
+	setupGroupedLayerChart(
+		sn.runtime.powerAreaContainer, 
+		sn.runtime.powerAreaChart, 
+		sn.runtime.powerAreaParameters, 
+		sn.runtime.reportableEndDate, 
+		sn.runtime.sourceGroupMap);
+}
+
+function energyBarChartSetup() {
+	setupGroupedLayerChart(
+		sn.runtime.energyBarContainer, 
+		sn.runtime.energyBarChart, 
+		sn.runtime.energyBarParameters, 
+		sn.runtime.reportableEndDate, 
+		sn.runtime.sourceGroupMap);
+}
+
+function seasonalHourOfDayChartSetup() {
+	setupSeasonalEnergyChart(
+		sn.runtime.seasonalHourOfDayContainer, 
+		sn.runtime.seasonalHourOfDayChart, 
+		sn.runtime.seasonalHourOfDayParameters, 
+		sn.runtime.reportableEndDate, 
+		sn.runtime.sourceGroupMap);
+}
+
+function seasonalDayOfWeekChartSetup() {
+	setupSeasonalEnergyChart(
+		sn.runtime.seasonalDayOfWeekContainer, 
+		sn.runtime.seasonalDayOfWeekChart, 
+		sn.runtime.seasonalDayOfWeekParameters, 
+		sn.runtime.reportableEndDate, 
+		sn.runtime.sourceGroupMap);
+}
+
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
@@ -608,40 +437,15 @@ function setup(repInterval) {
 
 	setupCounters();
 
-	overviewAreaChartSetup(
-		sn.runtime.overviewAreaContainer, 
-		sn.runtime.overviewAreaChart, 
-		sn.runtime.overviewAreaParameters, 
-		sn.runtime.reportableEndDate, 
-		sn.runtime.sourceGroupMap);
-return;
-	wattChartSetup(
-		sn.runtime.powerAreaContainer, 
-		sn.runtime.powerAreaChart, 
-		sn.runtime.powerAreaParameters, 
-		sn.runtime.reportableEndDate, 
-		sn.runtime.sourceGroupMap);
+	overviewAreaChartSetup();
 	
-	wattHourChartSetup(
-		sn.runtime.energyBarContainer, 
-		sn.runtime.energyBarChart, 
-		sn.runtime.energyBarParameters, 
-		sn.runtime.reportableEndDate, 
-		sn.runtime.sourceGroupMap);
-		
-	seasonalHourOfDayChartSetup(
-		sn.runtime.seasonalHourOfDayContainer, 
-		sn.runtime.seasonalHourOfDayChart, 
-		sn.runtime.seasonalHourOfDayParameters, 
-		sn.runtime.reportableEndDate, 
-		sn.runtime.sourceGroupMap);
+	powerAreaChartSetup();
 	
-	seasonalDayOfWeekChartSetup(
-		sn.runtime.seasonalDayOfWeekContainer, 
-		sn.runtime.seasonalDayOfWeekChart, 
-		sn.runtime.seasonalDayOfWeekParameters, 
-		sn.runtime.reportableEndDate, 
-		sn.runtime.sourceGroupMap);
+	energyBarChartSetup();
+
+	seasonalHourOfDayChartSetup();
+	
+	seasonalDayOfWeekChartSetup();
 }
 
 function setupUI() {
@@ -788,20 +592,25 @@ function onDocumentReady() {
 	sn.runtime.energyBarParameters = new sn.Configuration({
 		height : mainChartHeight,
 		aggregate : 'Hour',
-		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false)
+		northernHemisphere : (sn.env.northernHemisphere === 'true' ? true : false),
+		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	sn.runtime.energyBarContainer = d3.select(d3.select('#watthour-chart').node().parentNode);
 	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', sn.runtime.energyBarParameters)
 		.colorCallback(colorForDataTypeSource)
-		.sourceExcludeCallback(sourceExcludeCallback);
+		.sourceExcludeCallback(sourceExcludeCallback)
+		.layerPostProcessCallback(layerPostProcessCallback);
 
 	sn.runtime.powerAreaParameters = new sn.Configuration({
-		height : mainChartHeight
+		height : mainChartHeight,
+		aggregate : 'TenMinute',
+		plotProperties : {TenMinute : 'watts', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
 	sn.runtime.powerAreaContainer = d3.select(d3.select('#watt-chart').node().parentNode);
 	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', sn.runtime.powerAreaParameters)
 		.colorCallback(colorForDataTypeSource)
-		.sourceExcludeCallback(sourceExcludeCallback);
+		.sourceExcludeCallback(sourceExcludeCallback)
+		.layerPostProcessCallback(layerPostProcessCallback);
 
 	sn.runtime.seasonalHourOfDayParameters = new sn.Configuration({
 		height : mainChartHeight,
@@ -811,7 +620,6 @@ function onDocumentReady() {
 	});
 	sn.runtime.seasonalHourOfDayContainer = d3.select(d3.select('#seasonal-hod-chart').node().parentNode);
 	sn.runtime.seasonalHourOfDayChart = sn.chart.seasonalHourOfDayLineChart('#seasonal-hod-chart', sn.runtime.seasonalHourOfDayParameters)
-		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 
 	sn.runtime.seasonalDayOfWeekParameters = new sn.Configuration({
@@ -822,7 +630,6 @@ function onDocumentReady() {
 	});
 	sn.runtime.seasonalDayOfWeekContainer = d3.select(d3.select('#seasonal-dow-chart').node().parentNode);
 	sn.runtime.seasonalDayOfWeekChart = sn.chart.seasonalDayOfWeekLineChart('#seasonal-dow-chart', sn.runtime.seasonalDayOfWeekParameters)
-		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
