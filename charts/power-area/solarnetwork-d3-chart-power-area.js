@@ -129,7 +129,18 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 		});
 		
 		if ( parent.me.layerPostProcessCallback() ) {
-			layerData = parent.me.layerPostProcessCallback().call(parent.me, null, layerData);
+			// we have to perform this call once per group, so we split this into multiple calls
+			layerData = (function() {
+				var newLayerData = [];
+				parent.groupIds.forEach(function(groupId) {
+					var layerDataForGroup = layerData.filter(function(e) {
+						return (e.key.indexOf(groupId+'|') === 0);
+					});
+					newLayerData = newLayerData.concat(parent.me.layerPostProcessCallback().call(
+						parent.me, groupId, layerDataForGroup));
+				});
+				return newLayerData;
+			}());
 		}
 		
 		rangeX = (allData.length > 0 ? [allData[0].date, allData[allData.length - 1].date] : undefined);
