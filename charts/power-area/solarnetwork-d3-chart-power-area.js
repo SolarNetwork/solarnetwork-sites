@@ -136,8 +136,10 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 					var layerDataForGroup = layerData.filter(function(e) {
 						return (e.key.indexOf(groupId+'|') === 0);
 					});
-					newLayerData = newLayerData.concat(parent.me.layerPostProcessCallback().call(
-						parent.me, groupId, layerDataForGroup));
+					if ( layerDataForGroup.length > 0 ) {
+						newLayerData = newLayerData.concat(parent.me.layerPostProcessCallback().call(
+							parent.me, groupId, layerDataForGroup));
+					}
 				});
 				return newLayerData;
 			}());
