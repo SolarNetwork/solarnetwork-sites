@@ -100,7 +100,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 			groupId = d[parent.internalPropName].groupId;
 			
 			// ignore excluded sources...
-			if ( parent.sourceExcludeCallback() && parent.sourceExcludeCallback().call(me, groupId, d.sourceId) ) {
+			if ( parent.sourceExcludeCallback() && parent.sourceExcludeCallback().call(parent.me, groupId, d.sourceId) ) {
 				continue;
 			}
 
@@ -159,7 +159,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 					if ( !d.hasOwnProperty(parent.internalPropName) ) {
 						d[parent.internalPropName] = { groupId : groupId };
 						if ( parent.dataCallback() ) {
-							parent.dataCallback().call(me, groupId, d);
+							parent.dataCallback().call(parent.me, groupId, d);
 						} else if ( d.date === undefined ) {
 							// automatically create Date
 							d.date = sn.datum.datumDate(d);
@@ -182,7 +182,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 			}
 			
 			if ( parent.layerPostProcessCallback() ) {
-				layerData = parent.layerPostProcessCallback().call(me, groupId, layerData);
+				layerData = parent.layerPostProcessCallback().call(parent.me, groupId, layerData);
 			}
 			
 			groupLayers[groupId] = layerData;
