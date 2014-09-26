@@ -32,7 +32,9 @@ if ( sn.chart === undefined ) {
  */
 sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	var parent = sn.chart.baseGroupedChart(containerSelector, chartConfig),
-		superReset = parent.reset;
+		superReset = parent.reset,
+		superParseConfiguration = parent.parseConfiguration,
+		superYAxisTicks = parent.yAxisTicks;
 	var self = sn.util.copyAll(parent);
 	self.me = self;
 
@@ -45,6 +47,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	var groupLayers = {};
 
 	function parseConfiguration() {
+		superParseConfiguration();
 		stackOffset = (self.config.value('wiggle') === true ? 'wiggle' : 'zero');
 	}
 	
@@ -153,6 +156,12 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		self.computeUnitsY();
 	}
 	
+	function yAxisTicks() {
+		return (self.wiggle() === true 
+			? [] // no y-axis in wiggle mode
+			: superYAxisTicks());
+	}
+	
 	/**
 	 * Clear out all data associated with this chart. Does not redraw.
 	 * 
@@ -203,8 +212,14 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	});
 	parseConfiguration();
 	
+	// override config function
+	self.parseConfiguration = parseConfiguration;
+	
 	// override our setup funciton
 	self.setup = setup;
+
+	// override yAxisTicks to support wiggle
+	self.yAxisTicks = yAxisTicks;
 
 	return self;
 };
@@ -431,12 +446,12 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 			.remove();
 	}
 	
-	function axisYTicks() {
+	function yAxisTicks() {
 		return y.ticks(yAxisTickCount);
 	}
 	
 	function drawAxisY() {
-		var yTicks = axisYTicks();
+		var yTicks = yAxisTicks();
 		var axisLines = svgRoot.select('g.rule').selectAll('g').data(yTicks, Object);
 		var axisLinesT = axisLines.transition().duration(transitionMs);
 		
@@ -828,6 +843,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		xAxisTickCount : { get : function() { return xAxisTickCount; }, set : function(v) { xAxisTickCount = v; } },
 		xAxisTicks : { get : function() { return xAxisTicks; }, set : function(v) { xAxisTicks = v; } },
 		xAxisTickFormatter : { get : function() { return xAxisTickFormatter; }, set : function(v) { xAxisTickFormatter = v; } },
+		yAxisTicks : { get : function() { return yAxisTicks; }, set : function(v) { yAxisTicks = v; } },
 		yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
 		config : { value : config },
 		fillColor : { value : fillColor },
@@ -844,6 +860,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		computeUnitsY : { value : computeUnitsY },
 		drawAxisX : { get : function() { return drawAxisX; }, set : function(v) { drawAxisX = v; } },
 		drawAxisY : { get : function() { return drawAxisY; }, set : function(v) { drawAxisY = v; } },
+		parseConfiguration : { get : function() { return parseConfiguration; }, set : function(v) { parseConfiguration = v; } },
 		draw : { get : function() { return draw; }, set : function(v) { draw = v; } },
 		setup : { get : function() { return setup; }, set : function(v) { setup = v; } }
 	});
