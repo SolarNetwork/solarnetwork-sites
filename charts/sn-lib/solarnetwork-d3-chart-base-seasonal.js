@@ -137,7 +137,7 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 	function setup() {
 		var plotPropName = parent.plotPropertyName,
 			groupIds = parent.groupIds,
-			rangeX = [new Date(), new Date()],
+			rangeX = [null, null],
 			rangeY = [0, 0],
 			interval = timeKeyInterval(),
 			keyFormatter = d3.format('02g'); // ensure 10 sorts after 9
@@ -201,10 +201,10 @@ sn.chart.baseGroupedSeasonalLineChart = function(containerSelector, chartConfig)
 			}
 			
 			range = d3.extent(layerValues, function(d) { return d.date.getTime(); });
-			if ( range[0] < rangeX[0].getTime() ) {
+			if ( rangeX[0] === null || range[0] < rangeX[0].getTime() ) {
 				rangeX[0] = new Date(range[0]);
 			}
-			if ( range[1] < rangeX[1].getTime() ) {
+			if ( rangeX[1] === null || range[1] > rangeX[1].getTime() ) {
 				rangeX[1] = new Date(range[1]);
 			}
 		});
