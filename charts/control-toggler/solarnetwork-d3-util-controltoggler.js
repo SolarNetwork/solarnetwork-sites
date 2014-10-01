@@ -39,7 +39,7 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 		}
 		var instruction = data.reduce(function(prev, curr) {
 			if ( curr.topic === 'SetControlParameter' && Array.isArray(curr.parameters)
-				&& curr.parameters.length > 0 && curr.parameters[0].name === config.controlID
+				&& curr.parameters.length > 0 && curr.parameters[0].name === controlID
 				&& (prev === undefined || prev.created < curr.created) ) {
 				return curr;
 			}
@@ -47,7 +47,7 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 		}, undefined);
 		if ( instruction !== undefined ) {
 			sn.log('Active instruction found in state [{0}]; set control {1} to {2}', 
-				instruction.state, config.controlID, instruction.parameters[0].value);
+				instruction.state, controlID, instruction.parameters[0].value);
 		}
 		return instruction;
 	}
@@ -56,17 +56,17 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 		return (lastKnownInstruction === undefined ? undefined : lastKnownInstruction.state);
 	}
 		
-	function pendingInstructionIntegerValue() {
+	function pendingInstructionValue() {
 		return (lastKnownInstruction === undefined ? undefined : Number(lastKnownInstruction.parameters[0].value));
 	}
 
-	self.integerValue = function(desiredValue) {
-		if ( !arguments.length ) return (lastKnownStatus === undefined ? undefined : lastKnownStatus.integerValue);
+	self.value = function(desiredValue) {
+		if ( !arguments.length ) return (lastKnownStatus === undefined ? undefined : lastKnownStatus.val);
 
     	var q = queue();
-    	var currentValue = (lastKnownStatus === undefined ? undefined : lastKnownStatus.integerValue);
+    	var currentValue = (lastKnownStatus === undefined ? undefined : lastKnownStatus.val);
     	var pendingState = pendingInstructionState();
-    	var pendingValue = pendingInstructionIntegerValue();
+    	var pendingValue = pendingInstructionValue();
 		if ( pendingState === 'Queued' && pendingValue !== desiredValue ) {
 			// cancel the pending instruction
 			sn.log('Canceling pending control {0} switch to {1}', controlID,  pendingValue);
@@ -129,12 +129,12 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 				
 				// get current instruction (if any)
 				var pendingInstruction = (active == null ? undefined : getActiveInstruction(active.data));
-				var pendingInstructionValue = (pendingInstruction === undefined ? undefined : Number(pendingInstruction.parameters[0].value));
-				var lastKnownInstructionValue = pendingInstructionIntegerValue();
+				var pendingValue = (pendingInstruction === undefined ? undefined : Number(pendingInstruction.parameters[0].value));
+				var lastKnownValue = pendingInstructionValue();
 				if ( controlStatus !== undefined && (lastKnownStatus === undefined 
-						|| controlStatus.integerValue !== lastKnownStatus.integerValue)
-						|| pendingInstructionValue !== lastKnownInstructionValue  ) {
-					sn.log('Control {0} value is currently {1}', controlID, controlStatus.integerValue);
+						|| controlStatus.val !== lastKnownStatus.val)
+						|| pendingValue !== lastKnownValue  ) {
+					sn.log('Control {0} value is currently {1}', controlID, controlStatus.val);
 					lastKnownStatus = controlStatus;
 					lastKnownInstruction = pendingInstruction;
 					
@@ -190,9 +190,7 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 	 */
 	self.controlID = function(value) {
 		if ( !arguments.length ) return controlID;
-		if ( typeof value === 'function' ) {
-			controlID = value;
-		}
+		controlID = value;
 		return self;
 	}
 
@@ -213,8 +211,8 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 	}
 	
 	Object.defineProperties(self, {
-		pendingInstructionState : { get : pendingInstructionState },
-		pendingInstructionIntegerValue : { get : pendingInstructionIntegerValue },
+		pendingInstructionState : { value : pendingInstructionState },
+		pendingInstructionValue : { value : pendingInstructionValue },
 	});
 	
 	return self;

@@ -23,10 +23,10 @@ function setupToggler() {
 				if ( error ) {
 				
 				} else {
-					var controlValue = this.integerValue();
+					var controlValue = this.value();
 					if ( this.pendingInstructionState() === 'Queued' ) {
 						progress.show();
-						controlValue = this.pendingInstructionIntegerValue();
+						controlValue = this.pendingInstructionValue();
 					} else {
 						progress.hide();
 					}
@@ -37,7 +37,7 @@ function setupToggler() {
 		sn.runtime.toggler.start();
 	}
 	toggle.on('switch-change', function(e, data) {
-		sn.runtime.toggler.setIntegerValue(data.value ? 0 : 1);
+		sn.runtime.toggler.value(data.value ? 0 : 1);
 	});
 }
 
