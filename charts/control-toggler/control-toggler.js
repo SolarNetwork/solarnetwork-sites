@@ -7,7 +7,6 @@
  */
 
 sn.config.debug = true;
-sn.config.host = 'localhost:8680';
 
 function setupToggler() {
 	var toggle = $('#toggle-toggle');
@@ -98,7 +97,7 @@ function onDocumentReady() {
 		controlId : '/power/switch/1',
 		controlDisplayName : 'Switch'
 	});
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId, sn.config);
+	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
 	setupUI();
 	setupToggler();
 }
