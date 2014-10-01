@@ -45,7 +45,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	
 	// override defaults of parent
 	if ( !(chartConfig && chartConfig.padding) ) {
-		chartConfig.value('padding', [20, 0, 40, 30]);
+		chartConfig.value('padding', [20, 0, 30, 30]);
 	}
 	
 	var parent = sn.chart.baseGroupedStackBarChart(containerSelector, chartConfig);
