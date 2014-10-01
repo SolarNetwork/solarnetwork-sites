@@ -14,11 +14,33 @@ if ( sn.sec === undefined ) {
 	};
 }
 
-// security runtime environment
-sn.sec.env = {
-	// our in-memory credentials
-	cred : {token: undefined, secret: undefined}
-};
+// our in-memory credentials
+var cred = {token: undefined, secret: undefined};
+
+/**
+ * Get or set the in-memory security token to use.
+ *
+ * @param {String} [value] The value to set.
+ * @returs When used as a getter, the current token value, otherwise the {@link sn.sec} object.
+ */
+sn.sec.token = function(value) {
+	if ( !arguments.length ) return cred.token;
+	cred.token = value;
+	return sn.sec;
+}
+
+/**
+ * Set the in-memory security token secret to use.
+ *
+ * @param {String} [value] The value to set.
+ * @returs The {@link sn.sec} object.
+ */
+sn.sec.secret = function(value) {
+	if ( arguments.length ) {
+		cred.secret = value;
+	}
+	return sn.sec;
+}
 
 /**
  * Generate the authorization header value for a set of request parameters.
@@ -172,8 +194,8 @@ sn.sec.json = function(url, method, callback) {
 			method: method,
 			date: date,
 			path: path,
-			token: sn.sec.env.cred.token,
-			secret: sn.sec.env.cred.secret,
+			token: cred.token,
+			secret: cred.secret,
 			contentType: contentType
 		});
 		
