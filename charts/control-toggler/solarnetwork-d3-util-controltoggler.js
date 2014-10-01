@@ -11,7 +11,7 @@ if ( sn.util === undefined ) {
 	sn.util = {};
 }
 
-sn.util.controlToggler = function(nodeUrlHelper) {
+sn.util.controlToggler = function(urlHelper) {
 	var self = {
 		version : '1.1.0'
 	};
@@ -22,6 +22,7 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 	var callback;
 	var refreshMs = 60000;
 	var controlID = '/power/switch/1';
+	var nodeUrlHelper = urlHelper;
 	
 	function notifyDelegate(error) {
 		if ( callback !== undefined ) {
@@ -164,7 +165,7 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 		}
 		timer = setTimeout(update, 20);
 		return self;
-	}
+	};
 	
 	/**
 	 * Stop automatically updating the status of the configured control.
@@ -179,7 +180,7 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 		clearTimeout(timer);
 		timer = undefined;
 		return self;
-	}
+	};
 
 	/**
 	 * Get or set the control ID.
@@ -192,7 +193,20 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 		if ( !arguments.length ) return controlID;
 		controlID = value;
 		return self;
-	}
+	};
+
+	/**
+	 * Get or set the {@link sn.datum.nodeUrlHelper} to use.
+	 * 
+	 * @param {Object} [value] the {@link sn.datum.nodeUrlHelper} to set
+	 * @return when used as a getter, the current helper value, otherwise this object
+	 * @memberOf sn.util.controlToggler
+	 */
+	self.nodeUrlHelper = function(value) {
+		if ( !arguments.length ) return nodeUrlHelper;
+		nodeUrlHelper = value;
+		return self;
+	};
 
 	/**
 	 * Get or set the callback function, which is called after the state of the control changes.
@@ -208,7 +222,7 @@ sn.util.controlToggler = function(nodeUrlHelper) {
 			callback = value;
 		}
 		return self;
-	}
+	};
 	
 	Object.defineProperties(self, {
 		pendingInstructionState : { value : pendingInstructionState },
