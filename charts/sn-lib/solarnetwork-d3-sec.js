@@ -18,16 +18,25 @@ if ( sn.sec === undefined ) {
 var cred = {token: undefined, secret: undefined};
 
 /**
+ * Return <em>true</em> if both a token and a secret have been set, <em>false</em> otherwise.
+ *
+ * @return {Boolean} <em>true</em> if a token and secret have been set.
+ */
+sn.sec.hasTokenCredentials = function() {
+	return (cred.token && cred.token.length > 0 && cred.secret && cred.secret.length > 0);
+};
+
+/**
  * Get or set the in-memory security token to use.
  *
- * @param {String} [value] The value to set.
+ * @param {String} [value] The value to set, or <code>null</code> to clear.
  * @returs When used as a getter, the current token value, otherwise the {@link sn.sec} object.
  */
 sn.sec.token = function(value) {
 	if ( !arguments.length ) return cred.token;
-	cred.token = value;
+	cred.token = (value && value.length > 0 ? value : undefined);
 	return sn.sec;
-}
+};
 
 /**
  * Set the in-memory security token secret to use.
@@ -40,7 +49,26 @@ sn.sec.secret = function(value) {
 		cred.secret = value;
 	}
 	return sn.sec;
-}
+};
+
+/**
+ * Return <em>true</em> if a secret has been set, <em>false</em> otherwise.
+ *
+ * @return {Boolean} <em>true</em> if a secret has been set.
+ */
+sn.sec.hasSecret = function() {
+	return (cred.secret && cred.secret.length > 0);
+};
+
+/**
+ * Clear the in-memory secret.
+ * 
+ * @returs The {@link sn.sec} object.
+ */
+sn.sec.clearSecret = function() {
+	cred.secret = undefined;
+	return sn.sec;
+};
 
 /**
  * Generate the authorization header value for a set of request parameters.
