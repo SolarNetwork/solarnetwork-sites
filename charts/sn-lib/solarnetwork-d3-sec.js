@@ -5,14 +5,12 @@
 (function() {
 'use strict';
 
-if ( sn === undefined ) {
-	sn = {};
-} else if ( sn.sec === undefined ) {
+if ( sn.sec === undefined ) {
 	/**
 	 * @namespace the SolarNetwork security namespace.
 	 */
 	sn.sec = {
-		version : "1.0.0"
+		version : '1.1.0'
 	};
 }
 
@@ -26,20 +24,20 @@ sn.sec.solarUserBaseURL = function(urlHelper) {
 	return (urlHelper.hostURL() +sn.config.solarUserPath +'/api/v1/sec');
 };
 
-sn.registerNodeUrlHelper('viewActiveInstructions', function() {
-	return (sn.sec.solarUserBaseURL(this) +'/instr/viewActive?nodeId=' +this.nodeId());
+sn.datum.registerNodeUrlHelperFunction('viewActiveInstructionsURL', function() {
+	return (sn.sec.solarUserBaseURL(this) +'/instr/viewActive?nodeId=' +this.nodeId);
 });
 
-sn.registerNodeUrlHelper('updateInstructionState', function(instructionID, state) {
+sn.datum.registerNodeUrlHelperFunction('updateInstructionStateURL', function(instructionID, state) {
 	return (sn.sec.solarUserBaseURL(this) 
 		+'/instr/updateState?id=' +encodeURIComponent(instructionID)
 		+'&state=' +encodeURIComponent(state));
 });
 
 // parameters is an array of {name:n1, value:v1} objects
-sn.registerNodeUrlHelper('queueInstruction', function(topic, parameters) {
+sn.datum.registerNodeUrlHelperFunction('queueInstructionURL', function(topic, parameters) {
 	var url = (sn.sec.solarUserBaseURL(this) 
-		+'/instr/add?nodeId=' +this.nodeId()
+		+'/instr/add?nodeId=' +this.nodeId
 		+'&topic=' +encodeURIComponent(topic));
 	if ( Array.isArray(parameters) ) {
 		var i, len;
