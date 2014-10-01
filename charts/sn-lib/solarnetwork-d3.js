@@ -1762,7 +1762,7 @@ sn.superMethod = function(name) {
 sn.util = {};
 
 /**
- * Copy the enumerable own properties of `obj` onto `obj2` and return `obj2`.
+ * Copy the enumerable own properties of `obj1` onto `obj2` and return `obj2`.
  * 
  * @param {Object} obj1 - The object to copy enumerable properties from.
  * @param {Object} [obj2] - The optional object to copy the properties to. If not
