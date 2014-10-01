@@ -93,9 +93,6 @@ function setupUI() {
 }
 
 function onDocumentReady() {
-	// FIXME: remove this, for testing only
-	sn.sec.token('a09sjds09wu9wjsd9uy2').secret('abc123');
-
 	sn.setDefaultEnv({
 		nodeId : 1013,
 		controlId : '/power/switch/1',
