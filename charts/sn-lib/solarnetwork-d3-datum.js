@@ -28,14 +28,16 @@ sn.datum.nodeUrlHelperFunctions = {};
  * 
  * @class
  * @constructor
- * @param {Number} nodeId The node ID to use.
+ * @param {Number} node The node ID to use.
  * @param {Object} configuration The configuration options to use.
  * @returns {sn.datum.nodeUrlHelper}
  */
-sn.datum.nodeUrlHelper = function(nodeId, configuration) {
+sn.datum.nodeUrlHelper = function(node, configuration) {
 	var that = {
 		version : '1.0.0'
 	};
+	
+	var nodeId = node;
 	
 	var config = sn.util.copy(configuration, {
 		host : 'data.solarnetwork.net',
@@ -150,9 +152,23 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 		return url;
 	}
 	
-	// setup core URLs
+	/**
+	 * Get or set the node ID to use.
+	 * 
+	 * @param {String} [value] the node ID to use
+	 * @return when used as a getter, the node ID, otherwise this object
+	 * @memberOf sn.datum.nodeUrlHelper
+	 */
+	function nodeID(value) {
+		if ( !arguments.length ) return nodeId;
+		nodeId = value;
+		return that;
+	}
+	
+	// setup core properties
 	Object.defineProperties(that, {
-		nodeId					: { value : nodeId },
+		nodeId					: { get : function() { return nodeId; }, enumerable : true },
+		nodeID					: { value : nodeID },
 		hostURL					: { value : hostURL },
 		baseURL					: { value : baseURL },
 		reportableIntervalURL 	: { value : reportableIntervalURL },
