@@ -37,7 +37,7 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 		version : '1.0.0'
 	};
 	
-	var config = (configuration || {
+	var config = sn.util.copy(configuration, {
 		host : 'data.solarnetwork.net',
 		tls : true,
 		path : '/solarquery',
