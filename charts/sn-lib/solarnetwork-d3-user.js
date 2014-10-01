@@ -25,6 +25,10 @@ sn.datum.registerNodeUrlHelperFunction('viewActiveInstructionsURL', function() {
 	return (solarUserBaseURL(this) +'/instr/viewActive?nodeId=' +this.nodeId);
 });
 
+sn.datum.registerNodeUrlHelperFunction('viewPendingInstructionsURL', function() {
+	return (solarUserBaseURL(this) +'/instr/viewPending?nodeId=' +this.nodeId);
+});
+
 sn.datum.registerNodeUrlHelperFunction('updateInstructionStateURL', function(instructionID, state) {
 	return (solarUserBaseURL(this) 
 		+'/instr/updateState?id=' +encodeURIComponent(instructionID)
