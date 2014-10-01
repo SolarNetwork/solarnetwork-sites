@@ -20,7 +20,7 @@ sn.util.controlToggler = function(urlHelper) {
 	var lastKnownStatus;
 	var lastKnownInstruction;
 	var callback;
-	var refreshMs = 60000;
+	var refreshMs = 20000;
 	var controlID = '/power/switch/1';
 	var nodeUrlHelper = urlHelper;
 	
@@ -47,7 +47,7 @@ sn.util.controlToggler = function(urlHelper) {
 			return prev;
 		}, undefined);
 		if ( instruction !== undefined ) {
-			sn.log('Active instruction found in state [{0}]; set control {1} to {2}', 
+			sn.log('Active instruction found in state {0}; set control {1} to {2}', 
 				instruction.state, controlID, instruction.parameters[0].value);
 		}
 		return instruction;
@@ -61,7 +61,7 @@ sn.util.controlToggler = function(urlHelper) {
 		return (lastKnownInstruction === undefined ? undefined : Number(lastKnownInstruction.parameters[0].value));
 	}
 
-	self.value = function(desiredValue) {
+	function value(desiredValue) {
 		if ( !arguments.length ) return (lastKnownStatus === undefined ? undefined : lastKnownStatus.val);
 
     	var q = queue();
@@ -83,7 +83,8 @@ sn.util.controlToggler = function(urlHelper) {
 		}
 		q.awaitAll(function(error, results) {
 			if ( error ) {
-				sn.log('Error updating control toggler {0}: {1}', controlID, error);
+				sn.log('Error updating control toggler {0}: {1}', controlID, error.status);
+				notifyDelegate(error);
 				return;
 			}
 			if ( results.length < 1 ) {
@@ -109,12 +110,15 @@ sn.util.controlToggler = function(urlHelper) {
 	};
 	
 	function update() {
+		if ( sn.sec.hasTokenCredentials() !== true ) {
+			return;
+		}
     	var q = queue();
-		q.defer(sn.sec.json, nodeUrlHelper.mostRecentURL('HardwareControl'), 'GET');
-		q.defer(sn.sec.json, nodeUrlHelper.viewActiveInstructionsURL(), 'GET');
+		q.defer(sn.sec.json, nodeUrlHelper.mostRecentURL([controlID]), 'GET');
+		q.defer(sn.sec.json, nodeUrlHelper.viewPendingInstructionsURL(), 'GET');
 		q.await(function(error, status, active) {
 			if ( error ) {
-				sn.log('Error querying control toggler {0} status: {1}', controlID, error);
+				sn.log('Error querying control toggler {0} status: {1}', controlID, error.status);
 				notifyDelegate(error);
 			} else {
 				// get current status of control
@@ -160,10 +164,9 @@ sn.util.controlToggler = function(urlHelper) {
 	 * @memberOf sn.util.controlToggler
 	 */
 	self.start = function() {
-		if ( timer !== undefined ) {
-			return;
+		if ( timer === undefined ) {
+			timer = setTimeout(update, 20);
 		}
-		timer = setTimeout(update, 20);
 		return self;
 	};
 	
@@ -174,11 +177,10 @@ sn.util.controlToggler = function(urlHelper) {
 	 * @memberOf sn.util.controlToggler
 	 */
 	self.stop = function() {
-		if ( timer === undefined ) {
-			return;
+		if ( timer !== undefined ) {
+			clearTimeout(timer);
+			timer = undefined;
 		}
-		clearTimeout(timer);
-		timer = undefined;
 		return self;
 	};
 
@@ -192,6 +194,21 @@ sn.util.controlToggler = function(urlHelper) {
 	self.controlID = function(value) {
 		if ( !arguments.length ) return controlID;
 		controlID = value;
+		return self;
+	};
+
+	/**
+	 * Get or set the refresh rate, in milliseconds.
+	 * 
+	 * @param {Number} [value] the millisecond value to set
+	 * @return when used as a getter, the current refresh millisecond value, otherwise this object
+	 * @memberOf sn.util.controlToggler
+	 */
+	self.refreshMs = function(value) {
+		if ( !arguments.length ) return refreshMs;
+		if ( typeof value === 'number' ) {
+			refreshMs = value;
+		}
 		return self;
 	};
 
@@ -227,6 +244,7 @@ sn.util.controlToggler = function(urlHelper) {
 	Object.defineProperties(self, {
 		pendingInstructionState : { value : pendingInstructionState },
 		pendingInstructionValue : { value : pendingInstructionValue },
+		value					: { value : value }
 	});
 	
 	return self;

@@ -11,7 +11,7 @@ sn.config.debug = true;
 function setupToggler() {
 	var toggle = $('#toggle-toggle');
 	var progress = $('#toggle-progress');
-	if ( sn.runtime.toggler === undefined && sn.sec.token() !== undefined ) {
+	if ( sn.runtime.toggler === undefined && sn.sec.hasTokenCredentials() ) {
 		// NOTE: we show the switch as ON when the PCM is allowing 100% output, 
 		//       and OFF when the PCM is limiting the output at 0%; this is
 		//       then opposite the control value, where 1 === PCM at 0% and
@@ -20,10 +20,23 @@ function setupToggler() {
 			.controlID(sn.env.controlId)
 			.callback(function(error) {
 				if ( error ) {
-				
+					if ( error.status ) {
+						if ( error.status === 401 || error.status === 403 ) {
+							alert('Unauthorized.');
+							sn.sec.clearSecret();
+							if ( sn.runtime.toggler ) {
+								sn.runtime.toggler.stop();
+							}
+						} else {
+							sn.log('Error updating toggle status: {0}', error.statusText);
+						}
+					} else {
+						sn.log('Error updating toggle status: {0}', error);
+					}
 				} else {
 					var controlValue = this.value();
-					if ( this.pendingInstructionState() === 'Queued' ) {
+					d3.select('#toggle-progress .status').text(this.pendingInstructionState());
+					if ( d3.set(['Queued','Received','Executing']).has(this.pendingInstructionState())  ) {
 						progress.show();
 						controlValue = this.pendingInstructionValue();
 					} else {
@@ -34,6 +47,8 @@ function setupToggler() {
 				}
 			});
 		sn.runtime.toggler.start();
+	} else if ( sn.runtime.toggler ) {
+		sn.runtime.toggler.stop().start();
 	}
 }
 
@@ -45,14 +60,14 @@ function setupUI() {
 			var getAvailable = false;
 			sn.env[propName] = me.property('value');
 			if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
-				if ( sn.runtime.toggler ) {
-					sn.runtime.toggler.nodeUrlHelper(sn.runtime.urlHelper);
-				}
+				sn.runtime.urlHelper.nodeID(sn.env[propName]);
 			} else if ( propName === 'controlId' ) {
 				if ( sn.runtime.toggler ) {
 					sn.runtime.toggler.controlID(sn.env[propName]);
 				}
+			}
+			if ( sn.runtime.toggler ) {
+				sn.runtime.toggler.stop().start();
 			}
 		}).each(function(e) {
 			var input = d3.select(this);
@@ -67,7 +82,7 @@ function setupUI() {
 	d3.select('#toggle-toggle label').text(sn.env.controlDisplayName);
 
 	d3.select('#toggle-toggle').on('click', function() {
-		if ( sn.sec.token() === undefined ) {
+		if ( !(sn.sec.token() && sn.sec.hasSecret()) ) {
 			// we need to ask for credentials
 			$('#credentals-modal').modal('show');	
 		}
