@@ -5,6 +5,8 @@
 (function() {
 'use strict';
 
+var nodeUrlHelperFunctions;
+
 if ( sn === undefined ) {
 	sn = {};
 }
@@ -16,6 +18,10 @@ if ( sn === undefined ) {
  * @require solarnetwork-d3 0.0.6
  */
 sn.datum = {};
+
+/**
+ * 
+sn.datum.nodeUrlHelperFunctions = {};
 
 /**
  * A node-specific URL utility object.
@@ -143,7 +149,8 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 		}
 		return url;
 	}
-		
+	
+	// setup core URLs
 	Object.defineProperties(that, {
 		nodeId					: { value : nodeId },
 		hostURL					: { value : hostURL },
@@ -153,7 +160,39 @@ sn.datum.nodeUrlHelper = function(nodeId, configuration) {
 		dateTimeListURL			: { value : dateTimeListURL },
 		mostRecentURL			: { value : mostRecentURL }
 	});
+	
+	// allow plug-ins to supply URL helper methods, as long as they don't override built-in ones
+	(function() {
+		if ( Array.isArray(nodeUrlHelperFunctions) ) {
+			nodeUrlHelperFunctions.forEach(function(helper) {
+				if ( that.hasOwnProperty(helper.name) === false ) {
+					Object.defineProperty(that, helper.name, { value : function() {
+						return helper.func.apply(that, arguments);
+					} });
+				}
+			});
+		}
+	}());
+
 	return that;
+};
+
+/**
+ * Register a custom function to generate URLs with {@link sn.datum.nodeUrlHelper}.
+ * 
+ * @param {String} name The name to give the custom function. By convention the function
+ *                      names should end with 'URL'.
+ * @param {Function} func The function to add to sn.datum.nodeUrlHelper instances.
+ */
+sn.datum.registerNodeUrlHelperFunction = function(name, func) {
+	if ( typeof func !== 'function' ) {
+		return;
+	}
+	if ( nodeUrlHelperFunctions === undefined ) {
+		nodeUrlHelperFunctions = [];
+	}
+	name = name.replace(/[^0-9a-zA-Z_]/, '');
+	nodeUrlHelperFunctions.push({name : name, func : func});
 };
 
 /**
