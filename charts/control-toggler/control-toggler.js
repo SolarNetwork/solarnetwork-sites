@@ -35,9 +35,6 @@ function setupToggler() {
 			});
 		sn.runtime.toggler.start();
 	}
-	toggle.on('switch-change', function(e, data) {
-		sn.runtime.toggler.value(data.value ? 0 : 1);
-	});
 }
 
 function setupUI() {
@@ -49,6 +46,13 @@ function setupUI() {
 			sn.env[propName] = me.property('value');
 			if ( propName === 'nodeId' ) {
 				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				if ( sn.runtime.toggler ) {
+					sn.runtime.toggler.nodeUrlHelper(sn.runtime.urlHelper);
+				}
+			} else if ( propName === 'controlId' ) {
+				if ( sn.runtime.toggler ) {
+					sn.runtime.toggler.controlID(sn.env[propName]);
+				}
 			}
 		}).each(function(e) {
 			var input = d3.select(this);
@@ -88,6 +92,11 @@ function setupUI() {
 		setupToggler();
 	}).on('shown.bs.modal', function() {
 		$('#cred-token').focus();
+	});
+	$('#toggle-toggle').on('switch-change', function(e, data) {
+		if ( sn.runtime.toggler ) {
+			sn.runtime.toggler.value(data.value ? 0 : 1);
+		}
 	});
 }
 
