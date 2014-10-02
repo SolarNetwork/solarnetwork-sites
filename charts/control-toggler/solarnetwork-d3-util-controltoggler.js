@@ -68,7 +68,7 @@ sn.util.controlToggler = function(urlHelper) {
     	var currentValue = (lastKnownStatus === undefined ? undefined : lastKnownStatus.val);
     	var pendingState = pendingInstructionState();
     	var pendingValue = pendingInstructionValue();
-		if ( pendingState === 'Queued' && pendingValue !== desiredValue ) {
+		if ( pendingState !== undefined && pendingValue !== desiredValue ) {
 			// cancel the pending instruction
 			sn.log('Canceling pending control {0} switch to {1}', controlID,  pendingValue);
 			q.defer(sn.sec.json, nodeUrlHelper.updateInstructionStateURL(lastKnownInstruction.id, 'Declined'), 'POST');
