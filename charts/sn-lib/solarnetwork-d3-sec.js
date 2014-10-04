@@ -1,6 +1,6 @@
 /**
  * @require d3 3.0
- * @require CryptoJS 3.0
+ * @require CryptoJS 3.0 (HMAC-SHA1, MD5, BASE64)
  */
 (function() {
 'use strict';
@@ -80,11 +80,9 @@ sn.sec.clearSecret = function() {
  * returned value with <code>SolarNetworkWS</code> (with a space between
  * that prefix and the associated value).</p>
  * 
- * <p>Note that the <b>Content-MD5</b> and <b>Content-Type</b> headers are <b>not</b>
- * supported.</p>
- * 
  * @param {Object} params the request parameters
  * @param {String} params.method the HTTP request method
+ * @param {String} params.data the HTTP request body
  * @param {String} params.date the formatted HTTP request date
  * @param {String} params.path the SolarNetworkWS canonicalized path value
  * @param {String} params.token the authentication token
@@ -93,7 +91,8 @@ sn.sec.clearSecret = function() {
  */
 sn.sec.generateAuthorizationHeaderValue = function(params) {
 	var msg = 
-		(params.method === undefined ? 'GET' : params.method.toUpperCase()) + '\n\n'
+		(params.method === undefined ? 'GET' : params.method.toUpperCase()) + '\n'
+		+(params.data === undefined ? '' : CryptoJS.MD5(params.data)) + '\n'
 		+(params.contentType === undefined ? '' : params.contentType) + '\n'
 		+params.date +'\n'
 		+params.path;
@@ -181,28 +180,50 @@ sn.sec.authURLPath = function(url, data) {
  * <p>This method will construct the <code>X-SN-Date</code> and <code>Authorization</code>
  * header values needed to invoke the web service. It returns a d3 XHR object,
  * so you can call <code>.on()</code> on that to handle the response, unless a callback
- * parameter is specified, then the request is issued immediately.</p>
+ * parameter is specified, then the request is issued immediately, passing the 
+ * <code>method</code>, <code>data</code>, and <code>callback</code> parameters
+ * to <code>xhr.send()</code>.</p>
  * 
  * @param {String} url the web service URL to invoke
  * @param {String} method the HTTP method to use; e.g. GET or POST
- * @param {Function} callback if defined, a d3 callback function to handle the response JSON with
+ * @param {String} [data] the data to upload
+ * @param {String} [contentType] the content type of the data
+ * @param {Function} [callback] if defined, a d3 callback function to handle the response JSON with
  * @return {Object} d3 XHR object
  */
-sn.sec.json = function(url, method, callback) {
-	method = (method === undefined ? 'GET' : method.toUpperCase());
+sn.sec.json = function(url, method, data, contentType, callback) {
 	var requestUrl = url;
-	var sendData = undefined;
-	var contentType = undefined;
-	var queryIndex = undefined;
-	if ( method === 'POST' ) {
+	// We might be passed to queue, and then our callback will be the last argument (but possibly not #5
+	// if the original call to queue didn't pass all arguments) so we check for that at the start and
+	// adjust what we consider the method, data, and contentType parameter values.
+	if ( arguments.length > 0 ) {
+		if ( arguments.length < 5 && typeof arguments[arguments.length - 1] === 'function' ) {
+			callback = arguments[arguments.length - 1];
+		}
+		if ( typeof method !== 'string' ) {
+			method = undefined;
+		}
+		if ( typeof data !== 'string' ) {
+			data = undefined;
+		}
+		if ( typeof contentType !== 'string' ) {
+			contentType = undefined;
+		}
+	}
+	method = (method === undefined ? 'GET' : method.toUpperCase());
+	if ( method === 'POST' || method === 'PUT' ) {
 		// extract any URL request parameters and put into POST body
-		queryIndex = url.indexOf('?');
-		if ( queryIndex !== -1 ) {
-			if ( queryIndex + 1 < url.length - 1 ) {
-				sendData = url.substring(queryIndex + 1);
-			}
-			requestUrl = url.substring(0, queryIndex);
-			contentType = 'application/x-www-form-urlencoded; charset=UTF-8';
+		if ( !data ) {
+			(function() {
+				var queryIndex = url.indexOf('?');
+				if ( queryIndex !== -1 ) {
+					if ( queryIndex + 1 < url.length - 1 ) {
+						data = url.substring(queryIndex + 1);
+					}
+					requestUrl = url.substring(0, queryIndex);
+					contentType = 'application/x-www-form-urlencoded; charset=UTF-8';
+				}
+			}());
 		}
 	}
 	var xhr = d3.json(requestUrl);
@@ -215,7 +236,7 @@ sn.sec.json = function(url, method, callback) {
 		var date = new Date().toUTCString();		
 		
 		// construct our canonicalized path value from our URL
-		var path = sn.sec.authURLPath(url, sendData);
+		var path = sn.sec.authURLPath(url, data);
 		
 		// generate the authorization hash value now (cryptographically signing our request)
 		var auth = sn.sec.generateAuthorizationHeaderValue({
@@ -224,10 +245,14 @@ sn.sec.json = function(url, method, callback) {
 			path: path,
 			token: cred.token,
 			secret: cred.secret,
+			data: data,
 			contentType: contentType
 		});
 		
 		// set the headers on our request
+		if ( data !== undefined ) {
+			request.setRequestHeader('Content-MD5', CryptoJS.MD5(data));
+		}
 		request.setRequestHeader('X-SN-Date', date);
 		request.setRequestHeader('Authorization', 'SolarNetworkWS ' +auth);
 	});
@@ -238,7 +263,7 @@ sn.sec.json = function(url, method, callback) {
 	});
 	
 	if ( callback !== undefined ) {
-		xhr.send(method, sendData, callback);
+		xhr.send(method, data, callback);
 	}
 	return xhr;
 };
