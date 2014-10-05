@@ -280,7 +280,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		var barRange = xBar.range(),
 			ex = xBar.rangeExtent(),
 			x = parent.scaleDate(date);
-		var result = barRange[Math.floor((x / ex[1]) * barRange.length)] + (xBar.rangeBand() / 2);
+		var result = barRange[Math.round((x / ex[1]) * (barRange.length - 1))] + (xBar.rangeBand() / 2);
 		return result;
 	};
 	
