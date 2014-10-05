@@ -42,7 +42,7 @@ sn.sec.token = function(value) {
  * Set the in-memory security token secret to use.
  *
  * @param {String} [value] The value to set.
- * @returs The {@link sn.sec} object.
+ * @returns The {@link sn.sec} object.
  */
 sn.sec.secret = function(value) {
 	if ( arguments.length ) {
@@ -63,7 +63,7 @@ sn.sec.hasSecret = function() {
 /**
  * Clear the in-memory secret.
  * 
- * @returs The {@link sn.sec} object.
+ * @returns The {@link sn.sec} object.
  */
 sn.sec.clearSecret = function() {
 	cred.secret = undefined;
