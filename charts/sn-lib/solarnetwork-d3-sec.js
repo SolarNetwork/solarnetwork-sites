@@ -71,6 +71,18 @@ sn.sec.clearSecret = function() {
 };
 
 /**
+ * Test if a Content-MD5 hash should be included in the request, based on the 
+ * request content type.
+ *
+ * @param {String} contentType the content type
+ * @returns {Boolean} <em>true</em> if including the Content-MD5 hash is appropriate
+ */
+function shouldIncludeContentMD5(contentType) {
+	// we don't send Content-MD5 for form data, because server treats this as URL parameters
+	return (contentType !== null && contentType.indexOf('application/x-www-form-urlencoded') < 0);
+};
+
+/**
  * Generate the authorization header value for a set of request parameters.
  * 
  * <p>This returns just the authorization header value, without the scheme. For 
@@ -92,7 +104,7 @@ sn.sec.clearSecret = function() {
 sn.sec.generateAuthorizationHeaderValue = function(params) {
 	var msg = 
 		(params.method === undefined ? 'GET' : params.method.toUpperCase()) + '\n'
-		+(params.data === undefined ? '' : CryptoJS.MD5(params.data)) + '\n'
+		+(params.data !== undefined && shouldIncludeContentMD5(params.contentType) ? CryptoJS.MD5(params.data) : '') + '\n'
 		+(params.contentType === undefined ? '' : params.contentType) + '\n'
 		+params.date +'\n'
 		+params.path;
@@ -236,7 +248,8 @@ sn.sec.json = function(url, method, data, contentType, callback) {
 		var date = new Date().toUTCString();		
 		
 		// construct our canonicalized path value from our URL
-		var path = sn.sec.authURLPath(url, data);
+		var path = sn.sec.authURLPath(url, 
+			(contentType !== undefined && contentType.indexOf('application/x-www-form-urlencoded') === 0 ? data : undefined));
 		
 		// generate the authorization hash value now (cryptographically signing our request)
 		var auth = sn.sec.generateAuthorizationHeaderValue({
@@ -250,7 +263,7 @@ sn.sec.json = function(url, method, data, contentType, callback) {
 		});
 		
 		// set the headers on our request
-		if ( data !== undefined ) {
+		if ( data !== undefined && shouldIncludeContentMD5(contentType) ) {
 			request.setRequestHeader('Content-MD5', CryptoJS.MD5(data));
 		}
 		request.setRequestHeader('X-SN-Date', date);
