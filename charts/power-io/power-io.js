@@ -132,7 +132,7 @@ function setupPowerAreaChart(container, chart, parameters, endDate, sourceMap) {
 	if ( sourceMap['Control'] && sourceMap['Control'].length > 0 ) {
 		// also load the control data, without any aggregate if using TenMinute aggregate to get the raw data
 		loadSets.splice(loadSets.length, 0, sn.datum.loader(sourceMap['Control'], sn.runtime.controlUrlHelper,
-			queryRange.start, queryRange.end, (chart.aggregate() === 'TenMinute' ? undefined : parameters.aggregate)));
+			queryRange.start, queryRange.end, (parameters.aggregate === 'TenMinute' ? undefined : parameters.aggregate)));
 	}
 	
 	container.selectAll('.time-count').text(queryRange.timeCount);
