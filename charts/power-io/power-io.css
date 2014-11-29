@@ -169,6 +169,10 @@ a {
 	color: rgb(33, 113, 181);
 }
 
+#details .control {
+	color: #E88613;
+}
+
 #details .range input {
 	width: 3em;
 }
@@ -254,4 +258,10 @@ svg {
 
 .chart line.axis {
 	stroke: black;
+}
+
+path.control {
+	fill: none;
+	stroke: #E88613;
+	stroke-width: 1px;
 }

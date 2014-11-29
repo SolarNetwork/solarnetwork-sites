@@ -31,7 +31,8 @@ function legendClickHandler(d, i) {
 
 function sourceExcludeCallback(dataType, sourceId) {
 	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
-	return sn.runtime.excludeSources.enabled(mappedSourceId);
+	return (sn.runtime.sourceGroupMap['Control'].indexOf(mappedSourceId) < 0 
+			&& sn.runtime.excludeSources.enabled(mappedSourceId));
 }
 
 //show/hide the proper range selection based on the current aggregate level
@@ -46,15 +47,64 @@ function colorForDataTypeSource(dataType, sourceId, sourceIndex) {
 	return sn.runtime.colorData[mappedSourceId];
 }
 
+function datumDate(datum) {
+	if ( datum.date ) {
+		return datum.date;
+	}
+	if ( datum.localDate ) {
+		return sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
+	}
+	if ( datum.created ) {
+		return sn.timestampFormat.parse(datum.created);
+	}
+	return null;
+}
+
 function chartDataCallback(dataType, datum) {
 	// create date property
-	if ( datum.localDate ) {
-		datum.date = sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
-	} else if ( datum.created ) {
-		datum.date = sn.timestampFormat.parse(datum.created);
-	} else {
-		datum.date = null;
-	}
+	datum.date = datumDate(datum);
+}
+
+function controlDrawCallback(svgAnnotRoot) {
+	var chart = this;
+	var xDomain = chart.xDomain();
+	var controlData = chart.stashedData('Control').filter(function(d) {
+		// filter any data outside our chart domain, assigning Date objects along the way
+		var date = datumDate(d);
+		if ( date.getTime() < xDomain[0].getTime() || date.getTime() > xDomain[1].getTime() ) {
+			return false;
+		}
+		d.date = date;
+		return true;
+	});
+	var yMax = chart.yDomain()[1];
+	var lineGenerator = d3.svg.line()
+		.interpolate('bundle')
+		.x(function(d) {
+			var date = datumDate(d);
+			var x = chart.scaleDate(date);
+			return x;
+		})
+		.y(function(d) {
+			var val = (d.val / 100) * yMax;
+			var y = chart.scaleValue(val);
+			if ( isNaN(val) ) {
+				val = 0;
+			}
+			return y;
+		});
+	var line = svgAnnotRoot.selectAll('path.control').data(controlData ? [controlData] : []);
+	line.transition().duration(chart.transitionMs())
+		.attr('d', lineGenerator);
+	line.enter().append('path')
+			.attr('class', 'control')
+			.attr('d', lineGenerator)
+			.style('opacity', 1e-6)
+		.transition().duration(chart.transitionMs())
+			.style('opacity', '0.9');
+	line.exit().transition().duration(chart.transitionMs())
+		.style('opacity', 1e-6)
+		.remove();
 }
 
 // Watt stacked area overlap chart
@@ -70,25 +120,35 @@ function powerIOAreaChartSetup(endDate) {
 function setupPowerAreaChart(container, chart, parameters, endDate, sourceMap) {
 	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
-	
-	container.selectAll('.time-count').text(queryRange.timeCount);
-	container.selectAll('.time-unit').text(queryRange.timeUnit);
-	
-	sn.datum.multiLoader([
+	var loadSets = [
 		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate),
 		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate)
-	]).callback(function(error, results) {
-		if ( !(Array.isArray(results) && results.length === 2) ) {
+	];
+
+	if ( sourceMap['Control'] && sourceMap['Control'].length > 0 ) {
+		// also load the control data, without any aggregate if using TenMinute aggregate to get the raw data
+		loadSets.splice(loadSets.length, 0, sn.datum.loader(sourceMap['Control'], sn.runtime.controlUrlHelper,
+			queryRange.start, queryRange.end, (chart.aggregate() === 'TenMinute' ? undefined : parameters.aggregate)));
+	}
+	
+	container.selectAll('.time-count').text(queryRange.timeCount);
+	container.selectAll('.time-unit').text(queryRange.timeUnit);
+	
+	sn.datum.multiLoader(loadSets).callback(function(error, results) {
+		if ( !(Array.isArray(results) && results.length === loadSets.length) ) {
 			sn.log("Unable to load data for Energy Bar chart: {0}", error);
 			return;
 		}
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
 		chart.reset()
 			.load(results[0], 'Consumption')
-			.load(results[1], 'Generation')
-			.regenerate();
+			.load(results[1], 'Generation');
+		if ( results.length > 2 ) {
+			chart.stash(results[2], 'Control');
+		}
+		chart.regenerate();
 		sn.log("Power Area chart watt range: {0}", chart.yDomain());
 		sn.log("Power Area chart time range: {0}", chart.xDomain());
 		sn.adjustDisplayUnits(container, 
@@ -101,16 +161,24 @@ function setupPowerAreaChart(container, chart, parameters, endDate, sourceMap) {
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
-		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
+		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap, {
+			displayColor : function(dataType) {
+				return (dataType === 'Consumption' ? colorbrewer.Blues : 
+					dataType === 'Generation' ? colorbrewer.Greens 
+					: colorbrewer.Oranges );
+			}
+		});
 	
 		// we make use of sn.colorFn, so stash the required color map where expected
 		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
 
 		// set up form-based details
-		d3.select('#details .consumption').style('color', 
+		d3.selectAll('#details .consumption').style('color', 
 				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]);
-		d3.select('#details .generation').style('color', 
+		d3.selectAll('#details .generation').style('color', 
 				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
+		d3.selectAll('#details .control').style('color', 
+				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Control'][sn.runtime.sourceGroupMap['Control'][0]]]);
 
 		// create copy of color data for reverse ordering so labels vertically match chart layers
 		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap, legendClickHandler, function(s) {
@@ -208,6 +276,9 @@ function setupSourceGroupMap() {
 	sourceArray = sn.env.consumptionSourceIds.split(/\s*,\s*/);
 	map['Consumption'] = sourceArray;
 	
+	sourceArray = sn.env.controlSourceIds.split(/\s*,\s*/);
+	map['Control'] = sourceArray;
+	
 	sn.runtime.sourceGroupMap = map;
 }
 
@@ -217,16 +288,19 @@ function sourceSets(regenerate) {
 	}
 	return [
 		{ nodeUrlHelper : sn.runtime.urlHelper, sourceIds : sn.runtime.sourceGroupMap['Generation'] },
-		{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Consumption'] }
+		{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Consumption'] },
+		{ nodeUrlHelper : sn.runtime.controlUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Control'] }
 	];
 }
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 30,
-		sourceIds : 'Power',
-		consumptionNodeId : 108,
-		consumptionSourceIds : 'A,B,C',
+		nodeId : 124, //30,
+		sourceIds : 'PowerA,PowerB', //Power,
+		consumptionNodeId : 124, //108,
+		consumptionSourceIds : 'Main', //'A,B,C',
+		controlNodeId : 124, //108,
+		controlSourceIds : '/power/pcm/1?percent',
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
@@ -247,11 +321,13 @@ function onDocumentReady() {
 	sn.runtime.powerIOAreaContainer = d3.select(d3.select('#power-area-chart').node().parentNode);
 	sn.runtime.powerIOAreaChart = sn.chart.powerIOAreaChart('#power-area-chart', sn.runtime.powerIOAreaParameters)
 		.dataCallback(chartDataCallback)
+		.drawAnnotationsCallback(controlDrawCallback)
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 	
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
 	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.controlUrlHelper = sn.datum.nodeUrlHelper(sn.env.controlNodeId);
 
 	setupUI();
 	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
