@@ -31,7 +31,7 @@ function legendClickHandler(d, i) {
 
 function sourceExcludeCallback(dataType, sourceId) {
 	var mappedSourceId = sn.runtime.sourceColorMap.displaySourceMap[dataType][sourceId];
-	return (sn.runtime.sourceGroupMap['Control'].indexOf(mappedSourceId) < 0 
+	return ((!sn.runtime.sourceGroupMap['Control'] || sn.runtime.sourceGroupMap['Control'].indexOf(mappedSourceId) < 0) 
 			&& sn.runtime.excludeSources.enabled(mappedSourceId));
 }
 
@@ -68,7 +68,7 @@ function chartDataCallback(dataType, datum) {
 function controlDrawCallback(svgAnnotRoot) {
 	var chart = this;
 	var xDomain = chart.xDomain();
-	var controlData = chart.stashedData('Control').filter(function(d) {
+	var controlData = (!sn.runtime.sourceGroupMap['Control'] ? [] : chart.stashedData('Control').filter(function(d) {
 		// filter any data outside our chart domain, assigning Date objects along the way
 		var date = datumDate(d);
 		if ( date.getTime() < xDomain[0].getTime() || date.getTime() > xDomain[1].getTime() ) {
@@ -76,7 +76,7 @@ function controlDrawCallback(svgAnnotRoot) {
 		}
 		d.date = date;
 		return true;
-	});
+	}));
 	var yMax = chart.yDomain()[1];
 	var lineGenerator = d3.svg.line()
 		.interpolate('cardinal')
@@ -179,9 +179,10 @@ function setup(repInterval) {
 				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]);
 		d3.selectAll('#details .generation').style('color', 
 				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
-		d3.selectAll('#details .control').style('color', 
-				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Control'][sn.runtime.sourceGroupMap['Control'][0]]]);
-
+		if ( sn.runtime.sourceGroupMap['Control'] ) {
+			d3.selectAll('#details .control').style('color', 
+					sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Control'][sn.runtime.sourceGroupMap['Control'][0]]]);
+		}
 		// create copy of color data for reverse ordering so labels vertically match chart layers
 		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap, legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
@@ -278,8 +279,10 @@ function setupSourceGroupMap() {
 	sourceArray = sn.env.consumptionSourceIds.split(/\s*,\s*/);
 	map['Consumption'] = sourceArray;
 	
-	sourceArray = sn.env.controlSourceIds.split(/\s*,\s*/);
-	map['Control'] = sourceArray;
+	if ( sn.env.controlSourceIds ) {
+		sourceArray = sn.env.controlSourceIds.split(/\s*,\s*/);
+		map['Control'] = sourceArray;
+	}
 	
 	sn.runtime.sourceGroupMap = map;
 }
@@ -288,21 +291,24 @@ function sourceSets(regenerate) {
 	if ( !sn.runtime.sourceGroupMap || regenerate ) {
 		setupSourceGroupMap();
 	}
-	return [
+	var result = [
 		{ nodeUrlHelper : sn.runtime.urlHelper, sourceIds : sn.runtime.sourceGroupMap['Generation'] },
-		{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Consumption'] },
-		{ nodeUrlHelper : sn.runtime.controlUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Control'] }
+		{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Consumption'] }
 	];
+	if ( sn.runtime.sourceGroupMap['Control'] ) {
+		result.push({ nodeUrlHelper : sn.runtime.controlUrlHelper, sourceIds : sn.runtime.sourceGroupMap['Control'] });
+	}
+	return result;
 }
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 124, //30,
-		sourceIds : 'PowerA,PowerB', //Power,
-		consumptionNodeId : 124, //108,
-		consumptionSourceIds : 'Main', //'A,B,C',
-		controlNodeId : 124, //108,
-		controlSourceIds : '/power/pcm/1?percent',
+		nodeId : 30,
+		sourceIds : 'Power',
+		consumptionNodeId : 108,
+		consumptionSourceIds : 'A,B,C',
+		controlNodeId : 0,
+		controlSourceIds : '',
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
