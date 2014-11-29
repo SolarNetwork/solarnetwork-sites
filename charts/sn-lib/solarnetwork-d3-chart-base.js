@@ -597,11 +597,12 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {Array} rawData - the raw chart data to stash
 	 * @param {String} groupId - the group ID to associate with the data
+	 * @param {Boolean} replace - If <em>true</em> then do not append to existing data, replace it instead.
 	 * @returns this object
 	 * @memberOf sn.chart.baseGroupedStackChart
 	 */
-	self.stash = function(rawData, groupId) {
-		if ( otherData[groupId] === undefined ) {
+	self.stash = function(rawData, groupId, replace) {
+		if ( otherData[groupId] === undefined || replace === true ) {
 			otherData[groupId] = rawData;
 		} else {
 			otherData[groupId] = otherData[groupId].concat(rawData);
