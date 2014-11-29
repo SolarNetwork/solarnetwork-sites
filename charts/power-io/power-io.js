@@ -79,7 +79,7 @@ function controlDrawCallback(svgAnnotRoot) {
 	});
 	var yMax = chart.yDomain()[1];
 	var lineGenerator = d3.svg.line()
-		.interpolate('bundle')
+		.interpolate('cardinal')
 		.x(function(d) {
 			var date = datumDate(d);
 			var x = chart.scaleDate(date);
@@ -87,13 +87,15 @@ function controlDrawCallback(svgAnnotRoot) {
 		})
 		.y(function(d) {
 			var val = (d.val / 100) * yMax;
-			var y = chart.scaleValue(val);
 			if ( isNaN(val) ) {
 				val = 0;
 			}
+			var y = chart.scaleValue(val);
 			return y;
 		});
-	var line = svgAnnotRoot.selectAll('path.control').data(controlData ? [controlData] : []);
+	var line = svgAnnotRoot.selectAll('path.control').data(controlData ? [controlData] : [], function(d) {
+		return (d.length ? d[0].sourceId : null);
+	});
 	line.transition().duration(chart.transitionMs())
 		.attr('d', lineGenerator);
 	line.enter().append('path')
