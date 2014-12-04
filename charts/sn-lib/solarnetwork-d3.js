@@ -7,7 +7,7 @@
  * @require queue 1.0
  */
 var sn = {
-	version : '0.0.6',
+	version : '0.0.7',
 	
 	/**
 	 * @namespace the SolarNetwork chart namespace.
@@ -1649,6 +1649,45 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate, fillFn) {
 };
 
 /**
+ * Get an appropriate display scale for a given value. This will return values suitable
+ * for passing to {@link sn.displayUnitsForScale}.
+ * 
+ * @param {Number} value - The value, for example the maximum value in a range of values, 
+ *                         to get a display scale factor for.
+ * @return {Number} A display scale factor.
+ * @since 0.0.7
+ */
+sn.displayScaleForValue = function(value) {
+	var result = 1, num = Number(value);
+	if ( isNaN(num) === false ) {
+		if ( value >= 1000000000 ) {
+			result = 1000000000;
+		} else if ( value >= 1000000 ) {
+			result = 1000000;
+		} else if ( value >= 1000 ) {
+			result = 1000;
+		}
+	}
+	return result;
+};
+
+/**
+ * Get an appropriate display unit for a given base unit and scale factor.
+ *
+ * @param {String} baseUnit - The base unit, for example <b>W</b> or <b>Wh</b>.
+ * @param {Number} scale - The unit scale, which must be a recognized SI scale, such 
+ *                         as <b>1000</b> for <b>k</b>.
+ * @return {String} A display unit value.
+ * @since 0.0.7
+ */
+sn.displayUnitsForScale = function(baseUnit, scale) {
+	return (scale === 1000000000 ? 'G' 
+			: scale === 1000000 ? 'M' 
+			: scale === 1000 ? 'k' 
+			: '') + baseUnit;
+};
+
+/**
  * Set the display units within a d3 selection based on a scale. This method takes a 
  * base unit and adds an SI prefix based on the provided scale. It replaces the text
  * content of any DOM node with a <code>unit</code> class that is a child of the given
@@ -1663,15 +1702,11 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate, fillFn) {
  * @since 0.0.4
  */
 sn.adjustDisplayUnits = function(selection, baseUnit, scale, unitKind) {
-	var unit = (scale === 1000000000 ? 'G' 
-		: scale === 1000000 ? 'M' 
-		: scale === 1000 ? 'k' 
-		: '') + baseUnit;
+	var unit = sn.displayUnitsForScale(baseUnit, scale);
 	selection.selectAll('.unit').text(unit);
 	if ( unitKind !== undefined ) {
 		selection.selectAll('.unit-kind').text(unitKind);
 	}
-
 };
 
 /**
