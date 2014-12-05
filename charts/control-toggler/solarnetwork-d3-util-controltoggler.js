@@ -19,6 +19,7 @@ sn.util.controlToggler = function(urlHelper) {
 	var timer;
 	var lastKnownStatus;
 	var lastKnownInstruction;
+	var lastHadCredentials;
 	var callback;
 	var refreshMs = 20000;
 	var controlID = '/power/switch/1';
@@ -110,12 +111,11 @@ sn.util.controlToggler = function(urlHelper) {
 	};
 	
 	function update() {
-		if ( sn.sec.hasTokenCredentials() !== true ) {
-			return;
-		}
     	var q = queue();
-		q.defer(sn.sec.json, nodeUrlHelper.mostRecentURL([controlID]), 'GET');
-		q.defer(sn.sec.json, nodeUrlHelper.viewPendingInstructionsURL(), 'GET');
+		q.defer(d3.json, nodeUrlHelper.mostRecentURL([controlID]));
+		if ( sn.sec.hasTokenCredentials() === true ) {
+			q.defer(sn.sec.json, nodeUrlHelper.viewPendingInstructionsURL(), 'GET');
+		}
 		q.await(function(error, status, active) {
 			if ( error ) {
 				sn.log('Error querying control toggler {0} status: {1}', controlID, error.status);
@@ -133,15 +133,17 @@ sn.util.controlToggler = function(urlHelper) {
 				}
 				
 				// get current instruction (if any)
-				var pendingInstruction = (active == null ? undefined : getActiveInstruction(active.data));
+				var pendingInstruction = (active ? getActiveInstruction(active.data) : undefined);
 				var pendingValue = (pendingInstruction === undefined ? undefined : Number(pendingInstruction.parameters[0].value));
 				var lastKnownValue = pendingInstructionValue();
 				if ( controlStatus !== undefined && (lastKnownStatus === undefined 
 						|| controlStatus.val !== lastKnownStatus.val)
-						|| pendingValue !== lastKnownValue  ) {
+						|| pendingValue !== lastKnownValue
+						|| lastHadCredentials !==  sn.sec.hasTokenCredentials() ) {
 					sn.log('Control {0} value is currently {1}', controlID, controlStatus.val);
 					lastKnownStatus = controlStatus;
 					lastKnownInstruction = pendingInstruction;
+					lastHadCredentials = sn.sec.hasTokenCredentials();
 					
 					// invoke the client callback so they know the data has been updated
 					notifyDelegate();
