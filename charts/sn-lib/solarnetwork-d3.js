@@ -1806,13 +1806,18 @@ sn.util = {};
  * @since 0.0.5
  */
 sn.util.copy = function(obj1, obj2) {
-	var prop;
+	var prop, desc;
 	if ( obj2 === undefined ) {
 		obj2 = {};
 	}
 	for ( prop in obj1 ) {
 		if ( obj1.hasOwnProperty(prop) ) {
-			obj2[prop] = obj1[prop];
+			desc = Object.getOwnPropertyDescriptor(obj1, prop);
+			if ( desc ) {
+				Object.defineProperty(obj2, prop, desc);
+			} else {
+				obj2[prop] = obj1[prop];
+			}
 		}
 	}
 	return obj2;
