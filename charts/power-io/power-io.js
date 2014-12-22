@@ -220,7 +220,10 @@ function setupUI() {
 			} else if ( propName === 'nodeId' ) {
 				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
-			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
+			} else if ( propName === 'controlNodeId' ) {
+				sn.runtime.controlUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' || propName === 'controlSourceIds' ) {
 				getAvailable = true;
 			} else if ( propName === 'wiggle' ) {
 				sn.runtime.powerIOAreaParameters.value(propName, sn.env[propName]);
