@@ -108,7 +108,7 @@ sn.sec.generateAuthorizationHeaderValue = function(params) {
 		+(params.contentType === undefined ? '' : params.contentType) + '\n'
 		+params.date +'\n'
 		+params.path;
-	var hash = CryptoJS.HmacSHA1(msg, params.secret);
+	var hash = CryptoJS.HmacSHA1(msg, (params.secret || ''));
 	var authHeader = params.token +':' +CryptoJS.enc.Base64.stringify(hash);
 	return authHeader;
 };
