@@ -31,7 +31,7 @@ sn.datum = {};
  */
 sn.datum.nodeUrlHelper = function(node, configuration) {
 	var that = {
-		version : '1.0.0'
+		version : '1.1.0'
 	};
 	
 	var nodeId = node;
@@ -174,6 +174,7 @@ sn.datum.nodeUrlHelper = function(node, configuration) {
 	
 	// setup core properties
 	Object.defineProperties(that, {
+		secureQuery				: { get : function() { return (config.secureQuery === true); }, enumerable : true },
 		keyDescription			: { value : keyDescription },
 		nodeId					: { get : function() { return nodeId; }, enumerable : true },
 		nodeID					: { value : nodeID },
