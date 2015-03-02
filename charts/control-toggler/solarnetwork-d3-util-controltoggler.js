@@ -1,7 +1,8 @@
 /**
  * @require d3 3.0
  * @require queue 1.0
- * @require solarnetwork-d3-sec 1.0
+ * @require solarnetwork-d3-datum 1.1
+ * @require solarnetwork-d3-sec 1.1
  */
 
 (function() {
@@ -13,7 +14,7 @@ if ( sn.util === undefined ) {
 
 sn.util.controlToggler = function(urlHelper) {
 	var self = {
-		version : '1.1.0'
+		version : '1.2.0'
 	};
 
 	var timer;
@@ -22,6 +23,7 @@ sn.util.controlToggler = function(urlHelper) {
 	var lastHadCredentials;
 	var callback;
 	var refreshMs = 20000;
+	var pendingRefreshMs = 5000;
 	var controlID = '/power/switch/1';
 	var nodeUrlHelper = urlHelper;
 	
@@ -62,6 +64,12 @@ sn.util.controlToggler = function(urlHelper) {
 		return (lastKnownInstruction === undefined ? undefined : Number(lastKnownInstruction.parameters[0].value));
 	}
 
+	function currentRefreshMs() {
+		return (d3.set(['Queued','Received','Executing']).has(pendingInstructionState()) 
+			? pendingRefreshMs 
+			: refreshMs);
+	}
+	
 	function value(desiredValue) {
 		if ( !arguments.length ) return (lastKnownStatus === undefined ? undefined : lastKnownStatus.val);
 
@@ -106,13 +114,19 @@ sn.util.controlToggler = function(urlHelper) {
 			
 			// invoke the client callback so they know the instruction state has changed
 			notifyDelegate();
+			
+			// reset timer to start polling at pendingRefreshMs rate
+			if ( timer ) {
+				self.stop();
+				self.start(currentRefreshMs());
+			}
 		});
 		return self;
 	};
 	
 	function update() {
     	var q = queue();
-		q.defer(d3.json, nodeUrlHelper.mostRecentURL([controlID]));
+		q.defer((nodeUrlHelper.secureQuery ? sn.sec.json : d3.json), nodeUrlHelper.mostRecentURL([controlID]));
 		if ( sn.sec.hasTokenCredentials() === true ) {
 			q.defer(sn.sec.json, nodeUrlHelper.viewPendingInstructionsURL(), 'GET');
 		}
@@ -140,7 +154,9 @@ sn.util.controlToggler = function(urlHelper) {
 						|| controlStatus.val !== lastKnownStatus.val)
 						|| pendingValue !== lastKnownValue
 						|| lastHadCredentials !==  sn.sec.hasTokenCredentials() ) {
-					sn.log('Control {0} value is currently {1}', controlID, controlStatus.val);
+					sn.log('Control {0} for {1} value is currently {2}', controlID, 
+						nodeUrlHelper.keyDescription(),
+						(controlStatus ? controlStatus.val : 'N/A'));
 					lastKnownStatus = controlStatus;
 					lastKnownInstruction = pendingInstruction;
 					lastHadCredentials = sn.sec.hasTokenCredentials();
@@ -151,7 +167,7 @@ sn.util.controlToggler = function(urlHelper) {
 			
 				// if timer was defined, keep going as if interval set
 				if ( timer !== undefined ) {
-					timer = setTimeout(update, refreshMs);
+					timer = setTimeout(update, currentRefreshMs());
 				}
 			}
 		});
@@ -162,12 +178,13 @@ sn.util.controlToggler = function(urlHelper) {
 	/**
 	 * Start automatically updating the status of the configured control.
 	 * 
+	 * @param {Number} when - An optional offset in milliseconds to start at, defaults to 20ms.
 	 * @return this object
 	 * @memberOf sn.util.controlToggler
 	 */
-	self.start = function() {
+	self.start = function(when) {
 		if ( timer === undefined ) {
-			timer = setTimeout(update, 20);
+			timer = setTimeout(update, (when || 20));
 		}
 		return self;
 	};
@@ -210,6 +227,22 @@ sn.util.controlToggler = function(urlHelper) {
 		if ( !arguments.length ) return refreshMs;
 		if ( typeof value === 'number' ) {
 			refreshMs = value;
+		}
+		return self;
+	};
+
+	/**
+	 * Get or set the refresh rate, in milliseconds, when a toggle instruction is queued.
+	 * 
+	 * @param {Number} [value] the millisecond value to set
+	 * @return when used as a getter, the current refresh millisecond value, otherwise this object
+	 * @memberOf sn.util.controlToggler
+	 * @since 1.2
+	 */
+	self.pendingRefreshMs = function(value) {
+		if ( !arguments.length ) return pendingRefreshMs;
+		if ( typeof value === 'number' ) {
+			pendingRefreshMs = value;
 		}
 		return self;
 	};
