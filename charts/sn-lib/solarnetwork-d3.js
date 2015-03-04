@@ -1168,11 +1168,11 @@ sn.pixelWidth = function(selector) {
 	if ( !styleWidth ) {
 		return null;
 	}
-	var pixels = styleWidth.match(/(\d+)px/);
+	var pixels = styleWidth.match(/([0-9.]+)px/);
 	if ( pixels === null ) {
 		return null;
 	}
-	var result = Number(pixels[1]);
+	var result = Math.floor(pixels[1]);
 	if ( isNaN(result) ) {
 		return null;
 	}
