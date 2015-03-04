@@ -295,13 +295,12 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	
 	svgRoot = d3.select(containerSelector).select('svg');
 	if ( svgRoot.empty() ) {
-		svgRoot = d3.select(containerSelector).append('svg:svg')
-			.attr('class', 'chart')
-			.attr('width', w + p[1] + p[3])
-			.attr('height', h + p[0] + p[2]);
-	} else {
-		svgRoot.selectAll('*').remove();
+		svgRoot = d3.select(containerSelector).append('svg:svg');
 	}
+	svgRoot.attr('class', 'chart')
+		.attr('width', w + p[1] + p[3])
+		.attr('height', h + p[0] + p[2])
+		.selectAll('*').remove();
 	
 	svgDataRoot = svgRoot.append('g')
 		.attr('class', 'data-root')
