@@ -91,11 +91,11 @@ div.vbox {
 }
 
 div.hbox > .main {
-	width: 864px;
+	width: 800px;
 }
 
 div.hbox > .sub {
-	width: 130px;
+	width: 180px;
 }
 
 div.vbox + div.vbox {
@@ -154,6 +154,19 @@ a {
 #details input[type=number] {
 	width: 4em;
 	font-size: 12px;
+}
+
+#details input[type=text] {
+	width: 8em;
+	font-size: 12px;
+}
+
+#details .generation {
+	color: rgb(35, 139, 69);
+}
+
+#details .consumption {
+	color: rgb(33, 113, 181);
 }
 
 #details .range input {

@@ -7,7 +7,7 @@
  * @require queue 1.0
  */
 var sn = {
-	version : '0.0.5',
+	version : '0.0.7',
 	
 	/**
 	 * @namespace the SolarNetwork chart namespace.
@@ -40,23 +40,9 @@ var sn = {
 			]
 	},
 	
-	// parse URL parameters into sn.env
-	// support passing nodeId and other values as URL parameter, e.g. ?nodeId=11
-	env : (function() {
-			var env = {};
-			if ( window !== undefined && window.location.search !== undefined ) {
-				var match = window.location.search.match(/\w+=[^&]+/g);
-				var i;
-				var keyValue;
-				if ( match !== null ) {
-					for ( i = 0; i < match.length; i += 1 ) {
-						keyValue = match[i].split('=', 2);
-						env[keyValue[0]] = keyValue[1];
-					}
-				}
-			}
-			return env;
-		}()),
+	seasonColors : ['#5c8726', '#e9a712', '#762123', '#80a3b7'],
+	
+	env : {},
 		
 	setDefaultEnv : function(defaults) {
 		var prop;
@@ -187,6 +173,83 @@ var sn = {
 			return (obj.source === d.source ? obj.color : c);
 		}, sn.runtime.colorData[0].color);
 	}
+};
+
+/**
+ * Parse the query portion of a URL string, and return a parameter object for the
+ * parsed key/value pairs.
+ * 
+ * <p>Multiple parameters of the same name will be stored as an array on the returned object.</p>
+ * 
+ * @param {String} search the query portion of the URL, which may optionally include 
+ *                        the leading '?' character
+ * @return {Object} the parsed query parameters, as a parameter object
+ */
+sn.parseURLQueryTerms = function(search) {
+	var params = {};
+	var pairs;
+	var pair;
+	var i, len, k, v;
+	if ( search !== undefined && search.length > 0 ) {
+		// remove any leading ? character
+		if ( search.match(/^\?/) ) {
+			search = search.substring(1);
+		}
+		pairs = search.split('&');
+		for ( i = 0, len = pairs.length; i < len; i++ ) {
+			pair = pairs[i].split('=', 2);
+			if ( pair.length === 2 ) {
+				k = decodeURIComponent(pair[0]);
+				v = decodeURIComponent(pair[1]);
+				if ( params[k] ) {
+					if ( !Array.isArray(params[k]) ) {
+						params[k] = [params[k]]; // turn into array;
+					}
+					params[k].push(v);
+				} else {
+					params[k] = v;
+				}
+			}
+		}
+	}
+	return params;
+};
+
+/**
+ * Encode the properties of an object as a URL query string.
+ * 
+ * <p>If an object property has an array value, multiple URL parameters will be encoded for that property.</p>
+ * 
+ * @param {Object} an object to encode as URL parameters
+ * @return {String} the encoded query parameters
+ */
+sn.encodeURLQueryTerms = function(parameters) {
+	var result = '',
+		prop,
+		val,
+		i,
+		len;
+	function handleValue(k, v) {
+		if ( result.length ) {
+			result += '&';
+		}
+		result += encodeURIComponent(k) + '=' + encodeURIComponent(v);
+	}
+	if ( parameters ) {
+		for ( prop in parameters ) {
+			if ( parameters.hasOwnProperty(prop) ) {
+				val = parameters[prop];
+				if ( Array.isArray(val) ) {
+					for ( i = 0, len = val.length; i < len; i++ ) {
+						handleValue(prop, val[i]);
+					}
+				} else {
+					handleValue(prop, val);
+				}
+			}
+		}
+	}
+	return result;
 };
 
 /**
@@ -597,15 +660,20 @@ sn.nodeUrlHelper = function(nodeId) {
 		 * @return {String} a URL string
 		 */
 		dateTimeList : function(type, startDate, endDate, agg, opts) {
-			var types = (Array.isArray(type) ? type : [type]);
-			types.sort();
-			var eDate = (opts !== undefined && opts.exclusiveEndDate === true ? d3.time.second.utc.offset(endDate, -1) : endDate);
-			var dataURL = (baseURL() +'/datum/list?nodeId=' +nodeId 
-                    		+'&type=' +encodeURIComponent(type.toLowerCase()));
+			var types, 
+				eDate = (opts !== undefined && opts.exclusiveEndDate === true && endDate ? d3.time.second.utc.offset(endDate, -1) : endDate), 
+				dataURL = baseURL() +'/datum/list?nodeId=' +nodeId;
+			if ( type ) {
+				types = (Array.isArray(type) ? type : [type]);
+				types.sort();
+				types.forEach(function(e) {
+            		dataURL += '&type=' +encodeURIComponent(e.toLowerCase());
+				});
+            }
 			if ( startDate ) {
 				dataURL += '&startDate=' +encodeURIComponent(sn.dateTimeFormatURL(startDate));
 			}
-			if ( endDate ) {
+			if ( eDate ) {
 				dataURL += '&endDate=' +encodeURIComponent(sn.dateTimeFormatURL(eDate));
 			}
 			if ( typeof agg === 'string' && agg.length > 0 ) {
@@ -976,6 +1044,7 @@ sn.sourceColorMapping = function(sourceMap, params) {
 	var colorSlice;
 	var result = {};
 	var displayDataTypeFn;
+	var displaySourceFn;
 	var displayColorFn;
 	if ( typeof p.displayDataType === 'function' ) {
 		displayDataTypeFn = p.displayDataType;
@@ -984,11 +1053,18 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			return (dataType === 'Power' ? 'Generation' : dataType);
 		};
 	}
+	if ( typeof p.displaySource === 'function' ) {
+		displaySourceFn = p.displaySource;
+	} else {
+		displaySourceFn = function(dataType, sourceId) {
+			return sourceId;
+		};
+	}
 	if ( typeof p.displayColor === 'function' ) {
 		displayColorFn = p.displayColor;
 	} else {
 		displayColorFn = function(dataType) {
-			return (dataType === 'Power' ? colorbrewer.Greens : colorbrewer.Blues);
+			return (dataType === 'Consumption' ? colorbrewer.Blues : colorbrewer.Greens);
 		};
 	}
 	function mapSources(dtype) {
@@ -997,7 +1073,7 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			if ( el === '' || el === 'Main' ) {
 				mappedSource = displayDataTypeFn(dtype);
 			} else {
-				mappedSource = displayDataTypeFn(dtype) +' / ' +el;
+				mappedSource = displayDataTypeFn(dtype) +' / ' +displaySourceFn(dtype, el);
 			}
 			chartSourceMap[dtype][el] = mappedSource;
 			if ( el === 'Main' ) {
@@ -1092,15 +1168,36 @@ sn.pixelWidth = function(selector) {
 	if ( !styleWidth ) {
 		return null;
 	}
-	var pixels = styleWidth.match(/(\d+)px/);
+	var pixels = styleWidth.match(/([0-9.]+)px/);
 	if ( pixels === null ) {
 		return null;
 	}
-	var result = Number(pixels[1]);
+	var result = Math.floor(pixels[1]);
 	if ( isNaN(result) ) {
 		return null;
 	}
 	return result;
+};
+
+/**
+ * Get a UTC season constant for a date. Seasons are groups of 3 months, e.g. 
+ * Spring, Summer, Autumn, Winter. The returned value will be a number between
+ * 0 and 3, where (Dec, Jan, Feb) = 0, (Mar, Apr, May) = 1, (Jun, Jul, Aug) = 2,
+ * and (Sep, Oct, Nov) = 3.
+ * 
+ * @param {Date} date The date to get the season for.
+ * @returns a season constant number, from 0 - 3
+ */
+ sn.seasonForDate = function(date) {
+	if ( date.getUTCMonth() < 2 || date.getUTCMonth() === 11 ) {
+		return 3;
+	} else if ( date.getUTCMonth() < 5 ) {
+		return 0;
+	} else if ( date.getUTCMonth() < 8 ) {
+		return 1;
+	} else {
+		return 2;
+	}
 };
 
 /**
@@ -1503,15 +1600,18 @@ sn.datumLoaderQueryRange = function(aggregate, precision, aggregateTimeCount, en
  *                            and a <code>values</code> array of data objects.
  * @param {object} fillTemplate - An object to use as a template for any "filled in" data objects.
  *                                The <code>date</code> property will be populated automatically.
+ *
+ * @param {array} fillFn - An optional function to fill in objects with.
  * @since 0.0.4
  */
-sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
+sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate, fillFn) {
 	var i = 0,
 		j,
 		k,
 		jMax = layerData.length - 1,
 		dummy,
-		prop;
+		prop,
+		copyIndex;
 	// fill in "holes" for each stack, if more than one stack. we assume data already sorted by date
 	if ( jMax > 0 ) {
 		while ( i < d3.max(layerData.map(function(e) { return e.values.length; })) ) {
@@ -1534,6 +1634,10 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
 							}
 						}
 					}
+					if ( fillFn ) {
+						copyIndex = (layerData[k].values.length > i ? i : i > 0 ? i - 1 : null);
+						fillFn(dummy, layerData[k].key, (copyIndex !== null ? layerData[k].values[copyIndex] : undefined));
+					}
 					layerData[k].values.splice(i, 0, dummy);
 				}
 			}
@@ -1542,6 +1646,45 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
 			}
 		}
 	}
+};
+
+/**
+ * Get an appropriate display scale for a given value. This will return values suitable
+ * for passing to {@link sn.displayUnitsForScale}.
+ * 
+ * @param {Number} value - The value, for example the maximum value in a range of values, 
+ *                         to get a display scale factor for.
+ * @return {Number} A display scale factor.
+ * @since 0.0.7
+ */
+sn.displayScaleForValue = function(value) {
+	var result = 1, num = Number(value);
+	if ( isNaN(num) === false ) {
+		if ( value >= 1000000000 ) {
+			result = 1000000000;
+		} else if ( value >= 1000000 ) {
+			result = 1000000;
+		} else if ( value >= 1000 ) {
+			result = 1000;
+		}
+	}
+	return result;
+};
+
+/**
+ * Get an appropriate display unit for a given base unit and scale factor.
+ *
+ * @param {String} baseUnit - The base unit, for example <b>W</b> or <b>Wh</b>.
+ * @param {Number} scale - The unit scale, which must be a recognized SI scale, such 
+ *                         as <b>1000</b> for <b>k</b>.
+ * @return {String} A display unit value.
+ * @since 0.0.7
+ */
+sn.displayUnitsForScale = function(baseUnit, scale) {
+	return (scale === 1000000000 ? 'G' 
+			: scale === 1000000 ? 'M' 
+			: scale === 1000 ? 'k' 
+			: '') + baseUnit;
 };
 
 /**
@@ -1554,14 +1697,16 @@ sn.nestedStackDataNormalizeByDate = function(layerData, fillTemplate) {
  * @param {string} baseUnit - The base unit, for example <b>W</b> or <b>Wh</b>.
  * @param {number} scale - The unit scale, which must be a recognized SI scale, such 
  *                         as <b>1000</b> for <b>k</b>.
+ * @param {string} unitKind - Optional text to replace all occurrences of <code>.unit-kind</code>
+ *                            elements with.
  * @since 0.0.4
  */
-sn.adjustDisplayUnits = function(selection, baseUnit, scale) {
-	var unit = (scale === 1000000000 ? 'G' 
-		: scale === 1000000 ? 'M' 
-		: scale === 1000 ? 'k' 
-		: '') + baseUnit;
+sn.adjustDisplayUnits = function(selection, baseUnit, scale, unitKind) {
+	var unit = sn.displayUnitsForScale(baseUnit, scale);
 	selection.selectAll('.unit').text(unit);
+	if ( unitKind !== undefined ) {
+		selection.selectAll('.unit-kind').text(unitKind);
+	}
 };
 
 /**
@@ -1652,7 +1797,7 @@ sn.superMethod = function(name) {
 sn.util = {};
 
 /**
- * Copy the enumerable own properties of `obj` onto `obj2` and return `obj2`.
+ * Copy the enumerable own properties of `obj1` onto `obj2` and return `obj2`.
  * 
  * @param {Object} obj1 - The object to copy enumerable properties from.
  * @param {Object} [obj2] - The optional object to copy the properties to. If not
@@ -1661,18 +1806,57 @@ sn.util = {};
  * @since 0.0.5
  */
 sn.util.copy = function(obj1, obj2) {
-	var prop;
+	var prop, desc;
 	if ( obj2 === undefined ) {
 		obj2 = {};
 	}
 	for ( prop in obj1 ) {
 		if ( obj1.hasOwnProperty(prop) ) {
-			obj2[prop] = obj1[prop];
+			desc = Object.getOwnPropertyDescriptor(obj1, prop);
+			if ( desc ) {
+				Object.defineProperty(obj2, prop, desc);
+			} else {
+				obj2[prop] = obj1[prop];
+			}
 		}
 	}
 	return obj2;
 };
 
+/**
+ * Copy the enumerable and non-enumerable own properties of `obj` onto `obj2` and return `obj2`.
+ * 
+ * @param {Object} obj1 - The object to copy enumerable properties from.
+ * @param {Object} [obj2] - The optional object to copy the properties to. If not
+ *                          provided a new object will be created.
+ * @returns {Object} The object whose properties were copied to.
+ * @since 0.0.5
+ */
+sn.util.copyAll = function(obj1, obj2) {
+	var prop,
+		keys = Object.getOwnPropertyNames(obj1),
+		i, len,
+		key,
+		desc;
+	if ( obj2 === undefined ) {
+		obj2 = {};
+	}
+	for ( i = 0, len = keys.length; i < len; i += 1 ) {
+		key = keys[i];
+		desc = Object.getOwnPropertyDescriptor(obj1, key);
+		if ( desc ) {
+			Object.defineProperty(obj2, key, desc);
+		} else {
+			obj2[key] = obj1[key];
+		}
+	}
+	return obj2;
+};
+
+// parse URL parameters into sn.env, e.g. ?nodeId=11 puts sn.env.nodeId === '11'
+if ( window !== undefined && window.location.search !== undefined ) {
+	sn.env = sn.parseURLQueryTerms(window.location.search);
+}
 if (typeof define === "function" && define.amd) {
 	define(sn);
 } else if (typeof module === "object" && module.exports) {

@@ -6,9 +6,16 @@
 	<!--meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" /-->
 	<title>Energy Monitor</title>
 	<link type="text/css" rel="stylesheet" href="cm.css" />
-	<script type="text/javascript" src="js-lib/d3.v3.min.js"></script>
-	<script type="text/javascript" src="js/solarnetwork-d3.js"></script>
-	<script type="text/javascript" src="js/cm.js"></script>
+	<script type="text/javascript" src="js-lib/d3-3.4.8.min.js"></script>
+	<script type="text/javascript" src="js-lib/colorbrewer.js"></script>
+	<script type="text/javascript" src="js-lib/queue-1.0.7.min.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-datum.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-base.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-base-bar.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-energy-bar-overlap.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-power-area.js"></script>
+	<script type="text/javascript" src="cm.js"></script>
 	<script type="text/javascript">
 		function startApp() {
 			onDocumentReady();
@@ -23,7 +30,6 @@
 	</script>
 </head>
 <body>
-	<h1>Energy Monitor</h1>
 	<div class="watt-chart">
 		<h2><span id="num-hours"></span> hour power <span class="dataType">use</span> &#x2014; <span class="unit">kW</span></h2>
 		<div id="day-watt" class="chart-container"></div>
@@ -38,6 +44,9 @@
 			<div><span id="total-power-value">0</span> <span class="unit">kW</span></div>
 		</div>
 		<div id="source-labels"></div>
+		<div id="outdated-msg" class="msg">
+			Data as of <span class="value">14 June 2014 21:00</span>
+		</div>
 	</div>
 </body>
 </html>

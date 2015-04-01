@@ -1,12 +1,12 @@
 /**
  * @require d3 3.0
- * @require queue 1.0
- * @require solarnetwork-d3 0.0.3
+ * @require solarnetwork-d3 0.0.4
+ * @require solarnetwork-d3-chart-base 1.0.0
  */
+(function() {
+'use strict';
 
-if ( sn === undefined ) {
-	sn = { chart: {} };
-} else if ( sn.chart === undefined ) {
+if ( sn.chart === undefined ) {
 	sn.chart = {};
 }
 
@@ -17,336 +17,319 @@ if ( sn === undefined ) {
  * @property {number} [height=300] - desired height, in pixels, of the chart
  * @property {number[]} [padding=[10, 0, 20, 30]] - padding to inset the chart by, in top, right, bottom, left order
  * @property {number} [transitionMs=600] - transition time
- * @property {sn.Configuration} excludeSources - the sources to exclude from the chart
+ * @property {number} [opacityReduction=0.1] - a percent opacity reduction to apply to groups on top of other groups
+ * @property {object} [plotProperties] - the property to plot for specific aggregation levels; if unspecified 
+ *                                       the {@code watts} property is used
  */
 
 /**
- * An power input and output chart designed to show consumption and generation data simultaneously.
- * 
- * You can use the {@code excludeSources} parameter to dynamically alter which sources are visible
- * in the chart. After changing the configuration call {@link sn.chart.powerIOAreaChart#regenerate()}
- * to re-draw the chart.
- * 
- * Note that the global {@link sn.colorFn} function is used to map sources to colors, so that
- * must be set up previously.
+ * A power stacked area chart self overlaps two or more data sets.
  * 
  * @class
+ * @extends sn.chart.baseGroupedStackChart
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.powerIOAreaChartParameters} [chartConfig] - the chart parameters
  * @returns {sn.chart.powerIOAreaChart}
  */
 sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
-	var that = {
-		version : "1.0.0"
-	};
-	var sources = [];
-	var config = (chartConfig || new sn.Configuration());
-	
-	// default to container's width, if we can
-	var containerWidth = sn.pixelWidth(containerSelector);
-	
-	var p = (config.padding || [10, 0, 20, 30]),
-		w = (config.width || containerWidth || 812) - p[1] - p[3],
-		h = (config.height || 300) - p[0] - p[2],
-    	x = d3.time.scale.utc().range([0, w]),
-		y = d3.scale.linear().range([h, 0]),
-		format = d3.time.format("%H");
+	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig),
+		superDraw = sn.superMethod.call(parent, 'draw');
+	var self = (function() {
+		var	me = sn.util.copy(parent);
+		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
+		return me;
+	}());
+	parent.me = self;
 
-	var transitionMs = undefined;
-	
-	var svgRoot = undefined,
-		svg = undefined,
-		svgTickGroupX = undefined;
-	
-	// our layer data, and generator function
-	var layerGenerator = undefined;
-	var layers = undefined;
-	var minY = 0;
-	
-	var consumptionLayerCount = 0;
-	
-	function parseConfiguration() {
-		transitionMs = (config.transitionMs || 600);
-	}
-
-	parseConfiguration();
-
-	svgRoot = d3.select(containerSelector).select('svg');
-	if ( svgRoot.empty() ) {
-		svgRoot = d3.select(containerSelector).append('svg:svg')
-			.attr('class', 'chart')
-			.attr("width", w + p[1] + p[3])
-			.attr("height", h + p[0] + p[2]);
-	} else {
-		svgRoot.selectAll('*').remove();
-	}
-
-	svg = svgRoot.append("g")
-		.attr('class', 'data')
-		.attr("transform", "translate(" + p[3] + "," + p[0] + ")");
-	
-	svgTickGroupX = svgRoot.append("g")
-		.attr("class", "ticks")
-		.attr("transform", "translate(" + p[3] +"," +(h + p[0] + p[2]) +")");
-
-	svgRoot.append("g")
-		.attr("class", "crisp rule")
-		.attr("transform", "translate(0," + p[0] + ")");
-
-	function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
+	var svgSumLineGroup = parent.svgRoot.append('g')
+		.attr('class', 'agg-sum')
+		.attr('transform', parent.svgDataRoot.attr('transform'));
 
 	var areaPathGenerator = d3.svg.area()
-		.interpolate("monotone")
-		.x(function(d) { return x(d.x); })
-		.y0(function(d) { return y(d.y0); })
-		.y1(function(d) { return y(d.y0 + d.y); });
+		.interpolate('monotone')
+		.x(function(d) { 
+			return parent.x(d.date);
+		})
+		.y0(function(d) { 
+			return parent.y(d.y0);
+		})
+		.y1(function(d) { 
+			return parent.y(d.y0 + d.y);
+		});
+
+	// object keys define group IDs to treat as "negative" or consumption values, below the X axis
+	var negativeGroupMap = { Consumption : true };
 	
-	function computeDomainX() {
-		x.domain(layers.domainX);
+	function areaFillFn(d, i, j) {
+		return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
 	}
 
-	function computeDomainY() {
-		y.domain([minY, layers.maxY]).nice();
-		computeUnitsY();
-	}
-	
-	// Set y-axis  unit label
-	// setup display units in kW if domain range > 1000
-	var displayFactor = 1;
-	var displayFormatter = d3.format(',d');
-	function computeUnitsY() {
-		var fmt;
-		var maxY = d3.max(y.domain() ,function(v) { return Math.abs(v); });
-		if ( maxY >= 100000 ) {
-			displayFactor = 1000000;
-			fmt = ',g';
-		} else if ( maxY >= 1000 ) {
-			displayFactor = 1000;
-			fmt = ',g';
-		} else {
-			displayFactor = 1;
-			fmt = ',d';
+	/**
+	 * A rollup function for d3.dest(), that aggregates the plot property value and 
+	 * returns objects in the form <code>{ date : Date(..), y : Number, plus : Number, minus : Number }</code>.
+	 */
+	function nestRollupAggregateSum(array) {
+		// Note: we don't use d3.sum here because we want to end up with a null value for "holes"
+		var sum = null, plus = null, minus = null, 
+			d, v, i, len = array.length, groupId, negate = false;
+		for ( i = 0; i < len; i += 1 ) {
+			d = array[i];
+			v = d[parent.plotPropertyName];
+			if ( v !== undefined ) {
+				groupId = d[parent.internalPropName].groupId;
+				negate = negativeGroupMap[groupId] === true;
+				if ( negate ) {
+					minus += v;
+				} else {
+					plus += v;
+				}
+			}
 		}
-		displayFormatter = d3.format(fmt);
+		if ( plus !== null || minus !== null ) {
+			sum = plus - minus;
+		}
+		return { date : array[0].date, y : sum, plus : plus, minus : minus };
 	}
 	
-	function displayFormat(d) {
-		return displayFormatter(d / displayFactor);
+	function ordinalXScale() {
+		var result = d3.scale.ordinal(),
+			x = parent.x,
+			aggregateType = parent.aggregate(),
+			xDomain = x.domain(),
+			interval,
+			step = 1,
+			buckets;
+		if ( aggregateType === 'Month' ) {
+			interval = d3.time.month.utc;
+		} else if ( aggregateType === 'Day' ) {
+			interval = d3.time.day.utc; 
+		} else if ( aggregateType === 'Hour' ) {
+			interval = d3.time.hour.utc; 
+		} else if ( aggregateType.search(/^Ten/) === 0 ) {
+			interval = d3.time.minute.utc;
+			step = 10;
+		} else if ( aggregateType.search(/^Five/) === 0 ) {
+			interval = d3.time.minute.utc;
+			step = 5;
+		} else {
+			// assume FifteenMinute
+			interval = d3.time.minute.utc;
+			step = 15;
+		}
+		buckets = interval.range(xDomain[0], interval.offset(xDomain[1], step), step);
+		result.domain(buckets);//.rangeRoundBands(x.range(), 0.2);
+		return result;
+	}
+	
+	function setupDrawData() {
+		var groupedData = [],
+			groupIds = parent.groupIds,
+			maxPositiveY = 0,
+			maxNegativeY = 0,
+			xDates = ordinalXScale(),
+			sumLineData;
+
+		// construct a 3D array of our data, to achieve a dataType/source/datum hierarchy;
+		groupIds.forEach(function(groupId) {
+			var groupLayer = parent.groupLayers[groupId];
+			if ( groupLayer === undefined ) {
+				groupedData.push([]);
+			} else {
+				groupedData.push(groupLayer.map(function(e) {
+					var max = d3.max(e.values, function(d) {
+						return (d.y + d.y0);
+					});
+					if ( negativeGroupMap[groupId] === true ) {
+						if ( max > maxNegativeY ) {
+							maxNegativeY = max;
+						}
+					} else if ( max > maxPositiveY ) {
+						maxPositiveY = max;
+					}
+					return e.values;
+				}));
+			}
+		});
+
+		// we use xDates to normalize the data for all dates in chart, so we can show holes in the data
+		var allData = d3.merge(d3.merge(groupedData)).concat(xDates.domain().map(function(e) {
+			return { date : e };
+		}));
+		sumLineData = d3.nest()
+			.key(function(d) { 
+				return d.date.getTime();
+			})
+			.sortKeys(d3.ascending)
+			.rollup(nestRollupAggregateSum)
+			.entries(allData).map(function (e) {
+				return e.values;
+			});
+			
+		
+		return {
+			groupedData : groupedData,
+			sumLineData : sumLineData,
+			maxPositiveY : maxPositiveY,
+			maxNegativeY : maxNegativeY
+		};
+	}
+	
+	function draw() {
+		var groupIds = parent.groupIds,
+			transitionMs = parent.transitionMs(),
+			groups,
+			sources,
+			centerYLoc,
+			yDomain = parent.y.domain(),
+			drawData;
+		
+		drawData = setupDrawData();
+
+		// adjust Y domain to include "negative" range
+		yDomain[0] = -drawData.maxNegativeY;
+		yDomain[1] = drawData.maxPositiveY;
+		parent.y.domain(yDomain).nice();
+		
+		centerYLoc = parent.y(0);
+		
+		function dataTypeGroupTransformFn(d, i) {
+			var yShift = 0;
+			if ( negativeGroupMap[groupIds[i]] === true ) {
+				yShift = -(centerYLoc * 2);
+				return ('scale(1, -1) translate(0,' + yShift +')');
+			} else {
+				return null;
+			}
+		}
+		
+		// we create groups for each data type, but don't destroy them, so we preserve DOM order
+		// and maintain opacity levels for all stack layers within each data type
+		groups = parent.svgDataRoot.selectAll('g.dataType').data(drawData.groupedData, function(d, i) {
+					return groupIds[i];
+				});
+		groups.transition().duration(transitionMs)
+				.attr('transform', dataTypeGroupTransformFn);
+		groups.enter().append('g')
+				.attr('class', 'dataType')
+				.attr('transform', dataTypeGroupTransformFn);
+
+		sources = groups.selectAll('path.source').data(Object, function(d) {
+			return (d.length ? d[0].sourceId : null);
+		});
+		
+		sources.transition().duration(transitionMs)
+			.attr('d', areaPathGenerator)
+			.style('fill', areaFillFn);
+
+		sources.enter().append('path')
+				.attr('class', 'source')
+				.style('fill', areaFillFn)
+				.attr('d', areaPathGenerator)
+				.style('opacity', 1e-6)
+			.transition().duration(transitionMs)
+				.style('opacity', 1);
+		
+		sources.exit().transition().duration(transitionMs)
+			.style('opacity', 1e-6)
+			.remove();
+			
+		drawSumLine(drawData.sumLineData);
+
+		superDraw();
+	};
+	
+	function drawSumLine(sumLineData) {
+		var transitionMs = parent.transitionMs();
+		
+		function sumDefined(d) {
+			return d.y !== null;
+		}
+		
+		function valueX(d) {
+			return parent.x(d.date);
+		}
+		
+		var svgLine = d3.svg.line()
+			.x(valueX)
+			.y(function(d) { return parent.y(d.y) - 0.5; })
+			.interpolate('monotone')
+			.defined(sumDefined);
+		
+		var sumLine = svgSumLineGroup.selectAll('path').data([sumLineData]);
+		
+		sumLine.transition().duration(transitionMs)
+			.attr('d', svgLine);
+		
+		sumLine.enter().append('path')
+				.attr('d', d3.svg.line()
+						.x(valueX)
+						.y(function() { return parent.y(0) - 0.5; })
+						.interpolate('monotone')
+						.defined(sumDefined))
+			.transition().duration(transitionMs)
+				.attr('d', svgLine);
+				
+		sumLine.exit().transition().duration(transitionMs)
+				.style('opacity', 1e-6)
+				.remove();
 	}
 
-	function setup(rawData) {
-		// turn filteredData object into proper array, sorted by date
-		sources = [];
-		var dataArray = sn.powerPerSourceArray(rawData, sources);
-		sn.log('Available area sources: {0}', sources);
-
-		// Transpose the data into watt layers by source, e.g.
-		// [ [{x:0,y:0},{x:1,y:1}...], ... ]
-		layerGenerator = sn.powerPerSourceStackedLayerGenerator(sources, 'watts')
-			.excludeSources(config.excludeSources)
-			.offset(function(data) {
-				minY = 0;
-				var i, j = -1,
-					m = data[0].length,
-					offset,
-					y0 = [];
-				while (++j < m) {
-					i = -1;
-					offset = 0;
-					while ( ++i < consumptionLayerCount ) {
-						offset -= data[i][j][1];
-					}
-					y0[j] = offset;
-					if ( offset < minY ) {
-						minY = offset;
+	/**
+	 * Toggle showing the sum line, or get the current setting.
+	 * 
+	 * @param {boolean} [value] <em>true</em> to show the sum line, <em>false</em> to hide it
+	 * @returns when used as a getter, the current setting
+	 * @memberOf sn.chart.energyIOBarChart
+	 */
+	self.showSumLine = function(value) {
+		if ( !arguments.length ) return !svgSumLineGroup.classed('off');
+		var transitionMs = parent.transitionMs();
+		svgSumLineGroup
+			.style('opacity', (value ? 1e-6 : 1))
+			.classed('off', false)
+		.transition().duration(transitionMs)
+			.style('opacity', (value ? 1 : 1e-6))
+			.each('end', function() {
+				// remove the opacity style
+				d3.select(this)
+					.style('opacity', null)
+					.classed('off', !value);
+			});
+		return parent.me;
+	};
+	
+	/**
+	 * Get or set an array of group IDs to treat as negative group IDs, that appear below
+	 * the X axis.
+	 *
+	 * @param {Array} [value] the array of group IDs to use
+	 * @return {Array} when used as a getter, the list of group IDs currently used, otherwise this object
+	 * @memberOf sn.chart.powerIOAreaChart
+	 */
+	self.negativeGroupIds = function(value) {
+		if ( !arguments.length ) {
+			return (function() {
+				var prop,
+					result = [];
+				for ( prop in negativeGroupMap ) {
+					if ( negativeGroupMap.hasOwnProperty(prop) ) {
+						result.pus(prop);
 					}
 				}
-				return y0;
-			}).data(dataArray);
-		layers = layerGenerator();
-
-		// Compute the x-domain (by date) and y-domain (by top).
-		computeDomainX();
-		computeDomainY();
-
-	}
-
-	function redraw() {	
-		// draw data areas
-		var area = svg.selectAll("path.area").data(layers);
-		
-		area.transition().duration(transitionMs).delay(200)
-				.attr("d", areaPathGenerator)
-				.style("fill", sn.colorFn);
-		
-		area.enter().append("path")
-				.attr("class", "area")
-				.style("fill", sn.colorFn)
-				.attr("d", areaPathGenerator);
-		
-		area.exit().remove();
-	}
-
-	function axisYTransform(d) {
-		// align to half-pixels, to 1px line is aligned to pixels and crisp
-		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
-	};
-
-	function adjustAxisX() {
-		if ( d3.event && d3.event.transform ) {
-			d3.event.transform(x);
+				return result;
+			}());
 		}
-		var numTicks = 12;
-		var fx = x.tickFormat(numTicks);
-		var ticks = x.ticks(numTicks);
-
-		// Generate x-ticks
-		var labels = svgTickGroupX.selectAll("text").data(ticks);
-		
-		labels.transition().duration(transitionMs)
-	  		.attr("x", x)
-	  		.text(fx);
-		
-		labels.enter().append("text")
-			.attr("dy", "-0.5em") // needed so descenders not cut off
-			.style("opacity", 1e-6)
-			.attr("x", x)
-		.transition().duration(transitionMs)
-				.style("opacity", 1)
-				.text(fx)
-				.each('end', function() {
-						// remove the opacity style
-						d3.select(this).style("opacity", null);
-					});
-		labels.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
-			.remove();
-	}
-
-	function adjustAxisY() {
-		function ruleClass(d) {
-			return (d === 0 ? 'origin' : 'm');
-		}
-
-		var axisLines = svgRoot.select("g.rule").selectAll("g").data(y.ticks(5));
-		var axisLinesT = axisLines.transition().duration(transitionMs);
-		axisLinesT.attr("transform", axisYTransform)
-			.select("text")
-				.text(displayFormat);
-		axisLinesT.select("line")
-				.attr('class', ruleClass);
-		
-	  	axisLines.exit().transition().duration(transitionMs)
-	  			.style("opacity", 1e-6)
-	  			.remove();
-	  			
-		var entered = axisLines.enter()
-				.append("g")
-				.style("opacity", 1e-6)
-	  			.attr("transform", axisYTransform);
-		entered.append("line")
-				.attr("x2", w + p[3])
-				.attr('x1', p[3])
-				.attr('class', ruleClass);
-		entered.append("text")
-				.attr("x", p[3] - 10)
-				.text(displayFormat);
-		entered.transition().duration(transitionMs)
-				.style("opacity", null);
-	}
-	
-	that.sources = sources;
-	
-	/**
-	 * Get the x-axis domain (minimum and maximum dates).
-	 * 
-	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
-	 * @memberOf sn.chart.powerIOAreaChart
-	 */
-	that.xDomain = function() { return x.domain(); };
-
-	/**
-	 * Get the y-axis domain (minimum and maximum values).
-	 * 
-	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
-	 * @memberOf sn.chart.powerIOAreaChart
-	 */
-	that.yDomain = function() { return y.domain(); };
-	
-	/**
-	 * Get the scaling factor the y-axis is using. By default this will return {@code 1}.
-	 * After calling the {@link #load()} method, however, the chart may decide to scale
-	 * the y-axis for clarity. You can call this method to find out the scaling factor the
-	 * chart ended up using.
-	 *  
-	 * @return the y-axis scale factor
-	 * @memberOf sn.chart.powerIOAreaChart
-	 */
-	that.yScale = function() { return displayFactor; };
-
-	/**
-	 * Load data for the chart. The data is expected to be in a form suitable for
-	 * passing to {@link sn.powerPerSourceArray}.
-	 * 
-	 * @return this object
-	 * @memberOf sn.chart.powerIOAreaChart
-	 */
-	that.load = function(rawData) {
-		parseConfiguration();
-		setup(rawData);
-		adjustAxisX();
-		adjustAxisY();
-		redraw();
-		return that;
-	};
-	
-	/**
-	 * Regenerate the chart, using the current data. This can be called after disabling a
-	 * source 
-	 * 
-	 * @return this object
-	 * @memberOf sn.chart.powerIOAreaChart
-	 */
-	that.regenerate = function() {
-		if ( layerGenerator === undefined ) {
-			// did you call load() first?
-			return that;
-		}
-		parseConfiguration();
-		layers = layerGenerator();
-		computeDomainY();
-		redraw();
-		adjustAxisY();
-		return that;
-	};
-	
-	/**
-	 * Get or set the consumption source count. Set this to the number of sources that 
-	 * are considered "consumption" and should show up <em>under</em> the y-axis origin.
-	 * The sources are assumed to already be ordered with consumption before generation.
-	 * 
-	 * @param {number} [value] the number of consumption sources to use
-	 * @return when used as a getter, the count number, otherwise this object
-	 * @memberOf sn.chart.powerIOAreaChart
-	 */
-	that.consumptionSourceCount = function(value) {
-		if ( !arguments.length ) return consumptionLayerCount;
-		consumptionLayerCount = +value; // the + used to make sure we have a Number
-		return that;
-	};
-	
-	/**
-	 * Get or set the animation transition time, in milliseconds.
-	 * 
-	 * @param {number} [value] the number of milliseconds to use
-	 * @return when used as a getter, the millisecond value, otherwise this object
-	 * @memberOf sn.chart.powerIOAreaChart
-	 */
-	that.transitionMs = function(value) {
-		if ( !arguments.length ) return transitionMs;
-		transitionMs = +value; // the + used to make sure we have a Number
-		return that;
+		negativeGroupMap = {};
+		value.forEach(function(e) {
+			negativeGroupMap[e] = true;
+		});
+		return parent.me;
 	};
 
-	return that;
+	// define our drawing function
+	parent.draw = draw;
+	
+	return self;
 };
+
+}());

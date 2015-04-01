@@ -276,6 +276,11 @@ svg {
 	fill: #DF3038;
 }
 
+.chart g.agg text,
+.chart g.ticks text.major {
+	font-weight: 600;
+}
+
 .chart g.agg-gen text {
 	text-anchor: middle;
 	font-weight: bold;

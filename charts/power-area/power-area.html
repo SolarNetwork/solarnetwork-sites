@@ -13,10 +13,9 @@
 	<script type="text/javascript" src="../js-lib/d3-3.min.js"></script>
 	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
 	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
-	<script type="text/javascript" src="../js-lib/hmac-sha1-3.min.js"></script>
-	<script type="text/javascript" src="../js-lib/enc-base64-3.min.js"></script>
 	<script type="text/javascript" src="../sn-lib/solarnetwork-d3.js"></script>
-	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-sec.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-datum.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-chart-base.js"></script>
 	<script type="text/javascript" src="solarnetwork-d3-chart-power-area.js"></script>
 	<script type="text/javascript" src="power-area.js"></script>
 	<script type="text/javascript">
@@ -48,14 +47,18 @@
 			<div class="pane">
 				<form id="details">
 					<label for="nodeId" class="generation">Node</label>
-					<input type="number" name="nodeId" value=""/>
+					<input type="number" name="nodeId" value=""/><br />
+					<label for="sourceIds" class="generation">Sources</label>
+					<input type="text" name="sourceIds" value="Main"/><br />
 					<label for="consumptionNodeId" class="consumption">Node</label>
-					<input type="number" name="consumptionNodeId" value=""/>
+					<input type="number" name="consumptionNodeId" value=""/><br />
+					<label for="consumptionSourceIds" class="consumption">Sources</label>
+					<input type="text" name="consumptionSourceIds" value="Main"/><br />
 					<div class="wiggle">
 						<label for="wiggle">Wiggle</label>
 						<input type="checkbox" name="wiggle" value="true" checked="checked"/>
 					</div>
-					<div class="range minute">
+					<div class="range tenminute">
 						<label for="hours">Hours</label>
 						<input type="number" name="numHours" value="24" min="1" max="36"/>
 					</div>

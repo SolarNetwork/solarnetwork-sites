@@ -10,7 +10,7 @@ sn.runtime.excludeSources = new sn.Configuration();
 
 //adjust display units as needed (between W and kW, etc)
 function adjustChartDisplayUnits(chartKey, baseUnit, scale, unitKind) {
-	var unit = (scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
+	var unit = (scale === 1000000000 ? 'G' : scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
 	d3.selectAll(chartKey +' .unit').text(unit);
 	if ( unitKind !== undefined ) {
 		d3.selectAll(chartKey + ' .unit-kind').text(unitKind);
@@ -62,64 +62,92 @@ function chartDataCallback(dataType, datum) {
 }
 
 // Watt stacked area overlap chart
-function energyBarOverlapChartSetup(endDate, sourceMap) {
-	var queryRange = sn.datumLoaderQueryRange(sn.runtime.energyBarOverlapParameters.aggregate,
-		(sn.env.minutePrecision || 10), sn.env, endDate);
+function energyBarOverlapChartSetup(endDate, chart, parameters) {
+	var sourceMap = sn.runtime.sourceGroupMap;
+	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	
 	d3.select('.energy-bar-chart .time-count').text(queryRange.timeCount);
 	d3.select('.energy-bar-chart .time-unit').text(queryRange.timeUnit);
 	
-	var plotPropName = sn.runtime.energyBarOverlapParameters.plotProperties[sn.runtime.energyBarOverlapParameters.aggregate];
+	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	
-	sn.datumLoader(sn.env.dataTypes, urlHelperForAvailbleDataRange, 
-			queryRange.start, queryRange.end, sn.runtime.energyBarOverlapParameters.aggregate)
-		.holeRemoverCallback(function(data) {
-			// filter out any data where data value === -1
-			return data.filter(function(e) {
-				return (e[plotPropName] >= 0);
-			});
-		})
-		.callback(function(results) {
-			sn.runtime.energyBarOverlapChart.reset();
-			sn.env.dataTypes.forEach(function(e, i) {
-				var dataTypeResults = results[e];
-				sn.runtime.energyBarOverlapChart.load(dataTypeResults, e);
-			});
-			sn.runtime.energyBarOverlapChart.regenerate();
-			adjustChartDisplayUnits('.energy-bar-chart', 'Wh',  sn.runtime.energyBarOverlapChart.yScale(), 'energy');
-			sn.log("Energy Bar chart watt range: {0}", sn.runtime.energyBarOverlapChart.yDomain());
-			sn.log("Energy Bar chart time range: {0}", sn.runtime.energyBarOverlapChart.xDomain());
-		}).load();
+	sn.datum.multiLoader([
+		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+			queryRange.start, queryRange.end, parameters.aggregate),
+		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+			queryRange.start, queryRange.end, parameters.aggregate)
+	]).callback(function(error, results) {
+		if ( !(Array.isArray(results) && results.length === 2) ) {
+			sn.log("Unable to load data for Energy Bar chart: {0}", error);
+			return;
+		}
+		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
+		chart.reset()
+			.load(results[0], 'Consumption')
+			.load(results[1], 'Generation')
+			.regenerate();
+		sn.log("Energy Bar chart watt range: {0}", chart.yDomain());
+		sn.log("Energy Bar chart time range: {0}", chart.xDomain());
+		adjustChartDisplayUnits('.energy-bar-chart', 'Wh',  chart.yScale(), 'energy');
+	}).load();
 }
 
-function setup(repInterval, sourceMap) {
-	sn.runtime.reportableEndDate = repInterval.eLocalDate;
-	sn.runtime.sourceMap = sourceMap;
-	sn.runtime.sourceColorMap = sn.sourceColorMapping(sourceMap);
+function setupSourceGroupMap() {
+	var map = {},
+		sourceArray;
+	sourceArray = sn.env.sourceIds.split(/\s*,\s*/);
+	map['Generation'] = sourceArray;
 	
-	// we make use of sn.colorFn, so stash the required color map where expected
-	sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
+	sourceArray = sn.env.consumptionSourceIds.split(/\s*,\s*/);
+	map['Consumption'] = sourceArray;
+	
+	sn.runtime.sourceGroupMap = map;
+}
 
-	// set up form-based details
-	d3.select('#details .consumption').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sourceMap['Consumption'][0]]]);
-	d3.select('#details .generation').style('color', 
-			sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Power'][sourceMap['Power'][0]]]);
+function sourceSets(regenerate) {
+	if ( !sn.runtime.sourceGroupMap || !sn.runtime.sourceSets || regenerate ) {
+		setupSourceGroupMap();
+		sn.runtime.sourceSets = [
+			{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, 
+				sourceIds : sn.runtime.sourceGroupMap['Consumption'], 
+				dataType : 'Consumption' },
+			{ nodeUrlHelper : sn.runtime.urlHelper, 
+				sourceIds : sn.runtime.sourceGroupMap['Generation'], 
+				dataType : 'Generation' }
+		];
+	}
+	return sn.runtime.sourceSets;
+}
 
-	// create copy of color data for reverse ordering so labels vertically match chart layers
-	sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
-		if ( sn.env.linkOld === 'true' ) {
-			s.html(function(d) {
-				return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
-			});
-		} else {
-			s.text(Object);
-		}
-	});
+function setup(repInterval) {
+	sn.runtime.reportableEndDate = repInterval.eDate;
+	if ( sn.runtime.sourceColorMap === undefined ) {
+		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
+	
+		// we make use of sn.colorFn, so stash the required color map where expected
+		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
+
+		// set up form-based details
+		d3.select('#details .consumption').style('color', 
+				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]);
+		d3.select('#details .generation').style('color', 
+				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
+
+		// create copy of color data for reverse ordering so labels vertically match chart layers
+		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+			if ( sn.env.linkOld === 'true' ) {
+				s.html(function(d) {
+					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
+				});
+			} else {
+				s.text(Object);
+			}
+		});
+	}
 
 	updateRangeSelection();
 
-	energyBarOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+	energyBarOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.energyBarOverlapChart, sn.runtime.energyBarOverlapParameters);
 }
 
 function urlHelperForAvailbleDataRange(e, i) {
@@ -131,60 +159,72 @@ function setupUI() {
 	d3.selectAll('.node-id').text(sn.env.nodeId);
 
 	// update details form based on env
-	['nodeId', 'consumptionNodeId', 'numDays', 'numMonths', 'numYears'].forEach(function(e) {
-		d3.select('input[name='+e+']').property('value', sn.env[e]);
-	});
-
+	d3.selectAll('#details input')
+		.on('change', function(e) {
+			var me = d3.select(this);
+			var propName = me.attr('name');
+			var getAvailable = false;
+			if ( this.type === 'checkbox' ) {
+				sn.env[propName] = me.property('checked');
+			} else {
+				sn.env[propName] = me.property('value');
+			}
+			if ( propName === 'consumptionNodeId' ) {
+				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'nodeId' ) {
+				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				getAvailable = true;
+			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
+				getAvailable = true;
+			}
+			if ( getAvailable ) {
+				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+					delete sn.runtime.sourceColorMap; // to regenerate
+					setup(reportableInterval);
+				});
+			} else {
+				energyBarOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.energyBarOverlapChart, sn.runtime.energyBarOverlapParameters);
+			}
+		}).each(function(e) {
+			var input = d3.select(this);
+			var name = input.attr('name');
+			if ( sn.env[name] !== undefined ) {
+				if ( input.property('type') === 'checkbox' ) {
+					input.attr('checked', (sn.env[name] === 'true' ? 'checked' : null));
+				} else {
+					input.property('value', sn.env[name]);
+				}
+			}
+		});
+	
 	// toggle between supported aggregate levels
 	d3.select('#range-toggle').classed('clickable', true).on('click', function(d, i) {
 		var me = d3.select(this);
 		me.classed('hit', true);
 		var currAgg = sn.runtime.energyBarOverlapChart.aggregate();
 		sn.runtime.energyBarOverlapParameters.aggregate = (currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Hour');
-		energyBarOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
+		energyBarOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.energyBarOverlapChart, sn.runtime.energyBarOverlapParameters);
 		setTimeout(function() {
 			me.classed('hit', false);
 		}, 500);
 		updateRangeSelection();
-	});
-	
-	// update the chart details
-	d3.selectAll('#details input').on('change', function(e) {
-		var me = d3.select(this);
-		var propName = me.attr('name');
-		var getAvailable = false;
-		if ( this.type === 'checkbox' ) {
-			sn.env[propName] = me.property('checked');
-		} else {
-			sn.env[propName] = me.property('value');
-		}
-		if ( propName === 'consumptionNodeId' ) {
-			sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env[propName]);
-			getAvailable = true;
-		} else if ( propName === 'nodeId' ) {
-			sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env[propName]);
-			getAvailable = true;
-		}
-		if ( getAvailable ) {
-			sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
-		} else {
-			energyBarOverlapChartSetup(sn.runtime.reportableEndDate, sn.runtime.sourceMap);
-		}
 	});
 }
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 108,
+		sourceIds : 'Main',
 		consumptionNodeId : 108,
+		consumptionSourceIds : 'A,B,C',
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
 		numMonths : 4,
 		numYears : 2,
 		wiggle : false,
-		linkOld : false,
-		dataTypes: ['Consumption', 'Power']
+		linkOld : false
 	});
 	
 	sn.runtime.wChartRefreshMs = sn.env.minutePrecision * 60 * 1000;
@@ -202,27 +242,22 @@ function onDocumentReady() {
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 	
-	setupUI();
+	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
 
-	// find our available data range, and then draw our charts!
-	function handleAvailableDataRange(event) {
-		setup(event.data.reportableInterval, event.data.availableSourcesMap);
+	setupUI();
+	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes, function(data) {
-					var jsonEndDate = data.reportableInterval.eLocalDate;
+				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
-						if ( sn.runtime.energyBarOverlapChart !== undefined ) {
-							energyBarOverlapChartSetup(jsonEndDate, sn.runtime.sourceMap);
-						}
+						setup(repInterval);
 					}
 				});
 			}, sn.runtime.wChartRefreshMs);
 		}
-	}
-	document.addEventListener('snAvailableDataRange', handleAvailableDataRange, false);
-	sn.runtime.urlHelper = sn.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.nodeUrlHelper(sn.env.consumptionNodeId);
-	sn.availableDataRange(urlHelperForAvailbleDataRange, sn.env.dataTypes);
+	});
 }

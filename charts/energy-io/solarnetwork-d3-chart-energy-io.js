@@ -3,10 +3,10 @@
  * @require solarnetwork-d3 0.0.54
  * @require solarnetwork-d3-chart-base-bar 1.0.0
  */
+(function() {
+'use strict';
 
-if ( sn === undefined ) {
-	sn = { chart: {} };
-} else if ( sn.chart === undefined ) {
+if ( sn.chart === undefined ) {
 	sn.chart = {};
 }
 
@@ -45,7 +45,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	
 	// override defaults of parent
 	if ( !(chartConfig && chartConfig.padding) ) {
-		chartConfig.value('padding', [20, 0, 40, 30]);
+		chartConfig.value('padding', [20, 0, 30, 30]);
 	}
 	
 	var parent = sn.chart.baseGroupedStackBarChart(containerSelector, chartConfig);
@@ -62,9 +62,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	// object keys define group IDs to treat as "negative" or consumption values, below the X axis
 	var negativeGroupMap = { Consumption : true };
 	
-	// calculated drawing data
-	var drawData = {};
-
 	var svgAggBandGroup = parent.svgDataRoot.append('g')
 		.attr('class', 'agg-band')
 		.attr('transform', 'translate(0,' +(parent.height + parent.padding[2] - 25) + '.5)'); // .5 for odd-width stroke
@@ -177,7 +174,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		var allData = d3.merge(d3.merge(groupedData)).concat(parent.xBar.domain().map(function(e) {
 			return { date : e };
 		}));
-		drawData.allData = allData;
 		sumLineData = d3.nest()
 			.key(function(d) { 
 				return d.date.getTime();
@@ -212,6 +208,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			});
 			
 		return {
+			allData : allData,
 			groupedData : groupedData, 
 			sumLineData : sumLineData,
 			timeAggregateData : timeAggregateData,
@@ -226,7 +223,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			groups,
 			sources,
 			centerYLoc,
-			yDomain = parent.y.domain();
+			yDomain = parent.y.domain(),
+			drawData;
 			
 		// calculate our bar metrics
 		parent.computeDomainX();
@@ -240,9 +238,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		
 		centerYLoc = parent.y(0);
 		
-		function dataTypeGroupTransformFn(d) {
+		function dataTypeGroupTransformFn(d, i) {
 			var yShift = 0;
-			if ( d.length > 0 && d[0].length > 0 && negativeGroupMap[d[0][0][parent.internalPropName].groupId] ) {
+			if ( negativeGroupMap[groupIds[i]] === true ) {
 				yShift = -(centerYLoc * 2);
 				return ('scale(1, -1) translate(0,' + yShift +')');
 			} else {
@@ -530,3 +528,5 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	
 	return that;
 };
+
+}());
