@@ -73,29 +73,29 @@ div.main div.pane {
 }
 
 div.hbox {
-	display: -webkit-box;
-	-webkit-box-orient: horizontal;
-	display: -moz-box;
-	-moz-box-orient: horizontal;
-	display: box;
-	box-orient: horizontal;
+	display: -webkit-flex;
+	display: -ms-flexbox;
+	display: flex;
+	-webkit-flex-direction: row;
+	    -ms-flex-direction: row;
+	        flex-direction: row;
 }
 
 div.vbox {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	display: -moz-box;
-	-moz-box-orient: vertical;
-	display: box;
-	box-orient: vertical;
+	display: -webkit-flex;
+	display: -ms-flexbox;
+	display: flex;
+	-webkit-flex-direction: column;
+	    -ms-flex-direction: column;
+	        flex-direction: column;
 }
 
 div.hbox > .main {
-	width: 864px;
+	width: 800px;
 }
 
 div.hbox > .sub {
-	width: 130px;
+	width: 180px;
 }
 
 div.vbox + div.vbox {
@@ -187,6 +187,19 @@ a {
 	font-size: 12px;
 }
 
+#details input[type=text] {
+	width: 8em;
+	font-size: 12px;
+}
+
+#details .generation {
+	color: rgb(35, 139, 69);
+}
+
+#details .consumption {
+	color: rgb(33, 113, 181);
+}
+
 #details .range {
 	display: none;
 }
@@ -263,7 +276,7 @@ svg {
 	opacity: 0.1;
 }
 
-.chart g.vertrule line {
+.chart g.rule line.vert {
 	opacity: 0.05;
 	stroke-dasharray: 2 1;
 }

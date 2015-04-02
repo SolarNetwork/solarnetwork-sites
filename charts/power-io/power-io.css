@@ -91,11 +91,11 @@ div.vbox {
 }
 
 div.hbox > .main {
-	width: 864px;
+	width: 800px;
 }
 
 div.hbox > .sub {
-	width: 130px;
+	width: 180px;
 }
 
 div.vbox + div.vbox {
@@ -156,6 +156,23 @@ a {
 	font-size: 12px;
 }
 
+#details input[type=text] {
+	width: 8em;
+	font-size: 12px;
+}
+
+#details .generation {
+	color: rgb(35, 139, 69);
+}
+
+#details .consumption {
+	color: rgb(33, 113, 181);
+}
+
+#details .control {
+	color: #E88613;
+}
+
 #details .range input {
 	width: 3em;
 }
@@ -166,7 +183,12 @@ a {
 }
 
 .button {
+	font-size: 18px;
 	color: black;
+}
+
+.button + .button {
+	margin-left: 8px;
 }
 
 .button.off {
@@ -216,6 +238,16 @@ svg {
 	alignment-baseline: middle;
 }
 
+.chart g.agg-sum path {
+	stroke-width: 1px;
+	stroke: #C42F2F;
+	fill: none;
+}
+
+.chart .off {
+	display: none;
+}
+
 .chart path.area {
 	fill-opacity: 1;
 }
@@ -226,4 +258,10 @@ svg {
 
 .chart line.axis {
 	stroke: black;
+}
+
+path.control {
+	fill: none;
+	stroke: #E88613;
+	stroke-width: 1px;
 }

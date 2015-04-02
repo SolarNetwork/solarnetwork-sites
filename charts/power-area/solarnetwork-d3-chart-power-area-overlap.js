@@ -3,10 +3,10 @@
  * @require solarnetwork-d3 0.0.4
  * @require solarnetwork-d3-chart-base 1.0.0
  */
+(function() {
+'use strict';
 
-if ( sn === undefined ) {
-	sn = { chart: {} };
-} else if ( sn.chart === undefined ) {
+if ( sn.chart === undefined ) {
 	sn.chart = {};
 }
 
@@ -32,7 +32,6 @@ if ( sn === undefined ) {
  * @returns {sn.chart.powerAreaOverlapChart}
  */
 sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
-	'use strict';
 	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig),
 		superDraw = sn.superMethod.call(parent, 'draw');
 	var that = (function() {
@@ -77,13 +76,12 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 			groupedData.push(groupData);
 		});
 		
-		var groups = parent.svgRoot.selectAll("g.data").data(groupedData, function(d, i) {
+		var groups = parent.svgDataRoot.selectAll("g.data").data(groupedData, function(d, i) {
 				return groupedDataIds[i];
 			});
 			
 		groups.enter().append('g')
-				.attr('class', 'data')
-				.attr('transform', "translate(" + parent.padding[3] + ',' + parent.padding[0] + ')');
+				.attr('class', 'data');
 					
 		groups.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
@@ -117,3 +115,6 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	
 	return that;
 };
+
+
+}());

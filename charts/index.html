@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<title>SolarNetwork visualization gallery</title>
+	<link type="text/css" rel="stylesheet" href="index.css" />
+	<link  type='text/css'rel='stylesheet' href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,200' />
+</head>
+<body>
+	<h1><img width="250" height="35" src="https://solarnetwork.github.io/images/logo.svg" alt="SolarNetwork"/>visualization gallery</h1>
+	<p>These links demonstrate some JavaScript components that make use of the SolarQuery web API to visualize 
+	data in SolarNetwork.</p>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="power-area" href="power-area/power-area.html">Area chart</a></h2>
+			<p>An area chart to show power over time for one or more groups of data streams stacked together. 
+			The chart supports a traditional mode and a <em>wiggle</em> mode that can help visualize the 
+			relative changes of many data streams.
+			<p>This is useful for answering questions like:</p>
+			<ul class="q">
+				<li>How can I quickly understand when I am using or generating power?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="power-area/power-area.html"><img width="391" height="180" alt="Power area chart" src="img/power-area.png" /></a>
+		</div>
+	</div>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="power-area-overlap" href="power-area/power-area-overlap.html">Area overlap chart</a></h2>
+			<p>An area chart to show power over time for one or more groups of data streams. All groups
+			share a common y-axis and are presented layered on top of each other.
+			<p>This is useful for answering questions like:</p>
+			<ul class="q">
+				<li>How much power are my solar panels producing compared to how much power my house is consuming?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="power-area/power-area-overlap.html"><img width="413" height="180" alt="Power area overlap chart" src="img/power-area-overlap.png" /></a>
+		</div>
+	</div>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="power-io" href="power-io/power-io.html">Area I/O chart</a></h2>
+			<p>An area chart to show energy per hour, day, or month for two groups of data streams. It is similar to the
+			<a href="power-area/power-area.html">area chart</a> except that one group is shown as
+			negative values on the y-axis, and the difference between the groups can be shown as a line on top.
+			<p>This is useful for answering questions like:</p>
+			<ul class="q">
+				<li>When over the past month did my solar panels produce more power than my house consumed?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="power-io/power-io.html"><img width="410" height="180" alt="Area I/O chart" src="img/power-io.png" /></a>
+		</div>
+	</div>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="energy-bar" href="energy-bar/energy-bar-overlap.html">Bar overlap chart</a></h2>
+			<p>A bar chart to show energy per hour, day, or month for one or more groups of data streams.
+			All groups share a common y-axis and are presented layered on top of each other.
+			For a single group this is useful for answering questions like:</p>
+			<ul class="q">
+				<li>How much energy have my solar panels produced each day over the past month?</li>
+				<li>How much energy has my house consumed each hour over the past week?</li>
+			</ul>
+			<p>For multiple groups this is useful for answering questions like:</p>
+			<ul class="q">
+				<li>How much energy has my house consumed compared to how much energy my solar panels produced each day over the past month?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="energy-bar/energy-bar-overlap.html"><img width="409" height="180" alt="Energy bar overlap chart" src="img/energy-bar-overlap.png" /></a>
+		</div>
+	</div>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="energy-io" href="energy-io/energy-io.html">Bar I/O chart</a></h2>
+			<p>A bar chart to show energy per hour, day, or month for two groups of data streams. It is similar to the
+			<a href="energy-bar/energy-bar-overlap.html">bar overlap chart</a> except that one group is shown as
+			negative values on the y-axis, and the difference between the groups can be shown as a line on top of the bars.
+			<p>This is useful for answering questions like:</p>
+			<ul class="q">
+				<li>When over the past month did my solar panels produce more power than my house consumed?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="energy-io/energy-io.html"><img width="394" height="180" alt="Energy I/O chart" src="img/energy-io.png" /></a>
+		</div>
+	</div>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="counter" href="counter/counter.html">Counter</a></h2>
+			<p>A utility for efficiently calculating an aggregate sum over time for a data stream.
+			This is useful for answering questions like:</p>
+			<ul class="q">
+				<li>How many kW of energy have my solar panels produced over their entire life?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="counter/counter.html"><img width="214" height="94" alt="Counter" src="img/counter.png"/></a>
+		</div>
+	</div>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="seasonal-dow-io" href="seasonal-dow-io/seasonal-dow-io.html">Line seasonal day-of-week I/O chart</a></h2>
+			<p>A line chart that groups two sets of data streams by Gregorian calendar days of the week,
+			per quarterly year season. One group is shown as positive values on the y-axis and the other as
+			negative values. This is useful for answering questions like:</p>
+			<ul class="q">
+				<li>How much energy do I consume on average each day of the week?</li>
+				<li>How does my weekday energy use compare between summer and winter?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="seasonal-dow-io/seasonal-dow-io.html"><img width="414" height="180" alt="Line seasonal day-of-week I/O chart" src="img/seasonal-dow-io.png" /></a>
+		</div>
+	</div>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="seasonal-hod-io" href="seasonal-hod-io/seasonal-hod-io.html">Line seasonal hour-of-day I/O chart</a></h2>
+			<p>A line chart that groups two sets of data streams by hours of the day,
+			per quarterly year season. One group is shown as positive values on the y-axis and the other as
+			negative values. This is useful for answering questions like:</p>
+			<ul class="q">
+				<li>On a typical day, when do I consume the most energy?</li>
+				<li>On a typical day, when are my solar panels producing the most energy?</li>
+				<li>How does my daily energy use compare between summer and winter?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="seasonal-hod-io/seasonal-hod-io.html"><img width="404" height="180" alt="Line seasonal hour-of-day I/O chart" src="img/seasonal-hod-io.png" /></a>
+		</div>
+	</div>
+	<div class="hbox">
+		<div class="main pane">
+			<h2><a name="pie-io" href="pie-io/pie-io.html">Pie chart</a></h2>
+			<p>A pie chart to show accumulated energy over time for one or more groups of data streams.
+			<p>This is useful for answering questions like:</p>
+			<ul class="q">
+				<li>What percentage of my overall energy use was produced by my solar panels?</li>
+			</ul>
+		</div>
+		<div class="sub">
+			<a href="pie-io/pie-io.html"><img width="257" height="180" alt="Pie chart" src="img/pie-io.png" /></a>
+		</div>
+	</div>
+</body>
+</html>

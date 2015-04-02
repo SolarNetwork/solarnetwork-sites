@@ -3,6 +3,8 @@
  * @require solarnetwork-d3 0.0.4
  * @require solarnetwork-d3-chart-base 1.0.0
  */
+(function() {
+'use strict';
 
 if ( sn === undefined ) {
 	sn = { chart: {} };
@@ -33,27 +35,10 @@ if ( sn === undefined ) {
  * @returns {sn.chart.baseGroupedStackBarChart}
  */
 sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
-	'use strict';
 	var parent = sn.chart.baseGroupedStackChart(containerSelector, chartConfig);
-	var that = (function() {
-		var	me = sn.util.copy(parent);
-		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
-		return me;
-	}());
-	parent.me = that;
+	var self = sn.util.copyAll(parent);
+	self.me = self;
 	
-	var me = that;
-	
-	// extending classes should re-define this property so method chaining works
-	Object.defineProperty(that, 'me', {
-						enumerable : false,
-						get : function() { return me; },
-						set : function(obj) { 
-							me = obj;
-							parent.me = obj;
-						}
-					});
-
 	// an ordinal x-axis scale, to render precise bars with
 	var xBar = d3.scale.ordinal();
 
@@ -157,7 +142,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	/**
-	 * Remove data that falls outside the X domain.
+	 * Remove data self falls outside the X domain.
 	 * 
 	 * @param {Array} array The array to inspect.
 	 * @returns {Array} Either a copy of the array with some elements removed, or the original array
@@ -180,12 +165,27 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 
 	function drawAxisX() {
 		var numTicks = axisXTickCount(),
-			fx = parent.x.tickFormat(numTicks),
+			fxDefault = parent.x.tickFormat(numTicks),
 			ticks = parent.x.ticks(numTicks),
-			transitionMs = parent.transitionMs();
+			transitionMs = parent.transitionMs(),
+			fx,
+			labels;
+			
+		// we may have generated ticks for which we don't have bars... so filter those out
+		ticks = ticks.filter(function(d) { 
+			return xBar(d) !== undefined;
+		});
+
+		fx = function(d, i) {
+			if ( parent.xAxisTickCallback() ) {
+				return parent.xAxisTickCallback().call(parent.me, d, i, parent.x, fxDefault);
+			} else {
+				return fxDefault(d, i);
+			}
+		};
 
 		// Generate x-ticks, centered within bars
-		var labels = parent.svgTickGroupX.selectAll('text').data(ticks, Object)
+		labels = parent.svgTickGroupX.selectAll('text').data(ticks, Object)
 				.classed({
 						major : axisXTickClassMajor
 					});
@@ -269,49 +269,44 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 			.remove();
 	}
 	
-	Object.defineProperties(that, {
-		'x' : { value : parent.x },
-		'y' : { value : parent.y },
-		'config' : { value : parent.config },
-		'fillColor' : { value : parent.fillColor },
-		'groupOpacityFn' : { value : parent.groupOpacityFn },
-		'internalPropName' : { value : parent.internalPropName },
-		'discardId' : { value : parent.discardId },
-		'plotPropertyName' : { get : function() { return parent.plotPropertyName; } },
-		'padding' : { value : parent.padding },
-		'width' : { value : parent.width },
-		'height' : { value: parent.height },
-		'svgRoot' : { value : parent.svgRoot },
-		'svgDataRoot' : { value : parent.svgDataRoot },
-		'svgTickGroupX' : { value : parent.svgTickGroupX },
-		'groupIds' : { get : function() { return parent.groupIds; } },
-		'groupLayers' : { get : function() { return parent.groupLayers; } },
-		
-		'svgVertRuleGroup' : { value : svgVertRuleGroup },
-		'xBar' : { value : xBar },
-		'xBarPadding' : { value : xBarPadding },
-		'trimToXDomain' : { value : trimToXDomain },
-		'computeDomainX' : { value : computeDomainX },
-		'groupFillFn' : { value : groupFillFn },
-		
-		// the following functions accept a data element, e.g. { date : Date, y : Number, y0 : Number }
-		'keyX' : { value : keyX },
-		'valueX' : { value : valueX },
-		'valueXMidBar' : { value : valueXMidBar },
-		'valueXVertRule' : { value : valueXVertRule },
-		'valueY' : { value : valueY },
-		'heightY' : { value : heightY },
-		
-		'drawAxisX' : { value : drawAxisX },
-		'drawAxisXRules' : { value : drawAxisXRules },
-		'drawBarsForSources' : { value : drawBarsForSources },
-		'drawAxisY' : { value : parent.drawAxisY },
-		'draw' : { 
-			get : function() { return parent.draw; },
-			set : function(f) { parent.draw = f; }
-		}
-	});
-
+	/**
+	 * Scale a date for the x-axis. The values returned are centered within bars.
+	 * 
+	 * @param {Date} the Date to scale
+	 * @return {Number} the scaled value
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.scaleDate = function(date) {
+		var barRange = xBar.range(),
+			ex = xBar.rangeExtent(),
+			x = parent.scaleDate(date);
+		var result = barRange[Math.round((x / ex[1]) * (barRange.length - 1))] + (xBar.rangeBand() / 2);
+		return result;
+	};
 	
-	return that;
+	Object.defineProperties(self, {
+		svgVertRuleGroup : { value : svgVertRuleGroup },
+		xBar : { value : xBar },
+		xBarPadding : { value : xBarPadding },
+		trimToXDomain : { value : trimToXDomain },
+		computeDomainX : { value : computeDomainX },
+		groupFillFn : { value : groupFillFn },
+	
+		// the following functions accept a data element, e.g. { date : Date, y : Number, y0 : Number }
+		keyX : { value : keyX },
+		valueX : { value : valueX },
+		valueXMidBar : { value : valueXMidBar },
+		valueXVertRule : { value : valueXVertRule },
+		valueY : { value : valueY },
+		heightY : { value : heightY },
+	
+		drawAxisXRules : { value : drawAxisXRules },
+		drawBarsForSources : { value : drawBarsForSources },
+	});
+	
+	parent.drawAxisX = drawAxisX;
+	
+	return self;
 };
+
+}());

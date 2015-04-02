@@ -1,8 +1,6 @@
-/**
- * @require d3 3.0
- * @require queue 1.0
- * @require solarnetwork-d3 0.0.3
- */
+/*global sn,d3 */
+(function() {
+'use strict';
 
 if ( sn === undefined ) {
 	sn = { chart: {} };
@@ -33,9 +31,6 @@ if ( sn === undefined ) {
  * in the chart. After changing the configuration call {@link sn.chart.energyIOPieChart#regenerate()}
  * to re-draw the chart.
  * 
- * Note that the global {@link sn.colorFn} function is used to map sources to colors, so that
- * must be set up previously.
- * 
  * @class
  * @param {string} containerSelector - the selector for the element to insert the chart into
  * @param {sn.chart.energyIOPieChartParameters} [chartConfig] - the chart parameters
@@ -43,7 +38,7 @@ if ( sn === undefined ) {
  */
 sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var that = {
-		version : "1.0.0"
+		version : '1.0.0'
 	};
 	var sources = [];
 	var config = (chartConfig || new sn.Configuration());
@@ -62,16 +57,17 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		chartData = undefined,
 		chartLabels = undefined;
 	
-	var colorCallback = undefined; // function accepts (sourceId) and returns a color
+	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
+	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
 	var layerKeyCallback = undefined; // function accepts datum and should return string key
 	var layerKeySort = sortSliceKeys;
 
 	var percentFormatter = d3.format('.0%');
 
-	var originalData = undefined;
+	var originalData = {};
+	var groupIds = [];
 	var pieSlices = undefined;
-	var consumptionLayerCount = 0;
 	var totalValue = 0;
 	var innerRadius = 0;
 	var arc = d3.svg.arc();
@@ -107,8 +103,6 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		.attr('class', 'label')
 		.attr("transform", "translate(" + ((w + p[1] + p[3]) / 2) + "," + ((h + p[0] + p[2]) / 2) + ")");
 
-	function strokeColorFn(d, i) { return d3.rgb(sn.colorFn(d,i)).darker(); }
-
 	// setup display units in kW if domain range > 1000
 	var displayFactor = 1;
 	var displayFormatter = d3.format(',d');
@@ -120,14 +114,13 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	function computeUnits() {
 		var fmt;
 		var maxValue = d3.max(pieSlices, sliceValue);
-		
 		displayFactor = 1;
 		
 		if ( displayFactorCallback ) {
 			displayFactor = displayFactorCallback.call(that, maxValue);
-		} else if ( maxValue >= 50000000 ) {
+		} else if ( maxValue >= 1000000000 ) {
 			displayFactor = 1000000000;
-		} else if ( maxValue >= 500000 ) {
+		} else if ( maxValue >= 1000000 ) {
 			displayFactor = 1000000;
 		} else if ( maxValue >= 1000 ) {
 			displayFactor = 1000;
@@ -152,44 +145,61 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		return displayFormatter(d / displayFactor);
 	}
 	
-	function setup(rawData) {
-		originalData = rawData;
+	function setup() {
+		var combinedRollup = [];
 		
-		var keyFn = (layerKeyCallback ? layerKeyCallback : function(d) { return d.sourceId; });
+		groupIds.forEach(function(groupId) {
+			var keyFn = function(d, i) {
+				return (layerKeyCallback 
+					? layerKeyCallback.call(that, groupId, d, i) 
+					: (groupId + '-' +d.sourceId).replace(/\W/, '-'));
+			};
+			var rollup = d3.nest()
+				.key(keyFn)
+				.rollup(function(group) {
+					var result = { sum : 0, groupId : groupId };
+					if ( group.length ) {
+						result.sourceId = group[0].sourceId;
+						result.sum = d3.sum(group, function(d) {
+							return (sourceExcludeCallback && sourceExcludeCallback.call(that, groupId, d.sourceId)
+								? 0 : d.wattHours); // TODO add plotProperty
+						});
+					}
+					return result;
+				})
+				.entries(originalData[groupId]);
 		
-		var rollup = d3.nest()
-			.key(keyFn)
-			.rollup(function(group) { 
-				return d3.sum(group, function(d) {
-					return (config.excludeSources !== undefined && config.excludeSources.enabled(d.sourceId) 
-							? 0 : d.wattHours);
-				}); 
-			})
-			.entries(rawData);
+			// remove excluded sources...
+			if ( sourceExcludeCallback ) {
+				rollup = rollup.filter(function(e) {
+					return !sourceExcludeCallback.call(that, groupId, e.key);
+				});
+			}
+			
+			combinedRollup = combinedRollup.concat(rollup.map(function(e) {
+				e.values.key = e.key; // add key to values, for sorting
+				return e.values; 
+			}));
+		});
+				
 		
-		// filter out excluded sources
-		if ( config.excludeSources !== undefined ) {
-			rollup = rollup.filter(function(e, i) {
-				return !config.excludeSources.enabled(e.key);
-			});
-		}
-
 		var pie = d3.layout.pie()
 			.sort(layerKeySort)
 			.value(function(d) {
-				return d.values;
+				return d.sum;
 			});
 		
-		pieSlices = pie(rollup);
+		pieSlices = pie(combinedRollup);
 		
 		computeUnits();
 	}
 	
-	function pieSliceColorFn(d) {
+	function pieSliceColorFn(d, i) {
 		if ( colorCallback ) {
-			return colorCallback.call(that, d.data);
+			return colorCallback.call(that, d.data.groupId, d.data.sourceId, i);
 		}
-		return sn.colorFn({source:d.data.key});
+		var colors = d3.scale.category10().range();
+		return colors[i % colors.length];
 	}
 	
 	function clearOpacity() {
@@ -210,7 +220,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		return d.data.key;
 	}
 
-	function redraw() {	
+	function draw() {	
 		// draw data areas
 		var pie = chartData.selectAll("path").data(pieSlices, pieSliceKey);
 		
@@ -420,15 +430,35 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	that.totalValue = function() { return totalValue; };
 	
 	/**
-	 * Load data for the chart.
+	 * Clear out all data associated with this chart. Does not redraw.
 	 * 
 	 * @return this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.load = function(rawData) {
-		parseConfiguration();
-		setup(rawData);
-		redraw();
+	that.reset = function() {
+		originalData = {};
+		groupIds = [];
+		pieSlices = undefined;
+		return that;
+	};
+	
+	/**
+	 * Add data for a single group in the chart. The data is appended if data has 
+	 * already been loaded for the given groupId. This does not redraw the chart. 
+	 * Once all groups have been loaded, call {@link #regenerate()} to redraw.
+	 * 
+	 * @param {Array} rawData - the raw chart data to load
+	 * @param {String} groupId - a unique ID to associate with the data
+	 * @return this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
+	that.load = function(rawData, groupId) {
+		if ( originalData[groupId] === undefined ) {
+			groupIds.push(groupId);
+			originalData[groupId] = rawData;
+		} else {
+			originalData[groupId].concat(rawData);
+		}
 		return that;
 	};
 	
@@ -444,22 +474,9 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			// did you call load() first?
 			return that;
 		}
-		that.load(originalData);
-		return that;
-	};
-	
-	/**
-	 * Get or set the consumption source count. Set this to the number of sources that 
-	 * are considered "consumption" and should show up <em>under</em> the y-axis origin.
-	 * The sources are assumed to already be ordered with consumption before generation.
-	 * 
-	 * @param {number} [value] the number of consumption sources to use
-	 * @return when used as a getter, the count number, otherwise this object
-	 * @memberOf sn.chart.energyIOPieChart
-	 */
-	that.consumptionSourceCount = function(value) {
-		if ( !arguments.length ) return consumptionLayerCount;
-		consumptionLayerCount = +value; // the + used to make sure we have a Number
+		parseConfiguration();
+		setup();
+		draw();
 		return that;
 	};
 	
@@ -481,7 +498,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the color callback
 	 * @return when used as a getter, the current color callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.energyIOPieChart
 	 */
 	that.colorCallback = function(value) {
 		if ( !arguments.length ) return colorCallback;
@@ -509,10 +526,27 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	};
 
 	/**
-	 * Get or set the layer key callback function. The callback will be passed a datum and should
+	 * Get or set the source exclude callback function. The callback will be passed the group ID 
+	 * and a source ID as arguments. It should true <em>true</em> if the data set for the given
+	 * group ID and source ID should be excluded from the chart.
+	 * 
+	 * @param {function} [value] the source exclude callback
+	 * @return when used as a getter, the current source exclude callback function, otherwise this object
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
+	that.sourceExcludeCallback = function(value) {
+		if ( !arguments.length ) return sourceExcludeCallback;
+		if ( typeof value === 'function' ) {
+			sourceExcludeCallback = value;
+		}
+		return that;
+	};
+
+	/**
+	 * Get or set the layer key callback function. The callback will be passed a group ID and datum and should
 	 * return the rollup key to use.
 	 * 
-	 * @param {function} [value] the layer post-process callback
+	 * @param {function} [value] the layer key callback
 	 * @return when used as a getter, the current layer key callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
@@ -542,3 +576,6 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
 	return that;
 };
+
+
+}());
