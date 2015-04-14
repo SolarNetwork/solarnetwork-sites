@@ -79,7 +79,7 @@ function chartDataCallback(dataType, datum) {
 				datum[prop] *= scaleFactor;
 			}
 		}
-		datum['__scale__'].scale = scaleFactor;
+		datum['__scale__'] = scaleFactor;
 	}
 }
 
