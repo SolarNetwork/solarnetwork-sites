@@ -61,8 +61,26 @@ function datumDate(datum) {
 }
 
 function chartDataCallback(dataType, datum) {
+	var scaleFactor = 1, 
+		prop;
+	
 	// create date property
 	datum.date = datumDate(datum);
+	
+	// scale if necessary
+	if ( dataType === 'Consumption' ) {
+		scaleFactor = Number(sn.env['consumptionScale']);
+	} else if ( dataType === 'Generation' ) {
+		scaleFactor = Number(sn.env['scale']);
+	}
+	if ( scaleFactor !== 1 ) {
+		for ( prop in datum ) {
+			if ( prop !== 'nodeId' && typeof datum[prop] === 'number' && isFinite(datum[prop]) ) {
+				datum[prop] *= scaleFactor;
+			}
+		}
+		datum['__scale__'].scale = scaleFactor;
+	}
 }
 
 function controlDrawCallback(svgAnnotRoot) {
@@ -308,8 +326,10 @@ function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
 		sourceIds : 'Power',
+		scale : 1,
 		consumptionNodeId : 108,
 		consumptionSourceIds : 'A,B,C',
+		consumptionScale : 1,
 		controlNodeId : 0,
 		controlSourceIds : '',
 		minutePrecision : 10,
