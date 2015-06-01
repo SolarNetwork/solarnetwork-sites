@@ -113,6 +113,8 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	// define our drawing function
 	parent.draw = draw;
 	
+	parent.normalizeDataTimeGaps(true); // turn this on be default
+	
 	return that;
 };
 

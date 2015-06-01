@@ -128,6 +128,9 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 			dummy.sourceId = key.slice(idx + 1);
 		});
 		
+		// now look to fill in "zero" values to make interpolation look better
+		parent.insertNormalizedDurationIntoLayerData(layerData);
+		
 		if ( parent.me.layerPostProcessCallback() ) {
 			// we have to perform this call once per group, so we split this into multiple calls
 			layerData = (function() {

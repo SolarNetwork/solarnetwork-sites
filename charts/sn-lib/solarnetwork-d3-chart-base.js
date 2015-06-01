@@ -45,6 +45,9 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	
 	// our computed layer data
 	var groupLayers = {};
+	
+	// useful to change to true for line-based charts
+	var normalizeDataTimeGaps = false;
 
 	function parseConfiguration() {
 		superParseConfiguration();
@@ -123,6 +126,11 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			dummy[plotPropName] = null;
 			dummy[self.internalPropName] = {groupId : groupId};
 			sn.nestedStackDataNormalizeByDate(layerData, dummy);
+			
+			if ( normalizeDataTimeGaps === true ) {
+				// now look to fill in "zero" values to make interpolation look better
+				parent.insertNormalizedDurationIntoLayerData(layerData);
+			}
 			
 			if ( self.layerPostProcessCallback() ) {
 				layerData = self.layerPostProcessCallback().call(self.me, groupId, layerData);
@@ -205,6 +213,20 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return self.stackOffset(value === true ? 'wiggle' : 'zero');
 	};
 	
+	/**
+	 * Get or set the flag to normalize the data for time gaps.
+	 * Defaults to <b>false</b>.
+	 * 
+	 * @param {function} [value] the flag value
+	 * @return when used as a getter, the current flag value, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.normalizeDataTimeGaps = function(value) {
+		if ( !arguments.length ) return normalizeDataTimeGaps;
+		normalizeDataTimeGaps = (value === true);
+		return self.me;
+	};
+
 	Object.defineProperties(self, {
 		groupOpacityFn : { value : groupOpacityFn },
 		discardId : { value : discardId },
@@ -545,6 +567,118 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 	
 	/**
+	 * Get the expected normalized duration, in milliseconds, based on the configured aggregate level.
+	 * 
+	 * @returns The expected normalized millisecond duration for the configured aggregate level.
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.aggregateNormalizedDuration = function() {
+		if ( aggregateType === 'FiveMinute' ) {
+			return (1000 * 60 * 5);
+		}
+		if ( aggregateType === 'TenMinute' ) {
+			return (1000 * 60 * 10);
+		}
+		if ( aggregateType === 'FifteenMinute' ) {
+			return (1000 * 60 * 15);
+		}
+		if ( aggregateType === 'Hour' || aggregateType === 'HourOfDay' || aggregateType === 'SeasonalHourOfDay' ) {
+			return (1000 * 60 * 60);
+		}
+		if ( aggregateType === 'Day' || aggregateType === 'DayOfWeek' || aggregateType === 'SeasonalDayOfWeek' ) {
+			return (1000 * 60 * 60 * 24);
+		}
+		if ( aggregateType === 'Month' ) {
+			return (1000 * 60 * 60 * 24 * 30); // NOTE: this is approximate!
+		}
+		return (1000 * 60); // otherwise, default to minute duration
+	};
+	
+	/**
+	 * Test if two dates are the expected aggregate normalized duration apart.
+	 *
+	 * @returns True if the two dates are exactly one normalized aggregate duration apart.
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.isNormalizedDuration = function(d1, d2) {
+		var diff, 
+			expectedDiff = self.aggregateNormalizedDuration(),
+			v1,
+			v2;
+		if ( !(d1 && d2) ) {
+			return false;
+		}
+		diff = Math.abs(d2.getTime() - d1.getTime());
+		if ( diff === expectedDiff ) {
+			return true;
+		}
+		
+		// make sure d1 < d2
+		if ( d2.getTime() < d1.getTime() ) {
+				v1 = d1;
+				d1 = d2;
+				d2 = v1;
+		}
+		
+		if ( aggregateType === 'Month' ) {
+			// test if months are only 1 apart
+			return (d3.time.month.utc.offset(d1, 1).getTime() === d2.getTime());
+		}
+		
+		if ( aggregateType === 'SeasonalHourOfDay' ) {
+			// test just if hour only 1 apart
+			v1 = d1.getUTCHours() + 1;
+			if ( v1 > 23 ) {
+				v1 = 0;
+			}
+			return (d2.getUTCHours() === v1 && d1.getTime() !== d2.getTime());
+		}
+		
+		if ( aggregateType === 'SeasonalDayOfWeek' ) {
+			// test just if DOW only 1 apart
+			v1 = d1.getUTCDay() + 1;
+			if ( v1 > 6 ) {
+				v1 = 0;
+			}
+			return (d2.getUTCDay() === v1 && d1.getTime() !== d2.getTime());
+		}
+		
+		return false;
+	};
+	
+	/**
+	 * Add an aggregate normalized time duration to a given date.
+	 *
+	 * @param date The date to add to.
+	 * @returns A new Date object.
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.addNormalizedDuration = function(date) {
+		if ( !date ) {
+			return undefined;
+		}
+		if ( aggregateType === 'Month' ) {
+			return d3.time.month.utc.offset(date, 1);
+		}
+		return new Date(date.getTime() + self.aggregateNormalizedDuration());
+	};
+	
+	function insertNormalizedDurationIntoLayerData(layerData) {
+		var i, j, row, datum, plotPropName = plotPropertyName();;
+		for ( j = 0; j < layerData.length; j += 1 ) {
+			row = layerData[j].values;
+			for ( i = 0; i < row.length - 1; i += 1 ) {
+				if ( self.isNormalizedDuration(row[i].date, row[i+1].date) !== true ) {
+					datum = sn.util.copy(row[i]);
+					datum.date = self.addNormalizedDuration(datum.date);
+					datum[plotPropName] = null;
+					row.splice(i + 1, 0, datum);
+				}
+			}
+		}
+	}
+	
+	/**
 	 * Clear out all data associated with this chart. Does not redraw.
 	 * 
 	 * @return this object
@@ -847,6 +981,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
 		config : { value : config },
 		fillColor : { value : fillColor },
+		insertNormalizedDurationIntoLayerData : { value : insertNormalizedDurationIntoLayerData },
 		internalPropName : { value : internalPropName },
 		plotPropertyName : { get : plotPropertyName },
 		padding : { value : p },
