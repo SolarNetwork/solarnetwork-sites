@@ -281,6 +281,9 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	
 	// raw data, by groupId
 	var originalData = {};
+	
+	// a numeric scale factor, by groupId
+	var scaleFactor = {};
 
 	var svgRoot,
 		svgTickGroupX,
@@ -663,8 +666,18 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		return new Date(date.getTime() + self.aggregateNormalizedDuration());
 	};
 	
+	/**
+	 * Insert aggregate time normalized elements into all layer data arrays.
+	 * The <code>layerData</code> object must be an array of objects, each object
+	 * having a <code>values</code> array of data objects. This method will
+	 * clone data objects and insert them into the <code>values</code> array in-place,
+	 * in order to create a time-normalized series of elements.
+	 * 
+	 * @param layerData The array of layer (data group) objects.
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
 	function insertNormalizedDurationIntoLayerData(layerData) {
-		var i, j, row, datum, plotPropName = plotPropertyName();;
+		var i, j, row, datum, plotPropName = plotPropertyName();
 		for ( j = 0; j < layerData.length; j += 1 ) {
 			row = layerData[j].values;
 			for ( i = 0; i < row.length - 1; i += 1 ) {
