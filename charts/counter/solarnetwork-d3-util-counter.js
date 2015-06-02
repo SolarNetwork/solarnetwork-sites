@@ -24,10 +24,6 @@ if ( sn.util === undefined ) {
  *      .start();
  * </pre>
  * 
- * The class combines multiple levels of aggregation to efficiently produce the sum, and thus
- * the resulting value can vary slightly from the actual raw data due to rounding and the rate
- * at which aggregate values are updated on SolarNet.
- * 
  * @class
  * @param {function} nodeUrlHelper - a {@link sn.datum.nodeUrlHelper}
  * @returns {sn.util.sumCounter}
