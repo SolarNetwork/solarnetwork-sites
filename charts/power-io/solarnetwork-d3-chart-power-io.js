@@ -51,12 +51,10 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 			return parent.x(d.date);
 		})
 		.y0(function(d) {
-			var scale = parent.scaleFactor(d[parent.internalPropName].groupId);
-			return parent.y(d.y0 * scale);
+			return parent.y(d.y0);
 		})
 		.y1(function(d) { 
-			var scale = parent.scaleFactor(d[parent.internalPropName].groupId);
-			return parent.y((d.y0 + d.y) * scale);
+			return parent.y(d.y0 + d.y);
 		});
 
 	// object keys define group IDs to treat as "negative" or consumption values, below the X axis
@@ -134,13 +132,12 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 
 		// construct a 3D array of our data, to achieve a dataType/source/datum hierarchy;
 		groupIds.forEach(function(groupId) {
-			var groupLayer = parent.groupLayers[groupId],
-				groupScaleFactor = parent.scaleFactor(groupId);
+			var groupLayer = parent.groupLayers[groupId];
 			if ( groupLayer === undefined ) {
 				groupedData.push([]);
 			} else {
 				groupedData.push(groupLayer.map(function(e) {
-					var max = d3.max(e.values, function(d) { return (d.y + d.y0); }) * groupScaleFactor;
+					var max = d3.max(e.values, function(d) { return (d.y + d.y0); });
 					if ( negativeGroupMap[groupId] === true ) {
 						if ( max > maxNegativeY ) {
 							maxNegativeY = max;
