@@ -72,11 +72,12 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 				return d.date; 
 			})
 			.y(function(d) { 
-				var y = d[plotPropName];
+				var y = d[plotPropName],
+					scaleFactor = parent.scaleFactor(d[parent.internalPropName].groupId);
 				if ( y === undefined || y < 0 || y === null ) {
 					y = 0;
 				}
-				return y;
+				return (y * scaleFactor);
 			});
 		parent.groupIds.forEach(function(groupId) {
 			var rawGroupData = self.data(groupId),

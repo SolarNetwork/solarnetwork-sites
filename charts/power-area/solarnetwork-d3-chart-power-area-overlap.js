@@ -45,11 +45,13 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		.x(function(d) { 
 			return parent.x(d.date);
 		})
-		.y0(function(d) { 
-			return parent.y(d.y0);
+		.y0(function(d) {
+			var scale = parent.scaleFactor(d[parent.internalPropName].groupId);
+			return parent.y(d.y0 * scale);
 		})
-		.y1(function(d) { 
-			return parent.y(d.y0 + d.y);
+		.y1(function(d) {
+			var scale = parent.scaleFactor(d[parent.internalPropName].groupId);
+			return parent.y((d.y0 + d.y) * scale);
 		});
 
 	function areaFillFn(d, i, j) {

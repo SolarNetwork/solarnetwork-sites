@@ -17,16 +17,21 @@ function adjustChartDisplayUnits(chartKey, baseUnit, scale, unitKind) {
 	}
 }
 
+function regenerateChart(chart) {
+	if ( chart === undefined ) {
+		return;
+	}
+	chart.regenerate();
+	adjustChartDisplayUnits('.power-area-chart', 
+			(chart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
+			chart.yScale(),
+			(chart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
+}
+
 //handle clicks on legend handler
 function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.source);
-	if ( sn.runtime.powerAreaOverlapChart !== undefined ) {
-		sn.runtime.powerAreaOverlapChart.regenerate();
-		adjustChartDisplayUnits('.power-area-chart', 
-				(sn.runtime.powerAreaOverlapChart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
-				sn.runtime.powerAreaOverlapChart.yScale(),
-				(sn.runtime.powerAreaOverlapChart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
-	}
+	regenerateChart(sn.runtime.powerAreaOverlapChart);
 }
 
 function sourceExcludeCallback(dataType, sourceId) {
@@ -77,17 +82,13 @@ function powerAreaOverlapChartSetup(endDate) {
 			sn.log("Unable to load data for Power Area chart: {0}", error);
 			return;
 		}
-		sn.runtime.powerAreaOverlapChart.reset();
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
-		sn.runtime.powerAreaOverlapChart.load(results[0], 'Consumption');
-		sn.runtime.powerAreaOverlapChart.load(results[1], 'Generation');
-		sn.runtime.powerAreaOverlapChart.regenerate();
+		sn.runtime.powerAreaOverlapChart.reset()
+			.load(results[0], 'Consumption')
+			.load(results[1], 'Generation');
+		regenerateChart(sn.runtime.powerAreaOverlapChart);
 		sn.log("Power Area chart watt range: {0}", sn.runtime.powerAreaOverlapChart.yDomain());
 		sn.log("Power Area chart time range: {0}", sn.runtime.powerAreaOverlapChart.xDomain());
-		adjustChartDisplayUnits('.power-area-chart', 
-				(sn.runtime.powerAreaOverlapChart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
-				sn.runtime.powerAreaOverlapChart.yScale(),
-				(sn.runtime.powerAreaOverlapChart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
 	}).load();
 }
 
@@ -146,7 +147,15 @@ function setupUI() {
 				getAvailable = true;
 			} else if ( propName === 'wiggle' ) {
 				sn.runtime.powerAreaOverlapParameters.value(propName, sn.env[propName]);
-				sn.runtime.powerAreaOverlapChart.regenerate();
+				regenerateChart(sn.runtime.powerAreaOverlapChart);
+				return;
+			} else if ( propName === 'scale' ) {
+				sn.runtime.powerAreaOverlapChart.scaleFactor('Generation', Number(sn.env[propName]));
+				regenerateChart(sn.runtime.powerAreaOverlapChart);
+				return;
+			} else if ( propName === 'consumptionScale' ) {
+				sn.runtime.powerAreaOverlapChart.scaleFactor('Consumption', Number(sn.env[propName]));
+				regenerateChart(sn.runtime.powerAreaOverlapChart);
 				return;
 			}
 			if ( getAvailable ) {
@@ -209,8 +218,10 @@ function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
 		sourceIds : 'Power',
+		scale : 1,
 		consumptionNodeId : 108,
 		consumptionSourceIds : 'A,B,C',
+		consumptionScale : 1,
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
@@ -230,6 +241,7 @@ function onDocumentReady() {
 	});
 	
 	sn.runtime.powerAreaOverlapChart = sn.chart.powerAreaOverlapChart('#power-area-chart', sn.runtime.powerAreaOverlapParameters)
+		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
