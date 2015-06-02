@@ -50,11 +50,13 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 		.x(function(d) { 
 			return parent.x(d.date);
 		})
-		.y0(function(d) { 
-			return parent.y(d.y0);
+		.y0(function(d) {
+			var scale = parent.scaleFactor(d[parent.internalPropName].groupId);
+			return parent.y(d.y0 * scale);
 		})
 		.y1(function(d) { 
-			return parent.y(d.y0 + d.y);
+			var scale = parent.scaleFactor(d[parent.internalPropName].groupId);
+			return parent.y((d.y0 + d.y) * scale);
 		});
 
 	// object keys define group IDs to treat as "negative" or consumption values, below the X axis
@@ -71,17 +73,18 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 	function nestRollupAggregateSum(array) {
 		// Note: we don't use d3.sum here because we want to end up with a null value for "holes"
 		var sum = null, plus = null, minus = null, 
-			d, v, i, len = array.length, groupId, negate = false;
+			d, v, i, len = array.length, groupId, scale, negate = false;
 		for ( i = 0; i < len; i += 1 ) {
 			d = array[i];
 			v = d[parent.plotPropertyName];
 			if ( v !== undefined ) {
 				groupId = d[parent.internalPropName].groupId;
+				scale = parent.scaleFactor(groupId);
 				negate = negativeGroupMap[groupId] === true;
 				if ( negate ) {
-					minus += v;
+					minus += v * scale;
 				} else {
-					plus += v;
+					plus += v * scale;
 				}
 			}
 		}
@@ -131,14 +134,13 @@ sn.chart.powerIOAreaChart = function(containerSelector, chartConfig) {
 
 		// construct a 3D array of our data, to achieve a dataType/source/datum hierarchy;
 		groupIds.forEach(function(groupId) {
-			var groupLayer = parent.groupLayers[groupId];
+			var groupLayer = parent.groupLayers[groupId],
+				groupScaleFactor = parent.scaleFactor(groupId);
 			if ( groupLayer === undefined ) {
 				groupedData.push([]);
 			} else {
 				groupedData.push(groupLayer.map(function(e) {
-					var max = d3.max(e.values, function(d) {
-						return (d.y + d.y0);
-					});
+					var max = d3.max(e.values, function(d) { return (d.y + d.y0); }) * groupScaleFactor;
 					if ( negativeGroupMap[groupId] === true ) {
 						if ( max > maxNegativeY ) {
 							maxNegativeY = max;

@@ -17,16 +17,21 @@ function adjustChartDisplayUnits(chartKey, baseUnit, scale, unitKind) {
 	}
 }
 
+function regenerateChart(chart) {
+	if ( chart === undefined ) {
+		return;
+	}
+	chart.regenerate();
+	adjustChartDisplayUnits('.watt-chart', 
+			(chart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
+			chart.yScale(),
+			(chart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
+}
+
 //handle clicks on legend handler
 function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.source);
-	if ( sn.runtime.powerIOAreaChart !== undefined ) {
-		sn.runtime.powerIOAreaChart.regenerate();
-		adjustChartDisplayUnits('.power-area-chart', 
-				(sn.runtime.powerIOAreaChart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
-				sn.runtime.powerIOAreaChart.yScale(),
-				(sn.runtime.powerIOAreaChart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
-	}
+	regenerateChart(sn.runtime.powerIOAreaChart);
 }
 
 function sourceExcludeCallback(dataType, sourceId) {
@@ -66,21 +71,6 @@ function chartDataCallback(dataType, datum) {
 	
 	// create date property
 	datum.date = datumDate(datum);
-	
-	// scale if necessary
-	if ( dataType === 'Consumption' ) {
-		scaleFactor = Number(sn.env['consumptionScale']);
-	} else if ( dataType === 'Generation' ) {
-		scaleFactor = Number(sn.env['scale']);
-	}
-	if ( scaleFactor !== 1 ) {
-		for ( prop in datum ) {
-			if ( prop !== 'nodeId' && typeof datum[prop] === 'number' && isFinite(datum[prop]) ) {
-				datum[prop] *= scaleFactor;
-			}
-		}
-		datum['__scale__'] = scaleFactor;
-	}
 }
 
 function controlDrawCallback(svgAnnotRoot) {
@@ -168,13 +158,9 @@ function setupPowerAreaChart(container, chart, parameters, endDate, sourceMap) {
 		if ( results.length > 2 ) {
 			chart.stash(results[2], 'Control');
 		}
-		chart.regenerate();
+		regenerateChart(chart);
 		sn.log("Power Area chart watt range: {0}", chart.yDomain());
 		sn.log("Power Area chart time range: {0}", chart.xDomain());
-		sn.adjustDisplayUnits(container, 
-			(sn.runtime.powerIOAreaChart.aggregate() === 'TenMinute' ? 'W' : 'Wh'),
-			chart.yScale(),
-			(sn.runtime.powerIOAreaChart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
 	}).load();
 }
 
@@ -245,7 +231,15 @@ function setupUI() {
 				getAvailable = true;
 			} else if ( propName === 'wiggle' ) {
 				sn.runtime.powerIOAreaParameters.value(propName, sn.env[propName]);
-				sn.runtime.powerIOAreaChart.regenerate();
+				regenerateChart(sn.runtime.powerIOAreaChart);
+				return;
+			} else if ( propName === 'scale' ) {
+				sn.runtime.powerIOAreaChart.scaleFactor('Generation', Number(sn.env[propName]));
+				regenerateChart(sn.runtime.powerIOAreaChart);
+				return;
+			} else if ( propName === 'consumptionScale' ) {
+				sn.runtime.powerIOAreaChart.scaleFactor('Consumption', Number(sn.env[propName]));
+				regenerateChart(sn.runtime.powerIOAreaChart);
 				return;
 			}
 			if ( getAvailable ) {
@@ -351,6 +345,7 @@ function onDocumentReady() {
 	});
 	sn.runtime.powerIOAreaContainer = d3.select(d3.select('#power-area-chart').node().parentNode);
 	sn.runtime.powerIOAreaChart = sn.chart.powerIOAreaChart('#power-area-chart', sn.runtime.powerIOAreaParameters)
+		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.dataCallback(chartDataCallback)
 		.drawAnnotationsCallback(controlDrawCallback)
 		.colorCallback(colorForDataTypeSource)
