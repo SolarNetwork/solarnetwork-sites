@@ -73,18 +73,18 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 				return d.date; 
 			})
 			.y(function(d) { 
-				var y = d[plotPropName];
+				var y = d[plotPropName],
+					scale = parent.scaleFactor(d[parent.internalPropName].groupId);
 				if ( y === undefined || y < 0 || y === null ) {
 					y = 0;
 				}
-				return y;
+				return (y * scale);
 			});
 		groupLayers = {};
 		self.groupIds.forEach(function(groupId) {
 			var dummy,
 				layerData,
-				rawGroupData = self.data(groupId),
-				groupScaleFactor = (self.scaleFactor(groupId) ? self.scaleFactor(groupId) : 1);
+				rawGroupData = self.data(groupId);
 			if ( !rawGroupData || !rawGroupData.length > 1 ) {
 				return;
 			}
@@ -146,7 +146,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			}
 			var layers = stack(layerData);
 			groupLayers[groupId] = layers;
-			var rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; }) * groupScaleFactor];
+			var rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
 			if ( maxY === undefined || rangeY[1] > maxY ) {
 				maxY = rangeY[1];
 			}
