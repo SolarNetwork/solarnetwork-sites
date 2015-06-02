@@ -9,22 +9,20 @@
 sn.config.debug = true;
 sn.runtime.excludeSources = new sn.Configuration();
 
-//adjust display units as needed (between W and kW, etc)
-function adjustChartDisplayUnits(chartKey, baseUnit, scale) {
-	var unit = (scale === 1000000000 ? 'G' : scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
-	d3.selectAll(chartKey +' .unit').text(unit);
+function regenerateChart() {
+	var chart = sn.runtime.energyPieChart,
+		container = sn.runtime.energyPieContainer;
+	if ( chart === undefined ) {
+		return;
+	}
+	chart.regenerate();
+	sn.adjustDisplayUnits(container, 'Wh', chart.scale(), 'energy');
 }
 
 //handle clicks on legend handler
 function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.source);
-	if ( sn.runtime.energyPieChart !== undefined ) {
-		// use a slight delay, otherwise transitions can be jittery
-		setTimeout(function() {
-			sn.runtime.energyPieChart.regenerate();
-			adjustChartDisplayUnits('.watthour-chart', 'Wh', sn.runtime.energyPieChart.scale());
-		}, sn.runtime.energyPieChart.transitionMs() * 0.5);
-	}
+	regenerateChart();
 }
 
 function sourceExcludeCallback(dataType, sourceId) {
@@ -82,11 +80,10 @@ function energyPieChartSetup(endDate, chart, parameters) {
 		}
 		chart.reset()
 			.load(results[0], 'Consumption')
-			.load(results[1], 'Generation')
-			.regenerate();
+			.load(results[1], 'Generation');
+		regenerateChart();
 		sn.log("Energy Pie IO chart Wh total: {0}", chart.totalValue());
 		sn.log("Energy Pie IO chart time range: {0}", [start, end]);
-		adjustChartDisplayUnits('.watthour-chart', 'Wh', chart.scale());
 	}).load();
 }
 
@@ -175,6 +172,14 @@ function setupUI() {
 				getAvailable = true;
 			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
 				getAvailable = true;
+			} else if ( propName === 'scale' ) {
+				sn.runtime.energyPieChart.scaleFactor('Generation', Number(sn.env[propName]));
+				regenerateChart();
+				return;
+			} else if ( propName === 'consumptionScale' ) {
+				sn.runtime.energyPieChart.scaleFactor('Consumption', Number(sn.env[propName]));
+				regenerateChart();
+				return;
 			}
 			if ( getAvailable ) {
 				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
@@ -252,8 +257,10 @@ function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 108,
 		sourceIds : 'Main',
+		scale : 1,
 		consumptionNodeId : 108,
 		consumptionSourceIds : 'A,B,C',
+		consumptionScale : 1,
 		minutePrecision : 10,
 		numDays : 7,
 		numMonths : 3,
@@ -267,8 +274,9 @@ function onDocumentReady() {
 		aggregate : 'Hour',
 		excludeSources : sn.runtime.excludeSources
 	});
-	
+	sn.runtime.energyPieContainer = d3.select(d3.select('#pie-io-chart').node().parentNode);
 	sn.runtime.energyPieChart = sn.chart.energyIOPieChart('#pie-io-chart', sn.runtime.energyPieParameters)
+		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 

@@ -56,6 +56,9 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var svgRoot = undefined,
 		chartData = undefined,
 		chartLabels = undefined;
+
+	// a numeric scale factor, by groupId
+	var scaleFactors = {};
 	
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
 	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
@@ -163,7 +166,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 						result.sum = d3.sum(group, function(d) {
 							return (sourceExcludeCallback && sourceExcludeCallback.call(that, groupId, d.sourceId)
 								? 0 : d.wattHours); // TODO add plotProperty
-						});
+						}) * that.scaleFactor(groupId);
 					}
 					return result;
 				})
@@ -493,6 +496,38 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		return that;
 	};
 
+	/**
+	 * Get or set the scale factor for specific group IDs. If called without any arguments,
+	 * all configured scale factors will be returned as an object, with group IDs as property
+	 * names with corresponding scale factor values. If called with a single Object argument
+	 * then set all scale factors using group IDs as object property names with corresponding 
+	 * number values for the scale factor.
+	 *
+	 * @param {String} groupId - The group ID of the scale factor to set.
+	 * @param {Number} value - The scale factor to set.
+	 * @returns If called without any arguments, all configured scale factors as an object.
+	 *          If called with a single String <code>groupId</code> argument, the scale factor for the given group ID,
+	 *          or <code>1</code> if not defined.
+	 *          If called with a single Object <code>groupId</code> argument, set
+	 *          Otherwise, this object.
+	 */
+	that.scaleFactor = function(groupId, value) {
+		var v;
+		if ( !arguments.length ) return scaleFactors;
+		if ( arguments.length === 1 ) {
+			if ( typeof groupId === 'string' ) {
+				v = scaleFactors[groupId];
+				return (v === undefined ? 1 : v);
+			}
+			
+			// for a single Object argument, reset all scaleFactors
+			scaleFactors = groupId;
+		} else if ( arguments.length == 2 ) {
+			scaleFactors[groupId] = value;
+		}
+		return that;
+	};
+	
 	/**
 	 * Get or set the color callback function. The callback will be passed a datum.
 	 * 
