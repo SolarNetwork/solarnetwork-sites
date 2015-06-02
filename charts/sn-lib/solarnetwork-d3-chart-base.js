@@ -83,7 +83,8 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		self.groupIds.forEach(function(groupId) {
 			var dummy,
 				layerData,
-				rawGroupData = self.data(groupId);
+				rawGroupData = self.data(groupId),
+				groupScaleFactor = (self.scaleFactor(groupId) ? self.scaleFactor(groupId) : 1);
 			if ( !rawGroupData || !rawGroupData.length > 1 ) {
 				return;
 			}
@@ -145,7 +146,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			}
 			var layers = stack(layerData);
 			groupLayers[groupId] = layers;
-			var rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
+			var rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; }) * groupScaleFactor];
 			if ( maxY === undefined || rangeY[1] > maxY ) {
 				maxY = rangeY[1];
 			}
@@ -283,7 +284,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	var originalData = {};
 	
 	// a numeric scale factor, by groupId
-	var scaleFactor = {};
+	var scaleFactors = {};
 
 	var svgRoot,
 		svgTickGroupX,
@@ -784,6 +785,38 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		self.draw();
 		if ( drawAnnotationsCallback ) {
 			drawAnnotationsCallback.call(me, svgAnnotRoot);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set the scale factor for specific group IDs. If called without any arguments,
+	 * all configured scale factors will be returned as an object, with group IDs as property
+	 * names with corresponding scale factor values. If called with a single Object argument
+	 * then set all scale factors using group IDs as object property names with corresponding 
+	 * number values for the scale factor.
+	 *
+	 * @param {String} groupId - The group ID of the scale factor to set.
+	 * @param {Number} value - The scale factor to set.
+	 * @returns If called without any arguments, all configured scale factors as an object.
+	 *          If called with a single String <code>groupId</code> argument, the scale factor for the given group ID,
+	 *          or <code>1</code> if not defined.
+	 *          If called with a single Object <code>groupId</code> argument, set
+	 *          Otherwise, this object.
+	 */
+	self.scaleFactor = function(groupId, value) {
+		var v;
+		if ( !arguments.length ) return scaleFactors;
+		if ( arguments.length === 1 ) {
+			if ( typeof groupId === 'string' ) {
+				v = scaleFactors[groupId];
+				return (v === undefined ? 1 : v);
+			}
+			
+			// for a single Object argument, reset all scaleFactors
+			scaleFactors = groupId;
+		} else if ( arguments.length == 2 ) {
+			scaleFactors[groupId] = value;
 		}
 		return me;
 	};
