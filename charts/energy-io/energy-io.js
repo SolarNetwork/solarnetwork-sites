@@ -9,13 +9,18 @@ sn.config.debug = true;
 sn.config.host = 'data.solarnetwork.net';
 sn.runtime.excludeSources = new sn.Configuration();
 
+function regenerateChart() {
+	if ( sn.runtime.energyBarIOChart === undefined ) {
+		return;
+	}
+	sn.runtime.energyBarIOChart.regenerate();
+	sn.adjustDisplayUnits(sn.runtime.energyBarIOContainer, 'Wh', sn.runtime.energyBarIOChart.yScale());
+}
+
 // handle clicks on legend handler
 function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.source);
-	if ( sn.runtime.energyBarIOChart !== undefined ) {
-		sn.runtime.energyBarIOChart.regenerate();
-		sn.adjustDisplayUnits(sn.runtime.energyBarIOContainer, 'Wh', sn.runtime.energyBarIOChart.yScale());
-	}
+	regenerateChart();
 }
 
 // show/hide the proper range selection based on the current aggregate level
@@ -69,11 +74,10 @@ function setupEnergyIOChart(container, chart, parameters, endDate, sourceMap) {
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
 		chart.reset()
 			.load(results[0], 'Consumption')
-			.load(results[1], 'Generation')
-			.regenerate();
+			.load(results[1], 'Generation');
+		regenerateChart();
 		sn.log("Energy Bar chart watt range: {0}", chart.yDomain());
 		sn.log("Energy Bar chart time range: {0}", chart.xDomain());
-		sn.adjustDisplayUnits(container, 'Wh', chart.yScale());
 	}).load();
 }
 
@@ -166,6 +170,14 @@ function setupUI() {
 				getAvailable = true;
 			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
 				getAvailable = true;
+			} else if ( propName === 'scale' ) {
+				sn.runtime.energyBarIOChart.scaleFactor('Generation', Number(sn.env[propName]));
+				regenerateChart(sn.runtime.energyBarIOChart);
+				return;
+			} else if ( propName === 'consumptionScale' ) {
+				sn.runtime.energyBarIOChart.scaleFactor('Consumption', Number(sn.env[propName]));
+				regenerateChart(sn.runtime.energyBarIOChart);
+				return;
 			}
 			if ( getAvailable ) {
 				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
@@ -221,8 +233,10 @@ function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
 		sourceIds : 'Main',
+		scale : 1,
 		consumptionNodeId : 108,
 		consumptionSourceIds : 'A,B,C',
+		consumptionScale : 1,
 		numDays : 7,
 		numMonths : 4,
 		numYears : 2,
@@ -237,6 +251,7 @@ function onDocumentReady() {
 	});
 	sn.runtime.energyBarIOContainer = d3.select(d3.select('#energy-io-chart').node().parentNode);
 	sn.runtime.energyBarIOChart = sn.chart.energyIOBarChart('#energy-io-chart', sn.runtime.energyBarIOParameters)
+		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
