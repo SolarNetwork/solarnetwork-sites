@@ -164,7 +164,12 @@ sn.sec.authURLPath = function(url, data) {
 	var sortedKeys = [], key = undefined;
 	var i, len;
 	var first = true;
-
+	
+	// work around IE bug https://connect.microsoft.com/IE/Feedback/Details/1002846
+	if ( path.length > 0 && path.charAt(0) !== '/' ) {
+		path = '/' + path;
+	}
+	
 	for ( key in params ) {
 		sortedKeys.push(key);
 	}
