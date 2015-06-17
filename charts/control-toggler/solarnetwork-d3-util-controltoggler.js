@@ -8,13 +8,15 @@
 (function() {
 'use strict';
 
+var timestampFormat = d3.time.format.utc("%Y-%m-%d %H:%M:%S.%LZ");
+
 if ( sn.util === undefined ) {
 	sn.util = {};
 }
 
 sn.util.controlToggler = function(urlHelper) {
 	var self = {
-		version : '1.2.0'
+		version : '1.3.0'
 	};
 
 	var timer;
@@ -50,24 +52,24 @@ sn.util.controlToggler = function(urlHelper) {
 			return prev;
 		}, undefined);
 		if ( instruction !== undefined ) {
-			sn.log('Active instruction found in state {0}; set control {1} to {2}', 
-				instruction.state, controlID, instruction.parameters[0].value);
+			sn.log('Active instruction for {3} found in state {0} (set control {1} to {2})', 
+				instruction.state, controlID, instruction.parameters[0].value, nodeUrlHelper.keyDescription());
 		}
 		return instruction;
 	}
 	
-	function pendingInstructionState() {
+	function lastKnownInstructionState() {
 		return (lastKnownInstruction === undefined ? undefined : lastKnownInstruction.state);
 	}
 		
-	function pendingInstructionValue() {
+	function lastKnownInstructionValue() {
 		return (lastKnownInstruction === undefined ? undefined : Number(lastKnownInstruction.parameters[0].value));
 	}
 
 	function currentRefreshMs() {
-		return (d3.set(['Queued','Received','Executing']).has(pendingInstructionState()) 
-			? pendingRefreshMs 
-			: refreshMs);
+		return (['Queued','Received','Executing'].indexOf(lastKnownInstructionState()) < 0
+			? refreshMs
+			: pendingRefreshMs);
 	}
 	
 	function value(desiredValue) {
@@ -75,24 +77,24 @@ sn.util.controlToggler = function(urlHelper) {
 
     	var q = queue();
     	var currentValue = (lastKnownStatus === undefined ? undefined : lastKnownStatus.val);
-    	var pendingState = pendingInstructionState();
-    	var pendingValue = pendingInstructionValue();
-		if ( pendingState !== undefined && pendingValue !== desiredValue ) {
+    	var pendingState = lastKnownInstructionState();
+    	var pendingValue = lastKnownInstructionValue();
+		if ( pendingState === 'Queued' && pendingValue !== desiredValue ) {
 			// cancel the pending instruction
-			sn.log('Canceling pending control {0} switch to {1}', controlID,  pendingValue);
+			sn.log('Canceling {2} pending control {0} switch to {1}', controlID,  pendingValue, nodeUrlHelper.keyDescription());
 			q.defer(sn.sec.json, nodeUrlHelper.updateInstructionStateURL(lastKnownInstruction.id, 'Declined'), 'POST');
 			lastKnownInstruction = undefined;
 			pendingState = undefined;
 			pendingValue = undefined;
 		}
 		if ( currentValue !== desiredValue && pendingValue !== desiredValue ) {
-			sn.log('Request to change control {0} to {1}', controlID, desiredValue);
+			sn.log('Request {2} to change control {0} to {1}', controlID, desiredValue, nodeUrlHelper.keyDescription());
 			q.defer(sn.sec.json, nodeUrlHelper.queueInstructionURL('SetControlParameter', 
 				[{name:controlID, value:String(desiredValue)}]), 'POST');
 		}
 		q.awaitAll(function(error, results) {
 			if ( error ) {
-				sn.log('Error updating control toggler {0}: {1}', controlID, error.status);
+				sn.log('Error updating {2} control toggler {0}: {1}', controlID, error.status, nodeUrlHelper.keyDescription());
 				notifyDelegate(error);
 				return;
 			}
@@ -122,17 +124,37 @@ sn.util.controlToggler = function(urlHelper) {
 			}
 		});
 		return self;
-	};
+	}
+	
+	function mostRecentValue(controlStatus, instruction) {
+		var statusDate, instructionDate;
+		if ( !instruction || instruction.status === 'Declined' ) {
+			return (controlStatus ? controlStatus.val : undefined);
+		} else if ( !controlStatus ) {
+			return Number(instruction.parameters[0].value);
+		}
+		// return the newer value
+		statusDate = timestampFormat.parse(controlStatus.created);
+		instructionDate = timestampFormat.parse(instruction.created);
+		return (statusDate.getTime() > instructionDate.getTime() 
+			? controlStatus.val 
+			: Number(instruction.parameters[0].value));
+	}
 	
 	function update() {
     	var q = queue();
 		q.defer((nodeUrlHelper.secureQuery ? sn.sec.json : d3.json), nodeUrlHelper.mostRecentURL([controlID]));
 		if ( sn.sec.hasTokenCredentials() === true ) {
 			q.defer(sn.sec.json, nodeUrlHelper.viewPendingInstructionsURL(), 'GET');
+			if ( lastKnownInstruction && ['Completed', 'Declined'].indexOf(lastKnownInstructionState()) < 0 ) {
+				// also refresh this specific instruction, to know when it goes to Completed so we can
+				// assume the control value has changed, even if the mostRecent data lags behind
+				q.defer(sn.sec.json, nodeUrlHelper.viewInstruction(lastKnownInstruction.id));
+			}
 		}
-		q.await(function(error, status, active) {
+		q.await(function(error, status, active, executing) {
 			if ( error ) {
-				sn.log('Error querying control toggler {0} status: {1}', controlID, error.status);
+				sn.log('Error querying control toggler {0} for {2} status: {1}', controlID, error.status, nodeUrlHelper.keyDescription());
 				notifyDelegate(error);
 			} else {
 				// get current status of control
@@ -147,18 +169,21 @@ sn.util.controlToggler = function(urlHelper) {
 				}
 				
 				// get current instruction (if any)
+				var execInstruction = (executing ? executing.data : undefined);
 				var pendingInstruction = (active ? getActiveInstruction(active.data) : undefined);
-				var pendingValue = (pendingInstruction === undefined ? undefined : Number(pendingInstruction.parameters[0].value));
-				var lastKnownValue = pendingInstructionValue();
-				if ( controlStatus !== undefined && (lastKnownStatus === undefined 
-						|| controlStatus.val !== lastKnownStatus.val)
-						|| pendingValue !== lastKnownValue
-						|| lastHadCredentials !==  sn.sec.hasTokenCredentials() ) {
+				var newValue = (mostRecentValue(controlStatus, execInstruction ? execInstruction 
+								: pendingInstruction ? pendingInstruction : lastKnownInstruction));
+				var currValue = value();
+				if ( (newValue !== currValue) 
+					|| lastHadCredentials !==  sn.sec.hasTokenCredentials() ) {
 					sn.log('Control {0} for {1} value is currently {2}', controlID, 
 						nodeUrlHelper.keyDescription(),
-						(controlStatus ? controlStatus.val : 'N/A'));
+						(newValue !== undefined ? newValue : 'N/A'));
 					lastKnownStatus = controlStatus;
-					lastKnownInstruction = pendingInstruction;
+					if ( lastKnownStatus && !pendingInstruction ) {
+						lastKnownStatus.val = newValue; // force this, because instruction value might be newer than status value
+					}
+					lastKnownInstruction = (execInstruction ? execInstruction : pendingInstruction);
 					lastHadCredentials = sn.sec.hasTokenCredentials();
 					
 					// invoke the client callback so they know the data has been updated
@@ -277,8 +302,10 @@ sn.util.controlToggler = function(urlHelper) {
 	};
 	
 	Object.defineProperties(self, {
-		pendingInstructionState : { value : pendingInstructionState },
-		pendingInstructionValue : { value : pendingInstructionValue },
+		pendingInstructionState : { value : lastKnownInstructionState }, // deprecated, use lastKnownInstructionState
+		pendingInstructionValue : { value : lastKnownInstructionValue }, // deprecated, use lastKnownInstructionValue
+		lastKnownInstructionState : { value : lastKnownInstructionState },
+		lastKnownInstructionValue : { value : lastKnownInstructionValue },
 		value					: { value : value }
 	});
 	
