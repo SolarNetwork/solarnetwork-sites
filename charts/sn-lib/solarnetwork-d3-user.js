@@ -23,6 +23,10 @@ function solarUserBaseURL(urlHelper) {
 		+'/api/v1/sec');
 }
 
+sn.datum.registerNodeUrlHelperFunction('viewInstruction', function(instructionID) {
+	return (solarUserBaseURL(this) +'/instr/view?id=' +encodeURIComponent(instructionID));
+});
+
 sn.datum.registerNodeUrlHelperFunction('viewActiveInstructionsURL', function() {
 	return (solarUserBaseURL(this) +'/instr/viewActive?nodeId=' +this.nodeId);
 });
