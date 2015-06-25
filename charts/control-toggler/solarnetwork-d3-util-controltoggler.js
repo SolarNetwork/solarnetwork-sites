@@ -189,11 +189,11 @@ sn.util.controlToggler = function(urlHelper) {
 					// invoke the client callback so they know the data has been updated
 					notifyDelegate();
 				}
+			}
 			
-				// if timer was defined, keep going as if interval set
-				if ( timer !== undefined ) {
-					timer = setTimeout(update, currentRefreshMs());
-				}
+			// if timer was defined, keep going as if interval set
+			if ( timer !== undefined ) {
+				timer = setTimeout(update, currentRefreshMs());
 			}
 		});
 
