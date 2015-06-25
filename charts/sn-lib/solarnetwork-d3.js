@@ -1,5 +1,5 @@
 /*global colorbrewer,console,d3,queue */
-(function() {
+(function(window, console) {
 'use strict';
 /**
  * @namespace the SolarNetwork namespace
@@ -7,7 +7,7 @@
  * @require queue 1.0
  */
 var sn = {
-	version : '0.0.7',
+	version : '0.1.0',
 	
 	/**
 	 * @namespace the SolarNetwork chart namespace.
@@ -1861,7 +1861,7 @@ if (typeof define === "function" && define.amd) {
 	define(sn);
 } else if (typeof module === "object" && module.exports) {
 	module.exports = sn;
-} else {
+} else if ( window ) {
 	window.sn = sn;
 }
-}());
+}(window, console));
