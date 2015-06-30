@@ -15,6 +15,7 @@ function regenerateChart() {
 	}
 	sn.runtime.energyBarIOChart.regenerate();
 	sn.adjustDisplayUnits(sn.runtime.energyBarIOContainer, 'Wh', sn.runtime.energyBarIOChart.yScale());
+	sn.adjustDisplayUnits(sn.runtime.barTooltip, 'Wh', sn.runtime.energyBarIOChart.yScale());
 }
 
 // handle clicks on legend handler
@@ -117,6 +118,69 @@ function sourceSets(regenerate) {
 	return sn.runtime.sourceSets;
 }
 
+/**
+ * Generate an array of source color mappings ordered to match the display order in the chart.
+ * 
+ * @param {Object} sourceGroupMap - A mapping of data types to associated sources, e.g. { Generation : [A, B, C] },
+ *                                  that is passed to {@link sn.sourceColorMapping}.
+ * @param {Object} sourceColorMap - An object returned from {@link sn.sourceColorMapping}, e.g.
+ *                                  { 
+ *                                     displaySourceMap : { Generation : { A : 'Generation / A' } },
+ *                                     colorMap : { 'Generation / A' : '#000' }
+ *                                  }
+ */
+function sourceLabelsColorMap(sourceGroupMap, sourceColorMap) {
+	var result = []; // { source : X, color: Y }
+	['Generation', 'Consumption'].forEach(function(dataType) {
+		var dataTypeSources = sourceGroupMap[dataType];
+		if ( dataType === 'Generation' ) {
+			// reverse the order, to match the chart
+			dataTypeSources = dataTypeSources.slice().reverse();
+		}
+		dataTypeSources.forEach(function(source) {
+			var displaySource = sourceColorMap.displaySourceMap[dataType][source];
+			result.push({ dataType: dataType, source : displaySource, color: sourceColorMap.colorMap[displaySource]});
+		});
+	});
+	return result;
+}
+
+function setupBarTooltip(sourceGroupMap) {
+	d3.select('#source-labels-tooltip').html(null);
+	sn.colorDataLegendTable('#source-labels-tooltip', sn.runtime.labelColorMap, undefined, function(s) {
+		s.html(function(d) {
+			var sourceGroup = sn.runtime.sourceColorMap.displaySourceObjects[d];
+			sn.log('Got data type {0} source {1}', sourceGroup.dataType, sourceGroup.source);
+			return '<span class="energy">0</span> <span class="unit">(kWh)</span>';
+		});
+	});
+	var tbody = d3.select('#source-labels-tooltip tbody');
+	var rows = tbody.selectAll('tr');
+	var index = 0;
+	var dataTypes = ['Generation', 'Consumption'];
+	dataTypes.forEach(function(dataType) {
+		var dataTypeSources = sourceGroupMap[dataType];
+		var row, cell;
+		index += dataTypeSources.length;
+		// insert a sub-total row
+		if ( index >= rows[0].length ) {
+			row = tbody.append('tr');
+		} else {
+			row = tbody.insert('tr', function() { 
+				return rows[0][index];
+			});
+		}
+		row.classed('subtotal', true);
+		cell = row.append('td').attr('colspan', '2');
+		if ( dataTypeSources.length > 1 ) {
+			cell.html('<span class="energy">0</span> <span class="unit">(kWh)</span>');
+		}
+	});
+	
+	// add grand total row
+	tbody.append('tr').classed('total', true).html('<td colspan="2"><span class="label">Net:</span> <span class="energy">0</span> <span class="unit">(kWh)</span></td>');
+}
+
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
@@ -125,14 +189,20 @@ function setup(repInterval) {
 		// we make use of sn.colorFn, so stash the required color map where expected
 		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
 
+		sn.runtime.groupColorMap = {
+			'Generation' : sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]],
+			'Consumption' : sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]
+		};
+
 		// set up form-based details
-		d3.select('#details .consumption').style('color', 
-				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]);
-		d3.select('#details .generation').style('color', 
-				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
+		d3.select('#details .consumption').style('color', sn.runtime.groupColorMap['Consumption']);
+		d3.select('#details .generation').style('color', sn.runtime.groupColorMap['Generation']);
 
 		// create copy of color data for reverse ordering so labels vertically match chart layers
-		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+		sn.runtime.labelColorMap = sourceLabelsColorMap(sn.runtime.sourceGroupMap, sn.runtime.sourceColorMap);
+		
+		// create clickable legend table
+		sn.colorDataLegendTable('#source-labels', sn.runtime.labelColorMap, legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -141,6 +211,9 @@ function setup(repInterval) {
 				s.text(Object);
 			}
 		});
+		
+		// create tooltip legend table
+		setupBarTooltip(sn.runtime.sourceGroupMap);
 	}
 
 	updateRangeSelection();
@@ -229,6 +302,62 @@ function setupUI() {
 	});
 }
 
+function handleHoverEnter() {
+	sn.runtime.barTooltip.style('display', null);
+}
+
+function handleHoverLeave() {
+	sn.runtime.barTooltip.style('display', 'none');
+}
+
+function handleHoverMove(svgContainer, point, data) {
+	var chart = this,
+		dataTypes = ['Generation', 'Consumption'],
+		tooltip = sn.runtime.barTooltip,
+		tooltipRect = tooltip.node().getBoundingClientRect(),
+		matrix = svgContainer.getScreenCTM().translate(data.x, 0);
+	
+	var subTotalDataTypes = dataTypes.filter(function(dataType) { 
+		var dataTypeSources = sn.runtime.sourceGroupMap[dataType];
+		return (dataTypeSources.length > 1);
+	});
+	
+	var lastGroupDataType, groupCount = 0, netTotal = 0;
+
+	tooltip.style('left', Math.round(window.pageXOffset + matrix.e - tooltipRect.width / 2) + 'px')
+            .style('top', Math.round(window.pageYOffset + matrix.f - tooltipRect.height) + 'px');
+    tooltip.select('h3').text(sn.dateTimeFormat(data.date));
+    tooltip.selectAll('td.desc span.energy').data(sn.runtime.labelColorMap).text(function(d, i) {
+    	var index = i, sourceMap,
+    		groupData = data.groups[d.dataType];
+		if ( groupData.groupId !== lastGroupDataType ) {
+			groupCount = i;
+			lastGroupDataType = groupData.groupId;
+		}
+		index -= groupCount;
+		if ( groupData.negate ) {
+			netTotal -= groupData.data[index];
+		} else {
+			netTotal += groupData.data[index];
+		}
+    	return sn.runtime.barTooltipFormat(groupData.data[index] / chart.yScale());
+    });
+    
+    // fill in subtotals
+    tooltip.selectAll('tr.subtotal span.energy').data(subTotalDataTypes).text(function(dataType) {
+    	var groupData = data.groups[dataType].data,
+    		sum = d3.sum(groupData);
+    	return sn.runtime.barTooltipFormat(sum / chart.yScale());
+    });
+    
+    // fill in net total
+    tooltip.select('tr.total')
+    		.style('color', sn.runtime.groupColorMap[netTotal < 0 ? 'Consumption' : 'Generation'])
+    .select('span.energy')
+    	.text(sn.runtime.barTooltipFormat(netTotal / chart.yScale()));
+    	
+}
+
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
@@ -254,10 +383,16 @@ function onDocumentReady() {
 		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
-		.sourceExcludeCallback(sourceExcludeCallback);
+		.sourceExcludeCallback(sourceExcludeCallback)
+		.hoverEnterCallback(handleHoverEnter)
+		.hoverMoveCallback(handleHoverMove)
+		.hoverLeaveCallback(handleHoverLeave);
 	
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
 	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+
+	sn.runtime.barTooltip = d3.select('#bar-chart-tooltip');
+	sn.runtime.barTooltipFormat = d3.format(',.1f');
 
 	setupUI();
 	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {

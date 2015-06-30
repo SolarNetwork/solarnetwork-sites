@@ -26,7 +26,7 @@ h1 {
 	line-height: 42px;
 	font-weight: 200;
 	margin: 0;
-	margin-bottom: 12px;
+	margin-bottom: 24px;
 	color: rgb(247,200,25);
 	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
 }
@@ -226,9 +226,62 @@ a {
 	color: #ccc;
 }
 
-svg {
-	/*background-color: rgb(242,242,242);*/
+/* Tooltip support */
+
+#bar-chart-tooltip h3 {
+	font-size: 10px;
+	font-weight: 700;
+	margin: 0;
 }
+
+#bar-chart-tooltip {
+	/*display: none;*/
+	position: absolute;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 10px;
+	background-color: white;
+}
+
+.tooltip table {
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin-left: -4px;
+	width: 100%;
+}
+
+.tooltip td.swatch {
+	margin: 2px;
+	width: 10px;
+	height: 10px;
+}
+
+.tooltip td {
+	font-size: 10px;
+	line-height: 10px;
+	text-align: right;
+	margin: 2px;
+}
+
+.tooltip td.desc {
+	padding-left: 8px;
+}
+
+.tooltip .subtotal td {
+	border-top: 1px dotted #ccc;
+	padding-bottom: 4px;
+	font-style: italic;
+}
+
+.tooltip .total td {
+	font-weight: 700;
+}
+
+.tooltip .negative {
+	color: #c00;
+}
+
+/* SVG styles */
 
 .chart {
 	font-size: 10px;
@@ -323,4 +376,9 @@ svg {
 
 .chart line.axis {
 	stroke: black;
+}
+
+.chart rect.highlightbar {
+	stroke: none;
+	fill: rgba(255, 238, 71, 0.5);
 }
