@@ -42,9 +42,9 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	// an ordinal x-axis scale, to render precise bars with
 	var xBar = d3.scale.ordinal();
 
-	var svgVertRuleGroup = parent.svgRoot.append("g")
-		.attr("class", "vertrule")
-		.attr("transform", "translate(" + parent.padding[3] + "," + parent.padding[0] + ")");
+	var svgVertRuleGroup = parent.svgRoot.insert('g', '.annot-root')
+		.attr('class', 'vertrule')
+		.attr('transform', 'translate(' + parent.padding[3] + ',' + parent.padding[0] + ')');
 
 	function groupFillFn(d, i) {
 		return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
