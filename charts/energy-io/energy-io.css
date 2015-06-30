@@ -226,6 +226,15 @@ a {
 	color: #ccc;
 }
 
+#bar-chart-tooltip {
+	/*display: none;*/
+	position: absolute;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 10px;
+	background-color: white;
+}
+
 svg {
 	/*background-color: rgb(242,242,242);*/
 }

@@ -229,6 +229,24 @@ function setupUI() {
 	});
 }
 
+function handleHoverEnter() {
+	sn.runtime.barTooltip.style('display', null);
+}
+
+function handleHoverLeave() {
+	sn.runtime.barTooltip.style('display', 'none');
+}
+
+function handleHoverMove(svgContainer, point, data) {
+	var chart = this,
+		tooltip = sn.runtime.barTooltip,
+		tooltipRect = tooltip.node().getBoundingClientRect(),
+		matrix = svgContainer.getScreenCTM().translate(data.x, svgContainer.getAttribute('height') / 2);
+	console.log('Point %dx%d data x %d', point[0], point[1], data.x);
+	tooltip.style('left', (window.pageXOffset + matrix.e - tooltipRect.width / 2) + 'px')
+            .style('top', (window.pageYOffset + matrix.f) + 'px');
+}
+
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
@@ -254,10 +272,15 @@ function onDocumentReady() {
 		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
-		.sourceExcludeCallback(sourceExcludeCallback);
+		.sourceExcludeCallback(sourceExcludeCallback)
+		.hoverEnterCallback(handleHoverEnter)
+		.hoverMoveCallback(handleHoverMove)
+		.hoverLeaveCallback(handleHoverLeave);
 	
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
 	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+
+	sn.runtime.barTooltip = d3.select('#bar-chart-tooltip');
 
 	setupUI();
 	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
