@@ -243,28 +243,43 @@ a {
 	background-color: white;
 }
 
-#source-labels-tooltip table {
+.tooltip table {
 	border-collapse: separate;
 	border-spacing: 4px;
 	margin-left: -4px;
+	width: 100%;
 }
 
-#source-labels-tooltip td.desc {
-	text-align: right;
-}
-
-#source-labels-tooltip td.swatch {
+.tooltip td.swatch {
 	margin: 2px;
 	width: 10px;
 	height: 10px;
 }
 
-#source-labels-tooltip td.desc {
+.tooltip td {
 	font-size: 10px;
 	line-height: 10px;
+	text-align: right;
 	margin: 2px;
 }
 
+.tooltip td.desc {
+	padding-left: 8px;
+}
+
+.tooltip .subtotal td {
+	border-top: 1px dotted #ccc;
+	padding-bottom: 4px;
+	font-style: italic;
+}
+
+.tooltip .total td {
+	font-weight: 700;
+}
+
+.tooltip .negative {
+	color: #c00;
+}
 
 /* SVG styles */
 
