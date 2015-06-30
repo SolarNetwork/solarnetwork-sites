@@ -307,7 +307,7 @@ function handleHoverEnter() {
 }
 
 function handleHoverLeave() {
-//	sn.runtime.barTooltip.style('display', 'none');
+	sn.runtime.barTooltip.style('display', 'none');
 }
 
 function handleHoverMove(svgContainer, point, data) {
@@ -315,7 +315,7 @@ function handleHoverMove(svgContainer, point, data) {
 		dataTypes = ['Generation', 'Consumption'],
 		tooltip = sn.runtime.barTooltip,
 		tooltipRect = tooltip.node().getBoundingClientRect(),
-		matrix = svgContainer.getScreenCTM().translate(data.x, svgContainer.getAttribute('height') / 2);
+		matrix = svgContainer.getScreenCTM().translate(data.x, 0);
 	
 	var subTotalDataTypes = dataTypes.filter(function(dataType) { 
 		var dataTypeSources = sn.runtime.sourceGroupMap[dataType];
@@ -325,7 +325,7 @@ function handleHoverMove(svgContainer, point, data) {
 	var lastGroupDataType, groupCount = 0, netTotal = 0;
 
 	tooltip.style('left', Math.round(window.pageXOffset + matrix.e - tooltipRect.width / 2) + 'px')
-            .style('top', Math.round(window.pageYOffset + matrix.f) + 'px');
+            .style('top', Math.round(window.pageYOffset + matrix.f - tooltipRect.height) + 'px');
     tooltip.select('h3').text(sn.dateTimeFormat(data.date));
     tooltip.selectAll('td.desc span.energy').data(sn.runtime.labelColorMap).text(function(d, i) {
     	var index = i, sourceMap,

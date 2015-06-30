@@ -26,7 +26,7 @@ h1 {
 	line-height: 42px;
 	font-weight: 200;
 	margin: 0;
-	margin-bottom: 12px;
+	margin-bottom: 24px;
 	color: rgb(247,200,25);
 	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
 }
@@ -376,4 +376,9 @@ a {
 
 .chart line.axis {
 	stroke: black;
+}
+
+.chart rect.highlightbar {
+	stroke: none;
+	fill: rgba(255, 238, 71, 0.5);
 }
