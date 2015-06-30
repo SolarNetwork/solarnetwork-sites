@@ -464,7 +464,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			barDate = parent.xBar.domain()[barIndex < 1 ? 0 : barIndex - 1],
 			allData = [],
 			hoverData = [],
-			callbackData = { data : hoverData, yRange : [parent.y(0), parent.y(0)], allData : allData };
+			callbackData = { data : hoverData, yRange : [parent.y(0), parent.y(0)], allData : allData, groups : {} };
 		chartDrawData.groupedData.forEach(function(groupArray, idx) {
 			var groupHoverData = { 
 					groupId : parent.groupIds[idx], 
@@ -480,7 +480,11 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 				}
 				groupHoverData.index = i;
 				groupArray.forEach(function(dataArray) {
-					dataValue = dataArray[i][parent.plotPropertyName] * scale;
+					// only count the data if the date is the same as our bar date... the bisectDate() function retunrs
+					// the *closest* date, but if there are holes in the data we might not have the *exact* date
+					dataValue = (dataArray[i].date.getTime() === barDate.getTime()
+						? dataArray[i][parent.plotPropertyName] * scale
+						: 0);
 					totalValue += dataValue;
 					groupHoverData.data.push(dataValue);
 					allData.push(dataValue);
@@ -497,7 +501,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 					callbackData.yRange[1] = groupHoverData.y;
 				}
 			}
-			hoverData.push(groupHoverData);			
+			hoverData.push(groupHoverData);
+			callbackData.groups[groupHoverData.groupId] = groupHoverData;
 		});
 		callbackData.date = barDate;
 		return callbackData;
