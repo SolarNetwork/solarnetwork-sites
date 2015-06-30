@@ -15,6 +15,7 @@ function regenerateChart() {
 	}
 	sn.runtime.energyBarIOChart.regenerate();
 	sn.adjustDisplayUnits(sn.runtime.energyBarIOContainer, 'Wh', sn.runtime.energyBarIOChart.yScale());
+	sn.adjustDisplayUnits(sn.runtime.barTooltip, 'Wh', sn.runtime.energyBarIOChart.yScale());
 }
 
 // handle clicks on legend handler
@@ -132,7 +133,10 @@ function setup(repInterval) {
 				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
 
 		// create copy of color data for reverse ordering so labels vertically match chart layers
-		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+		sn.runtime.reversedColorMap = sn.runtime.sourceColorMap.colorMap.slice().reverse();
+		
+		// create clickable legend table
+		sn.colorDataLegendTable('#source-labels', sn.runtime.reversedColorMap, legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -140,6 +144,15 @@ function setup(repInterval) {
 			} else {
 				s.text(Object);
 			}
+		});
+		
+		// create tooltip legend table
+		sn.colorDataLegendTable('#source-labels-tooltip', sn.runtime.reversedColorMap, undefined, function(s) {
+			s.html(function(d) {
+				var sourceGroup = sn.runtime.sourceColorMap.displaySourceObjects[d];
+				sn.log('Got data type {0} source {1}', sourceGroup.dataType, sourceGroup.source);
+				return '<span class="energy">0</span> <span class="unit">(kWh)</span>';
+			});
 		});
 	}
 
@@ -242,9 +255,12 @@ function handleHoverMove(svgContainer, point, data) {
 		tooltip = sn.runtime.barTooltip,
 		tooltipRect = tooltip.node().getBoundingClientRect(),
 		matrix = svgContainer.getScreenCTM().translate(data.x, svgContainer.getAttribute('height') / 2);
-	console.log('Point %dx%d data x %d', point[0], point[1], data.x);
-	tooltip.style('left', (window.pageXOffset + matrix.e - tooltipRect.width / 2) + 'px')
-            .style('top', (window.pageYOffset + matrix.f) + 'px');
+	tooltip.style('left', Math.round(window.pageXOffset + matrix.e - tooltipRect.width / 2) + 'px')
+            .style('top', Math.round(window.pageYOffset + matrix.f) + 'px');
+    tooltip.select('h3').text(sn.dateTimeFormat(data.date));
+    tooltip.selectAll('span.energy').text(function(d, i) {
+    	return sn.runtime.barTooltipFormat(data.allData[i] / chart.yScale());
+    });
 }
 
 function onDocumentReady() {
@@ -281,6 +297,7 @@ function onDocumentReady() {
 	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
 
 	sn.runtime.barTooltip = d3.select('#bar-chart-tooltip');
+	sn.runtime.barTooltipFormat = d3.format(',.1f');
 
 	setupUI();
 	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {

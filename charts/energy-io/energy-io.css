@@ -226,6 +226,14 @@ a {
 	color: #ccc;
 }
 
+/* Tooltip support */
+
+#bar-chart-tooltip h3 {
+	font-size: 10px;
+	font-weight: 700;
+	margin: 0;
+}
+
 #bar-chart-tooltip {
 	/*display: none;*/
 	position: absolute;
@@ -235,9 +243,30 @@ a {
 	background-color: white;
 }
 
-svg {
-	/*background-color: rgb(242,242,242);*/
+#source-labels-tooltip table {
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin-left: -4px;
 }
+
+#source-labels-tooltip td.desc {
+	text-align: right;
+}
+
+#source-labels-tooltip td.swatch {
+	margin: 2px;
+	width: 10px;
+	height: 10px;
+}
+
+#source-labels-tooltip td.desc {
+	font-size: 10px;
+	line-height: 10px;
+	margin: 2px;
+}
+
+
+/* SVG styles */
 
 .chart {
 	font-size: 10px;
