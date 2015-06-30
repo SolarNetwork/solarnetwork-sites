@@ -461,26 +461,29 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		}
 		var barRange = parent.xBar.range(),
 			barIndex = d3.bisectLeft(barRange, point[0]),
-			x0 = parent.xBar.domain()[barIndex < 1 ? 0 : barIndex - 1],
+			barDate = parent.xBar.domain()[barIndex < 1 ? 0 : barIndex - 1],
+			allData = [],
 			hoverData = [],
-			callbackData = { data : hoverData, yRange : [parent.y(0), parent.y(0)] };
+			callbackData = { data : hoverData, yRange : [parent.y(0), parent.y(0)], allData : allData };
 		chartDrawData.groupedData.forEach(function(groupArray, idx) {
 			var groupHoverData = { 
 					groupId : parent.groupIds[idx], 
 					data : [],
 					negate : (negativeGroupMap[parent.groupIds[idx]] === true) 
 				},
+				scale = parent.scaleFactor(groupHoverData.groupId),
 				dataValue, totalValue = 0, i;
 			if ( groupArray.length > 0 && groupArray[0].length > 0) {
-				i = bisectDate(groupArray[0], x0);
+				i = bisectDate(groupArray[0], barDate);
+				if ( i >= groupArray[0].length ) {
+					i -= 1;
+				}
 				groupHoverData.index = i;
 				groupArray.forEach(function(dataArray) {
-					dataValue = dataArray[i][parent.plotPropertyName];
-					if ( groupHoverData.negate ) {
-						dataValue *= -1;
-					}
+					dataValue = dataArray[i][parent.plotPropertyName] * scale;
 					totalValue += dataValue;
 					groupHoverData.data.push(dataValue);
+					allData.push(dataValue);
 				});
 				groupHoverData.total = totalValue;
 				if ( callbackData.x === undefined ) {
@@ -496,6 +499,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			}
 			hoverData.push(groupHoverData);			
 		});
+		callbackData.date = barDate;
 		return callbackData;
 	}
 
