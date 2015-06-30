@@ -291,7 +291,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		svgDataRoot,
 		svgRuleRoot,
 		svgAnnotRoot,
-		svgHoverRoot;
+		svgHoverRoot,
+		svgPointerCapture;
 	
 	var dataCallback = undefined;
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
@@ -997,15 +998,18 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	
 	function getOrCreateHoverRoot() {
 		if ( !svgHoverRoot ) {
-			svgHoverRoot = svgRoot.append('rect')
+			svgHoverRoot = svgRoot.append('g')
+				.attr('class', 'hover-root')
+				.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+			svgPointerCapture = svgRoot.append('rect')
 				.attr('width', w)
 				.attr('height', h)
 				.attr('fill', 'none')
 				.attr('pointer-events', 'all')
-				.attr('class', 'hover-root')
+				.attr('class', 'pointer-capture')
 				.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
 		}
-		return svgHoverRoot;
+		return svgPointerCapture;
 	}
 	
 	/**

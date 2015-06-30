@@ -505,6 +505,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			callbackData.groups[groupHoverData.groupId] = groupHoverData;
 		});
 		callbackData.date = barDate;
+		callbackData.index = barIndex;
 		return callbackData;
 	}
 
@@ -515,6 +516,11 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		}
 		var point = d3.mouse(this),
 			callbackData = calculateHoverData(point);
+		
+		var hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([callbackData]);
+		hoverBar.attr('x', parent.valueX)
+				.attr('width', parent.xBar.rangeBand());
+		
         callback.call(that, this, point, callbackData);
 	};
 
@@ -525,6 +531,17 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		}
 		var point = d3.mouse(this),
 			callbackData = calculateHoverData(point);
+
+		var hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([callbackData]);
+		hoverBar.attr('x', parent.valueX)
+				.attr('width', parent.xBar.rangeBand());
+		hoverBar.enter().append('rect')
+				.attr('x', parent.valueX)
+				.attr('y', 0)
+				.attr('height', parent.height)
+				.attr('width', parent.xBar.rangeBand())
+				.classed('highlightbar', true);
+
         callback.call(that, this, point, callbackData);
 	};
 
@@ -535,6 +552,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		}
 		var point = d3.mouse(this),
 			callbackData = calculateHoverData(point);
+
+		var hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([]);
+		hoverBar.exit().remove();
+
         callback.call(that, this, point, callbackData);
 	};
 
