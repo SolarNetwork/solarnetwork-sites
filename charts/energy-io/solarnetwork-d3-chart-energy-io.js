@@ -79,7 +79,10 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	var svgAggGroup = parent.svgDataRoot.append('g')
 		.attr('class', 'agg-gen')
 		.attr('transform', 'translate(0,' + (10 - parent.padding[0]) + ')');
+		
+	var chartDrawData = undefined;
 	
+	var bisectDate = d3.bisector(function(d) { return d.date; }).left;
 	
 	function seasonColorFn(d) {
 		var seasonColors = (parent.config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
@@ -231,6 +234,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		parent.computeDomainX();
 		
 		drawData = setupDrawData();
+		chartDrawData = drawData;
 
 		// adjust Y domain to include "negative" range
 		yDomain[0] = -drawData.maxNegativeY;
@@ -451,6 +455,80 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			.remove();
 	}
 
+	function calculateHoverData(point) {
+		if ( !chartDrawData ) {
+			return;
+		}
+		var barRange = parent.xBar.range(),
+			barIndex = d3.bisectLeft(barRange, point[0]),
+			x0 = parent.xBar.domain()[barIndex < 1 ? 0 : barIndex - 1],
+			hoverData = [],
+			callbackData = { data : hoverData, yRange : [parent.y(0), parent.y(0)] };
+		chartDrawData.groupedData.forEach(function(groupArray, idx) {
+			var groupHoverData = { 
+					groupId : parent.groupIds[idx], 
+					data : [],
+					negate : (negativeGroupMap[parent.groupIds[idx]] === true) 
+				},
+				dataValue, totalValue = 0, i;
+			if ( groupArray.length > 0 && groupArray[0].length > 0) {
+				i = bisectDate(groupArray[0], x0);
+				groupHoverData.index = i;
+				groupArray.forEach(function(dataArray) {
+					dataValue = dataArray[i][parent.plotPropertyName];
+					if ( groupHoverData.negate ) {
+						dataValue *= -1;
+					}
+					totalValue += dataValue;
+					groupHoverData.data.push(dataValue);
+				});
+				groupHoverData.total = totalValue;
+				if ( callbackData.x === undefined ) {
+					callbackData.x = parent.valueXMidBar(groupArray[0][i]);
+				}
+				groupHoverData.y = parent.y(totalValue);
+				if ( groupHoverData.y < callbackData.yRange[0] ) {
+					callbackData.yRange[0] = groupHoverData.y;
+				}
+				if ( groupHoverData.y > callbackData.yRange[1] ) {
+					callbackData.yRange[1] = groupHoverData.y;
+				}
+			}
+			hoverData.push(groupHoverData);			
+		});
+		return callbackData;
+	}
+
+	function handleHoverEnter() {
+		var callback = parent.hoverEnterCallback();
+		if ( !callback ) {
+			return;
+		}
+		var point = d3.mouse(this),
+			callbackData = calculateHoverData(point);
+        callback.call(that, this, point, callbackData);
+	};
+
+	function handleHoverMove() {
+		var callback = parent.hoverMoveCallback();
+		if ( !callback ) {
+			return;
+		}
+		var point = d3.mouse(this),
+			callbackData = calculateHoverData(point);
+        callback.call(that, this, point, callbackData);
+	};
+
+	function handleHoverLeave() {
+		var callback = parent.hoverLeaveCallback();
+		if ( !callback ) {
+			return;
+		}
+		var point = d3.mouse(this),
+			callbackData = calculateHoverData(point);
+        callback.call(that, this, point, callbackData);
+	};
+
 	/**
 	 * Toggle showing the sum line, or get the current setting.
 	 * 
@@ -524,8 +602,11 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		return that;
 	};
 
-	// define our drawing function
+	// define our custom drawing functions
 	parent.draw = draw;
+	parent.handleHoverEnter = handleHoverEnter;
+	parent.handleHoverMove = handleHoverMove;
+	parent.handleHoverLeave = handleHoverLeave;
 	
 	return that;
 };
