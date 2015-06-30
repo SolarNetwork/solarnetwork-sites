@@ -1011,6 +1011,11 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
  *             Main : 'Power / Main'
  *         }
  *     },
+ *     displaySourceObjects : {
+ *         'Consumption / Main' : { dataType : 'Consumption', source : 'Main' },
+ *         'Consumption / Shed' : { dataType : 'Consumption', source : 'Shed' },
+ *         'Power / Main' : { dataType : 'Power', source : 'Main' }
+ *     },
  *     reverseDisplaySourceMap : {
  *         Consumption : {
  *             'Consumption / Main' : 'Main',
@@ -1046,6 +1051,9 @@ sn.sourceColorMapping = function(sourceMap, params) {
 	var displayDataTypeFn;
 	var displaySourceFn;
 	var displayColorFn;
+	
+	var displayToSourceObjects = {}; // map of 'dType / source' -> { dataType : dType, source : source }
+	
 	if ( typeof p.displayDataType === 'function' ) {
 		displayDataTypeFn = p.displayDataType;
 	} else {
@@ -1082,6 +1090,7 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			}
 			typeSourceList.push(mappedSource);
 			sourceList.push(mappedSource);
+			displayToSourceObjects[mappedSource] = { dataType : dtype, source : el, display : mappedSource };
 		});
 	}
 	for ( dataType in sourceMap ) {
@@ -1130,6 +1139,7 @@ sn.sourceColorMapping = function(sourceMap, params) {
 	result.displaySourceMap = chartSourceMap;
 	result.reverseDisplaySourceMap = reverseDisplaySourceMap;
 	result.colorMap = sn.colorMap(sourceColors, sourceList);
+	result.displaySourceObjects = displayToSourceObjects;
 	return result;
 };
 
