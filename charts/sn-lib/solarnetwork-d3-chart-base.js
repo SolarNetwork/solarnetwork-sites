@@ -338,7 +338,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 	
 	var handleHoverLeave = function() {
-		if ( !hoverCallback ) {
+		if ( !hoverLeaveCallback ) {
 			return;
 		}
         hoverLeaveCallback.call(me, svgHoverRoot, d3.mouse(this));
