@@ -14,7 +14,15 @@ sn.config.debug = true;
 
 var app;
 
-var sgSchoolApp = function(nodeUrlHelper) {
+/**
+ * Schoolgen school app. Displays a set of charts and data related to a single school.
+ * 
+ * @param {object} nodeUrlHelper - A {@link sn.datum.nodeUrlHelper} configured with the school's SolarNetwork node ID.
+ * @param {string} barEnergyChartSelector - A CSS selector to display the energy bar chart within.
+ * @param {string} pieEnergyChartSelector - A CSS selector to display the energy pie chart within.
+ * @class
+ */
+var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChartSelector) {
 	var self = { version : '1.0.0' };
 	var urlHelper = nodeUrlHelper;
 
@@ -25,11 +33,21 @@ var sgSchoolApp = function(nodeUrlHelper) {
 	// configuration
 	var consumptionSources = [],
 		generationSources = [],
+		forcedDisplayFactor = 1000,
 		hours = 24,
 		days = 7,
 		months = 4,
-		yearMonths = 24;
-		
+		yearMonths = 24,
+		dataScaleFactors = { 'Consumption' : 1, 'Generation' : 1};
+	
+	// charts
+	var globalChartParams,
+		sourceColorMap,
+		barEnergyChartContainer,
+		barEnergyChart,
+		pieEnergyChartContainer,
+		pieEnergyChart;
+	
 	/**
 	 * Get or set the consumption source IDs.
 	 * 
@@ -129,6 +147,63 @@ var sgSchoolApp = function(nodeUrlHelper) {
 	}
 	
 	/**
+	 * Get or set the a fixed display factor to use in charts, e.g. <code>1000</code> to use
+	 * <b>kWh</b> for energy values. Pass <code>null</code> to clear the setting and allow
+	 * the charts to adjust the display factor dynamically, based on the data.
+	 * 
+	 * @param {number} [value] the number of months to display
+	 * @return when used as a getter, the fixed display factor (<code>undefined</code> when not set), otherwise this object
+	 * @memberOf sgSchoolApp
+	 */
+	function fixedDisplayFactor(value) {
+		if ( !arguments.length ) return forcedDisplayFactor;
+		var n = undefined;
+		if ( value !== null ) {
+			n = Number(value);
+			if ( !isNaN(n) && isFinite(n) ) {
+				n = undefined;
+			}
+		}
+		forcedDisplayFactor = n;
+		return self;
+	}
+	
+	function dataScaleFactorValue(dataType, value) {
+		var n;
+		if ( value === undefined ) {
+			return dataScaleFactors[dataType];
+		}
+		n = Number(value);
+		if ( isNaN(n) || !isFinite(n) ) {
+			n = 1;
+		}
+		dataScaleFactors[dataType] = value;
+		return self;
+	}
+	
+	/**
+	 * Get or set the generation data scale factor, to multiply all generation data values by.
+	 * 
+	 * @param {number} [value] the generation scale factor to use
+	 * @return when used as a getter, the generation data scale factor, otherwise this object
+	 * @memberOf sgSchoolApp
+	 */
+	function generationDataScaleFactor(value) {
+		return dataScaleFactorValue('Generation', value);
+	}
+	
+	/**
+	 * Get or set the consumption data scale factor, to multiply all consumption data values by.
+	 * 
+	 * @param {number} [value] the consumption scale factor to use
+	 * @return when used as a getter, the consumption data scale factor, otherwise this object
+	 * @memberOf sgSchoolApp
+	 */
+	function consumptionDataScaleFactor(value) {
+		return dataScaleFactorValue('Consumption', value);
+	}
+	
+	/**
 	 * Start the application, after configured.
 	 * 
 	 * @return this object
@@ -142,19 +217,113 @@ var sgSchoolApp = function(nodeUrlHelper) {
 		return self;
 	}
 	
+	/* === Global Chart Support === */
+	
+	function chartColorForDataTypeSource(dataType, sourceId, sourceIndex) {
+		if ( !sourceColorMap ) {
+			return (dataType === 'Consumption' ? '#00c' : '#0c0');
+		}
+		var mappedSourceId = sourceColorMap.displaySourceMap[dataType][sourceId];
+		return sourceColorMap.colorMap[mappedSourceId];
+	}
+	
+	/* === Bar Energy Chart Support === */
+	
+	function barEnergyChartCreate() {
+		var chart = sn.chart.energyIOBarChart(barEnergyChartSelector, globalChartParams)
+			.dataCallback(barEnergyDataCallback)
+			.colorCallback(chartColorForDataTypeSource)
+			.scaleFactor(dataScaleFactors)
+			.hoverEnterCallback(barEnergyHoverEnter)
+			.hoverMoveCallback(barEnergyHoverMove)
+			.hoverLeaveCallback(barEnergyHoverLeave)
+			.doubleClickCallback(barEnergyDoubleClick);
+		return chart;
+	}
+	
+	function barEnergyDataCallback() {
+	
+	}
+	
+	function barEnergyHoverEnter() {
+	
+	}
+	
+	function barEnergyHoverMove() {
+	
+	}
+	
+	function barEnergyHoverLeave() {
+	
+	}
+	
+	function barEnergyDoubleClick() {
+	
+	}
+	
+	/* === Pie Energy Chart Support === */
+	
+	function pieEnergyDataCallback() {
+	
+	}
+	
+	function pieEnergyHoverEnter() {
+	
+	}
+	
+	function pieEnergyHoverMove() {
+	
+	}
+	
+	function pieEnergyHoverLeave() {
+	
+	}
+	
+	function pieEnergyDoubleClick() {
+	
+	}
+	
+	function pieEnergyChartCreate() {
+		var chart = sn.chart.energyIOPieChart(pieEnergyChartSelector, globalChartParams)
+			.colorCallback(chartColorForDataTypeSource)
+			.scaleFactor(dataScaleFactors)
+			.hoverEnterCallback(pieEnergyHoverEnter)
+			.hoverMoveCallback(pieEnergyHoverMove)
+			.hoverLeaveCallback(pieEnergyHoverLeave);			
+		return chart;
+	}
+	
+	/** === Initialization === */
+	
 	function refresh() {
+		if ( !barEnergyChart ) {
+			barEnergyChart = barEnergyChartCreate();
+			barEnergyChartContainer = d3.select(d3.select(barEnergyChartSelector).node().parentNode);
+		}
+		if ( !pieEnergyChart ) {
+			pieEnergyChart = pieEnergyChartCreate();
+			pieEnergyChartContainer = d3.select(d3.select(pieEnergyChartSelector).node().parentNode);
+		}
 		// TODO
 	}
 	
 	function init() {
+		globalChartParams = new sn.Configuration({
+			aggregate : 'Hour',
+			northernHemisphere : false,
+			plotProperties : {TenMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+		});
 		Object.defineProperties(self, {
-			consumptionSourceIds 	: { value : consumptionSourceIds },
-			generationSourceIds 	: { value : generationSourceIds },
-			numHours				: { value : numHours },
-			numDays					: { value : numDays },
-			numMonths				: { value : numMonths },
-			numYearMonths			: { value : numYearMonths },
-			start 					: { value : start }
+			consumptionSourceIds 		: { value : consumptionSourceIds },
+			generationSourceIds 		: { value : generationSourceIds },
+			consumptionDataScaleFactor 	: { value : consumptionDataScaleFactor },
+			generationDataScaleFactor 	: { value : generationDataScaleFactor },
+			numHours					: { value : numHours },
+			numDays						: { value : numDays },
+			numMonths					: { value : numMonths },
+			numYearMonths				: { value : numYearMonths },
+			fixedDisplayFactor			: { value : fixedDisplayFactor },
+			start 						: { value : start }
 		});
 		return self;
 	}
@@ -172,20 +341,24 @@ function startApp(env) {
 			numDays : 7,
 			numMonths : 12,
 			numYearMonths : 24,
+			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
-			consumptionSourceIds : 'Ph1,Ph2,Ph3'
+			consumptionSourceIds : 'Ph1,Ph2,Ph3',
+			barEnergySelector : '#energy-bar-chart',
+			pieEnergySelector : '#energy-pie-chart'
 		});
 	}
 	
 	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
-	app = sgSchoolApp(urlHelper)
+	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector)
 		.generationSourceIds(env.sourceIds)
 		.consumptionSourceIds(env.consumptionSourceIds)
 		.numHours(env.numHours)
 		.numDays(env.numDays)
 		.numMonths(env.numMonths)
 		.numYearMonths(env.numYearMonths)
+		.fixedDisplayFactor(env.fixedDisplayFactor)
 		.start();
 	
 	return app;
