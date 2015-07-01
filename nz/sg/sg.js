@@ -37,12 +37,16 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		hours = 24,
 		days = 7,
 		months = 4,
-		yearMonths = 24,
-		dataScaleFactors = { 'Consumption' : 1, 'Generation' : 1};
+		years = 24,
+		dataScaleFactors = { 'Consumption' : 1, 'Generation' : 1},
+		endDate, // set to most recently available data date
+		displayRange; // { start : Date, end : Date }
 	
 	// charts
-	var globalChartParams,
-		sourceColorMap,
+	var chartParams,
+		chartSourceGroupMap = { 'Consumption' : consumptionSources, 'Generation' : generationSources },
+		chartSourceSets,
+		chartSourceColorMap,
 		barEnergyChartContainer,
 		barEnergyChart,
 		pieEnergyChartContainer,
@@ -57,11 +61,15 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	 */
 	function consumptionSourceIds(value) {
 		if ( !arguments.length ) return consumptionSources;
+		var array;
 		if ( Array.isArray(value) ) {
-			consumptionSources = value;
+			array = value;
 		} else if ( typeof value === 'string' ) {
-			consumptionSources = value.split(/\s*,\s*/);
+			array = value.split(/\s*,\s*/);
 		}
+		// we want to maintain our original array instance, so just repopulate with new values
+		consumptionSources.length = 0;
+		Array.prototype.push.apply(consumptionSources, array);
 		return self;
 	}
 	
@@ -74,11 +82,15 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	 */
 	function generationSourceIds(value) {
 		if ( !arguments.length ) return generationSources;
+		var array;
 		if ( Array.isArray(value) ) {
-			generationSources = value;
+			array = value;
 		} else if ( typeof value === 'string' ) {
-			generationSources = value.split(/\s*,\s*/);
+			array = value.split(/\s*,\s*/);
 		}
+		// we want to maintain our original array instance, so just repopulate with new values
+		generationSources.length = 0;
+		Array.prototype.push.apply(generationSources, array);
 		return self;
 	}
 	
@@ -131,17 +143,17 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	/**
-	 * Get or set the number of months to display for the Month aggregate level.
+	 * Get or set the number of years to display for the Month aggregate level.
 	 * 
-	 * @param {number} [value] the number of months to display
+	 * @param {number} [value] the number of years to display
 	 * @return when used as a getter, the number of years, otherwise this object
 	 * @memberOf sgSchoolApp
 	 */
-	function numYearMonths(value) {
-		if ( !arguments.length ) return numYearMonths;
+	function numYears(value) {
+		if ( !arguments.length ) return numYears;
 		var n = Number(value);
 		if ( !isNaN(n) && isFinite(n) ) {
-			numYearMonths = n;
+			numYears = n;
 		}
 		return self;
 	}
@@ -218,6 +230,33 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	/* === Global Chart Support === */
+
+	function chartSetupSourceSets(regenerate) {
+		if ( !chartSourceSets || regenerate ) {
+			chartSourceSets = [
+				{ nodeUrlHelper : urlHelper, 
+					sourceIds : consumptionSources, 
+					dataType : 'Consumption' },
+				{ nodeUrlHelper : urlHelper, 
+					sourceIds : generationSources, 
+					dataType : 'Generation' }
+			];
+		}
+		return chartSourceSets;
+	}
+
+	function chartSetupColorMap() {
+		if ( chartSourceColorMap ) {
+			return;
+		}
+
+		chartSourceColorMap = sn.sourceColorMapping(chartSourceGroupMap);
+
+		// we make use of sn.colorFn, so stash the required color map where expected
+		// TODO: is this necessary? sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
+		
+		return chartSourceColorMap;
+	}
 	
 	function chartColorForDataTypeSource(dataType, sourceId, sourceIndex) {
 		if ( !sourceColorMap ) {
@@ -227,11 +266,79 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		return sourceColorMap.colorMap[mappedSourceId];
 	}
 	
+	function chartDatumDate(datum) {
+		if ( datum.date ) {
+			return datum.date;
+		}
+		if ( datum.localDate ) {
+			return sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
+		}
+		if ( datum.created ) {
+			return sn.timestampFormat.parse(datum.created);
+		}
+		return null;
+	}
+
+	function chartDataCallback(dataType, datum) {
+		// create date property
+		datum.date = chartDatumDate(datum);
+	}
+	
+	function chartQueryRange() {
+		var range = queryRange;
+		if ( !range ) {
+			range = sn.datum.loaderQueryRange(chartParams.aggregate, 
+				{ numHours : hours, numDays : days, numMonths : months, numYears : years}, 
+				(endDate ? endDate : new Date()));
+		}
+		return range;
+	}
+	
+	function chartRegenerate(chart, container, tooltipContainer) {
+		var scale;
+		if ( !chart ) {
+			return;
+		}
+		var scale = (chart.yScale ? chart.yScale() : chart.scale());
+		chart.regenerate();
+		sn.adjustDisplayUnits(container, 'Wh', scale, 'energy');
+		if ( tooltipContainer ) {
+			sn.adjustDisplayUnits(tooltipContainer, 'Wh', scale, 'energy');
+		}
+	}
+	
+	function chartLoadData() {
+		var sourceSets = chartSetupSourceSets();
+		var queryRange = chartQueryRange(endDate);
+		var plotPropName = parameters.plotProperties[parameters.aggregate];
+		var loadSets = sourceSets.map(function(sourceSet) {
+			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, chartParams.aggregate);
+		});
+		var chartInfos = [
+			{ chart : barEnergyChart, container : barEnergyChartContainer }, // TODO: add tooltipContainer
+			{ chart : pieEnergyChart, container : pieEnergyChartContainer }
+			
+		];
+		sn.datum.multiLoader(loadSets).callback(function(error, results) {
+			if ( !(Array.isArray(results) && results.length === 2) ) {
+				sn.log("Unable to load data for charts: {0}", error);
+				return;
+			}
+			chartInfos.forEach(function(chartInfo) {
+				chartInfo.chart.reset();
+				sourceSets.forEach(function(sourceSet, i) {
+					chartInfo.chart.load(results[i], sourceSet.dataType);
+				});
+				chartRegenerate(chartInfo.chart, chartInfo.container, chartInfo.tooltipContainer);
+			});
+		}).load();
+	}
+	
 	/* === Bar Energy Chart Support === */
 	
 	function barEnergyChartCreate() {
-		var chart = sn.chart.energyIOBarChart(barEnergyChartSelector, globalChartParams)
-			.dataCallback(barEnergyDataCallback)
+		var chart = sn.chart.energyIOBarChart(barEnergyChartSelector, chartParams)
+			.dataCallback(chartDataCallback)
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
 			.hoverEnterCallback(barEnergyHoverEnter)
@@ -284,7 +391,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function pieEnergyChartCreate() {
-		var chart = sn.chart.energyIOPieChart(pieEnergyChartSelector, globalChartParams)
+		var chart = sn.chart.energyIOPieChart(pieEnergyChartSelector, chartParams)
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
 			.hoverEnterCallback(pieEnergyHoverEnter)
@@ -308,7 +415,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function init() {
-		globalChartParams = new sn.Configuration({
+		chartParams = new sn.Configuration({
 			aggregate : 'Hour',
 			northernHemisphere : false,
 			plotProperties : {TenMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
@@ -321,7 +428,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			numHours					: { value : numHours },
 			numDays						: { value : numDays },
 			numMonths					: { value : numMonths },
-			numYearMonths				: { value : numYearMonths },
+			numYears					: { value : numYears },
 			fixedDisplayFactor			: { value : fixedDisplayFactor },
 			start 						: { value : start }
 		});
@@ -340,7 +447,7 @@ function startApp(env) {
 			numHours : 24,
 			numDays : 7,
 			numMonths : 12,
-			numYearMonths : 24,
+			numYears : 2,
 			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
 			consumptionSourceIds : 'Ph1,Ph2,Ph3',
@@ -357,7 +464,7 @@ function startApp(env) {
 		.numHours(env.numHours)
 		.numDays(env.numDays)
 		.numMonths(env.numMonths)
-		.numYearMonths(env.numYearMonths)
+		.numYears(env.numYears)
 		.fixedDisplayFactor(env.fixedDisplayFactor)
 		.start();
 	
