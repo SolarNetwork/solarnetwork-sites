@@ -920,6 +920,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return dataCallback;
 		if ( typeof value === 'function' ) {
 			dataCallback = value;
+		} else {
+			dataCallback = undefined;
 		}
 		return me;
 	};
@@ -936,6 +938,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return colorCallback;
 		if ( typeof value === 'function' ) {
 			colorCallback = value;
+		} else {
+			colorCallback = undefined;
 		}
 		return me;
 	};
@@ -953,6 +957,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return sourceExcludeCallback;
 		if ( typeof value === 'function' ) {
 			sourceExcludeCallback = value;
+		} else {
+			sourceExcludeCallback = undefined;
 		}
 		return me;
 	};
@@ -970,6 +976,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return displayFactorCallback;
 		if ( typeof value === 'function' ) {
 			displayFactorCallback = value;
+		} else {
+			displayFactorCallback = undefined;
 		}
 		return me;
 	};
@@ -987,6 +995,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return layerPostProcessCallback;
 		if ( typeof value === 'function' ) {
 			layerPostProcessCallback = value;
+		} else {
+			layerPostProcessCallback = undefined;
 		}
 		return me;
 	};
@@ -1004,6 +1014,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return drawAnnotationsCallback;
 		if ( typeof value === 'function' ) {
 			drawAnnotationsCallback = value;
+		} else {
+			drawAnnotationsCallback = undefined;
 		}
 		return me;
 	};

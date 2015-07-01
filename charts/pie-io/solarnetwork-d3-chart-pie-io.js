@@ -631,6 +631,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return colorCallback;
 		if ( typeof value === 'function' ) {
 			colorCallback = value;
+		} else {
+			colorCallback = undefined;
 		}
 		return me;
 	};
@@ -648,6 +650,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return displayFactorCallback;
 		if ( typeof value === 'function' ) {
 			displayFactorCallback = value;
+		} else {
+			displayFactorCallback = undefined;
 		}
 		return me;
 	};
@@ -665,6 +669,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		if ( !arguments.length ) return sourceExcludeCallback;
 		if ( typeof value === 'function' ) {
 			sourceExcludeCallback = value;
+		} else {
+			sourceExcludeCallback = undefined;
 		}
 		return me;
 	};
