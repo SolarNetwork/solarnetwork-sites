@@ -304,7 +304,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 
 	var hoverEnterCallback = undefined,
 		hoverMoveCallback = undefined,
-		hoverLeaveCallback = undefined;
+		hoverLeaveCallback = undefined,
+		doubleClickCallback = undefined;
 	
 	// our computed layer data
 	var groupIds = [];
@@ -342,6 +343,13 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 			return;
 		}
         hoverLeaveCallback.call(me, svgHoverRoot, d3.mouse(this));
+	};
+	
+	var handleDoubleClick = function() {
+		if ( !doubleClickCallback ) {
+			return;
+		}
+        doubleClickCallback.call(me, svgHoverRoot, d3.mouse(this));
 	};
 	
 	function parseConfiguration() {
@@ -719,7 +727,8 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	}
 	
 	/**
-	 * Clear out all data associated with this chart. Does not redraw.
+	 * Clear out all data associated with this chart. Does not redraw. If 
+	 * {@link hoverLeaveCallback} is defined, it will be called with no arguments.
 	 * 
 	 * @return this object
 	 * @memberOf sn.chart.baseGroupedChart
@@ -728,6 +737,9 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		originalData = {};
 		groupIds = [];
 		otherData = {};
+		if ( svgHoverRoot ) {
+			handleHoverLeave();
+		}
 		return me;
 	};
 	
@@ -1077,6 +1089,27 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 	
 	/**
+	 * Get or set a dblclick callback function, which is called in response to mouse double click
+	 * events on the data area of the chart.
+	 * 
+	 * @param {function} [value] the double click callback
+	 * @return when used as a getter, the current double click callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.doubleClickCallback = function(value) {
+		if ( !arguments.length ) return doubleClickCallback;
+		var root = getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			doubleClickCallback = value;
+			root.on('dblclick', handleDoubleClick);
+		} else {
+			doubleClickCallback = undefined;
+			root.on('dblclick', null);
+		}
+		return me;
+	};
+	
+	/**
 	 * Get or set the x-axis tick callback function, which is called during x-axis rendering.
 	 * The function will be passed a data object, the index, the d3 scale, and the number of 
 	 * ticks requested. The <code>this</code> object will be set to the chart instance.
@@ -1144,11 +1177,12 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		svgRuleRoot : { value : svgRuleRoot },
 		svgTickGroupX : { value : svgTickGroupX },
 		
-		// hover support
+		// interactive support
 		svgHoverRoot : { get : function() { return svgHoverRoot; } },
 		handleHoverEnter : { get : function() { return handleHoverEnter; }, set : function(v) { handleHoverEnter = v; } },
 		handleHoverMove : { get : function() { return handleHoverMove; }, set : function(v) { handleHoverMove = v; } },
 		handleHoverLeave : { get : function() { return handleHoverLeave; }, set : function(v) { handleHoverLeave = v; } },
+		handleDoubleClick : { get : function() { return handleDoubleClick; }, set : function(v) { handleDoubleClick = v; } },
 
 		groupIds : { get : function() { return groupIds; } },
 		computeUnitsY : { value : computeUnitsY },
