@@ -228,12 +228,6 @@ a {
 
 /* Tooltip support */
 
-#bar-chart-tooltip h3 {
-	font-size: 10px;
-	font-weight: 700;
-	margin: 0;
-}
-
 #bar-chart-tooltip {
 	/*display: none;*/
 	position: absolute;
@@ -241,6 +235,12 @@ a {
 	border-radius: 4px;
 	padding: 10px;
 	background-color: white;
+}
+
+.tooltip h3 {
+	font-size: 10px;
+	font-weight: 700;
+	margin: 0;
 }
 
 .tooltip table {
@@ -275,10 +275,6 @@ a {
 
 .tooltip .total td {
 	font-weight: 700;
-}
-
-.tooltip .negative {
-	color: #c00;
 }
 
 /* SVG styles */
