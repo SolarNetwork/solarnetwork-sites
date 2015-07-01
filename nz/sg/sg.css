@@ -1,0 +1,327 @@
+html {
+	background-color: rgba(34,175,176,1.0);
+	background: -webkit-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: -moz-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: -o-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: linear-gradient(to bottom, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
+}
+
+body {
+	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	margin: 10px;
+	background: none;
+	padding: none;
+}
+
+h1, h2, h3 {
+    color: inherit;
+    font-family: inherit;
+    text-rendering: optimizelegibility;
+}
+
+h1 {
+	text-align: center;
+	font-size: 28px;
+	line-height: 28px;
+	font-weight: 400;
+	margin: 0;
+	margin-bottom: 12px;
+	color: rgb(247,200,25);
+	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
+}
+
+h2 {
+	font-size: 24px;
+	line-height: 24px;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+h2 .alt {
+	color: gray;
+}
+
+h2 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+h2 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+h3 {
+	font-size: 14px;
+	line-height: 14px;
+	font-weight: 500;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+h3 .alt {
+	color: gray;
+}
+
+h3 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+h3 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+.literal {
+	text-transform: none;
+}
+
+div.pane {
+	background-color: rgba(100%,100%,100%,1);
+	border-radius: 8px;
+	box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
+	padding: 8px 12px;
+}
+
+a {
+	color: inherit;
+}
+
+.clickable {
+	cursor: pointer !important;
+}
+
+/* Structural */
+
+.snroot {
+	position: relative;
+	width : 530px;
+	background-color: white;
+	border-radius: 8px;
+	padding: 10px;
+	box-sizing: content-box;
+}
+
+/* Source labels */
+
+#source-labels a:visited {
+	color: inherit;
+}
+
+#source-labels table {
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin-left: -4px;
+}
+
+#source-labels td.swatch {
+	margin: 2px;
+	width: 10px;
+	height: 10px;
+}
+
+#source-labels td.desc {
+	font-size: 10px;
+	line-height: 10px;
+	margin: 2px;
+}
+
+/* Tooltip support */
+
+#bar-chart-tooltip {
+	/*display: none;*/
+	position: absolute;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 10px;
+	background-color: white;
+}
+
+.tooltip h3 {
+	font-size: 10px;
+	font-weight: 700;
+	margin: 0;
+}
+
+.tooltip table {
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin-left: -4px;
+	width: 100%;
+}
+
+.tooltip td.swatch {
+	margin: 2px;
+	width: 10px;
+	height: 10px;
+}
+
+.tooltip td {
+	font-size: 10px;
+	line-height: 10px;
+	text-align: right;
+	margin: 2px;
+	white-space: nowrap;
+}
+
+.tooltip td.desc {
+	padding-left: 8px;
+}
+
+.tooltip .subtotal td {
+	border-top: 1px dotted #ccc;
+	padding-bottom: 4px;
+	font-style: italic;
+}
+
+.tooltip .total td {
+	font-weight: 700;
+}
+
+/* Base chart elements */
+
+.chart {
+	font-size: 10px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -khtml-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.crisp {
+	shape-rendering: crispEdges;
+}
+
+.chart rect {
+	fill-opacity: 0.8;
+}
+
+.chart text {
+	fill: #333;
+}
+
+.chart g.ticks text {
+	text-anchor: middle;
+}
+
+.chart g.ticks text.agg {
+	fill: black;
+	font-weight: bold;
+}
+
+.chart g.ticks text.agg.neg {
+	fill: #DF3038;
+}
+
+.chart g.agg text,
+.chart g.ticks text.major {
+	font-weight: 600;
+}
+
+.chart g.agg-gen text {
+	text-anchor: middle;
+	font-weight: bold;
+	fill: #1B7D30;
+}
+
+.chart g.rule,
+.chart g.vertrule {
+	shape-rendering: crispEdges;
+}
+
+.chart g.rule line,
+.chart g.vertrule line {
+	stroke: black;
+	opacity: 0.1;
+}
+
+.chart g.vertrule line {
+	opacity: 0.05;
+	stroke-dasharray: 2 1;
+}
+
+.chart g.rule line.origin,
+.chart g.vertrule line.origin {
+	stroke: black !important;
+	opacity: 1 !important;
+}
+
+.chart g.rule text {
+	text-anchor: end;
+	alignment-baseline: middle;
+}
+
+.chart g.agg-band line {
+	stroke: black;
+	stroke-width: 15px;
+}
+
+.chart g.agg-band-ticks text {
+	fill: white;
+	text-anchor: middle;
+	font-weight: bold;
+}
+
+.chart g.agg-sum path {
+	stroke-width: 1px;
+	stroke: #C42F2F;
+	fill: none;
+}
+
+.chart .off {
+	display: none;
+}
+
+.chart path.area {
+	fill-opacity: 1;
+}
+
+.chart path.line {
+  fill: none;
+}
+
+.chart line.axis {
+	stroke: black;
+}
+
+/* Flip counters */
+
+.flipCounter {
+	height: 28px;
+}
+
+.flipCounter .flipper {
+	width: 19px;
+	height: 22px;
+}
+
+.flipper .face {
+	border-radius: 4px;
+	width: 19px;
+	height: 22px;
+}
+
+.readings .flipCounter .flipper .value {
+	font-size: 18px;
+	line-height: 18px;
+	font-weight: normal;
+	text-align: center;
+	width: 19px;
+	height: 22px;
+}
