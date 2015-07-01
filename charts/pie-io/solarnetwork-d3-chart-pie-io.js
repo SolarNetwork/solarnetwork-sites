@@ -37,9 +37,10 @@ if ( sn === undefined ) {
  * @returns {sn.chart.energyIOPieChart}
  */
 sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
-	var that = {
+	var self = {
 		version : '1.0.0'
 	};
+	var me = self;
 	var sources = [];
 	var config = (chartConfig || new sn.Configuration());
 	
@@ -53,10 +54,13 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
 	var transitionMs = undefined;
 	
-	var svgRoot = undefined,
-		chartData = undefined,
+	var chartData = undefined,
 		chartLabels = undefined;
 
+	var svgRoot,
+		svgHoverRoot,
+		svgPointerCapture;
+		
 	// a numeric scale factor, by groupId
 	var scaleFactors = {};
 	
@@ -66,6 +70,10 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var layerKeyCallback = undefined; // function accepts datum and should return string key
 	var layerKeySort = sortSliceKeys;
 
+	var hoverEnterCallback = undefined,
+		hoverMoveCallback = undefined,
+		hoverLeaveCallback = undefined;
+	
 	var percentFormatter = d3.format('.0%');
 
 	var originalData = {};
@@ -75,6 +83,85 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var innerRadius = 0;
 	var arc = d3.svg.arc();
 	
+	var handleHoverEnter = function() {
+		if ( !hoverEnterCallback ) {
+			return;
+		}
+		var slice = d3.select(this),
+ 			point = d3.mouse(this),
+			callbackData = calculateHoverData(slice, point);
+			
+		slice.transition().duration(transitionMs)
+			.attr('transform', hoverHighlightFn);
+			
+        hoverEnterCallback.call(me, this, point, callbackData);
+	};
+	
+	var handleHoverMove = function() {
+		if ( !hoverMoveCallback ) {
+			return;
+		}
+		var slice = d3.select(this),
+ 			point = d3.mouse(this),
+			callbackData = calculateHoverData(slice, point);
+        hoverMoveCallback.call(me, this, point, callbackData);
+	};
+	
+	var handleHoverLeave = function() {
+		if ( !hoverLeaveCallback ) {
+			return;
+		}
+ 		var slice = d3.select(this),
+ 			point = d3.mouse(this),
+			callbackData = calculateHoverData(slice, point);
+
+		slice.transition().duration(transitionMs)
+			.attr('transform', 'identity')
+			.each('end', function() {
+				d3.select(this).style('transform', null);
+			});
+
+       hoverLeaveCallback.call(me, this, point, callbackData);
+	};
+	
+	function hoverHighlightFn(d) {
+		return 'scale(1.05) ' + halfWayAngleTransform(d, 4);
+	}
+	
+	function getOrCreateHoverRoot() {
+		if ( !svgHoverRoot ) {
+			svgHoverRoot = svgRoot.append('g')
+				.attr('class', 'hover-root')
+				.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+		}
+		return svgHoverRoot;
+	}
+	
+	function calculateHoverData(slice, point) {
+		var d = slice.data()[0],
+			a = halfAngle(d),
+			al = halfAngleForLabel(d);
+		return {
+			groupId : d.data.groupId,
+			source : d.data.sourceId,
+			value : d.value,
+			valueDisplay : outerText(d),
+			percent : (d.value / totalValue),
+			percentDisplay : innerText(d),
+			totalValue : totalValue,
+			totalValueDisplay : displayFormatter(totalValue / displayFactor),
+			angle : a,
+			angleStart : d.startAngle,
+			angleEnd : d.endAngle,
+			degrees : sn.rad2deg(a),
+			radius : r,
+			innerRadius : innerRadius,
+			center : [(w + p[1] + p[3]) / 2, (h + p[0] + p[2]) / 2],
+			centerContainer : svgRoot.node(),
+			labelTranslate : [Math.cos(al) * (r + 15), Math.sin(al) * (r + 15)]
+		};
+	}
+
 	function sortSliceKeys(d1, d2) {
 		return d1.key.localeCompare(d2.key);
 	}
@@ -120,7 +207,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		displayFactor = 1;
 		
 		if ( displayFactorCallback ) {
-			displayFactor = displayFactorCallback.call(that, maxValue);
+			displayFactor = displayFactorCallback.call(self, maxValue);
 		} else if ( maxValue >= 1000000000 ) {
 			displayFactor = 1000000000;
 		} else if ( maxValue >= 1000000 ) {
@@ -154,7 +241,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		groupIds.forEach(function(groupId) {
 			var keyFn = function(d, i) {
 				return (layerKeyCallback 
-					? layerKeyCallback.call(that, groupId, d, i) 
+					? layerKeyCallback.call(self, groupId, d, i) 
 					: (groupId + '-' +d.sourceId).replace(/\W/, '-'));
 			};
 			var rollup = d3.nest()
@@ -164,9 +251,9 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 					if ( group.length ) {
 						result.sourceId = group[0].sourceId;
 						result.sum = d3.sum(group, function(d) {
-							return (sourceExcludeCallback && sourceExcludeCallback.call(that, groupId, d.sourceId)
+							return (sourceExcludeCallback && sourceExcludeCallback.call(self, groupId, d.sourceId)
 								? 0 : d.wattHours); // TODO add plotProperty
-						}) * that.scaleFactor(groupId);
+						}) * self.scaleFactor(groupId);
 					}
 					return result;
 				})
@@ -175,7 +262,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			// remove excluded sources...
 			if ( sourceExcludeCallback ) {
 				rollup = rollup.filter(function(e) {
-					return !sourceExcludeCallback.call(that, groupId, e.key);
+					return !sourceExcludeCallback.call(self, groupId, e.key);
 				});
 			}
 			
@@ -199,7 +286,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	
 	function pieSliceColorFn(d, i) {
 		if ( colorCallback ) {
-			return colorCallback.call(that, d.data.groupId, d.data.sourceId, i);
+			return colorCallback.call(self, d.data.groupId, d.data.sourceId, i);
 		}
 		var colors = d3.scale.category10().range();
 		return colors[i % colors.length];
@@ -225,27 +312,31 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
 	function draw() {	
 		// draw data areas
-		var pie = chartData.selectAll("path").data(pieSlices, pieSliceKey);
+		var pie = chartData.selectAll('path').data(pieSlices, pieSliceKey);
 		
 		pie.transition().duration(transitionMs)
-			.attr("d", arc)
-			.style("fill", pieSliceColorFn)
-			.attrTween("d", arcTween);
+			.attr('d', arc)
+			.style('fill', pieSliceColorFn)
+			.attrTween('d', arcTween);
 
-		pie.enter().append("path")
-			.attr("class", function(d, i) {
+		pie.enter().append('path')
+			.attr('class', function(d, i) {
 				return 'area ' +d.data.key;
 			})
-			.style("fill", pieSliceColorFn)
-			.style("opacity", 1e-6)
-			.attr("d", arc)
+			.style('fill', pieSliceColorFn)
+			.style('opacity', 1e-6)
+			.attr('d', arc)
+			.attr('pointer-events', 'all')
+			.on('mouseover', handleHoverEnter)
+			.on('mousemove', handleHoverMove)
+			.on('mouseout', handleHoverLeave)
 			.each(function(d) { this._data_start = d; }) // to support transitions
 		.transition().duration(transitionMs)
-			.style("opacity", 1)
+			.style('opacity', 1)
 			.each('end', clearOpacity);
 
 		pie.exit().transition().duration(transitionMs)
-			.style("opacity", 1e-6)
+			.style('opacity', 1e-6)
 			.remove();
 		
 		redrawLabels();
@@ -411,7 +502,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.remove();
 	}
 
-	that.sources = sources;
+	self.sources = sources;
 	
 	/**
 	 * Get the scaling factor the labels are using. By default this will return {@code 1}.
@@ -422,7 +513,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return the y-axis scale factor
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.scale = function() { return displayFactor; };
+	self.scale = function() { return displayFactor; };
 
 	/**
 	 * Get the sum total of all slices in the pie chart.
@@ -430,7 +521,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return the sum total energy value, in watt hours
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.totalValue = function() { return totalValue; };
+	self.totalValue = function() { return totalValue; };
 	
 	/**
 	 * Clear out all data associated with this chart. Does not redraw.
@@ -438,11 +529,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.reset = function() {
+	self.reset = function() {
 		originalData = {};
 		groupIds = [];
 		pieSlices = undefined;
-		return that;
+		return me;
 	};
 	
 	/**
@@ -455,14 +546,14 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.load = function(rawData, groupId) {
+	self.load = function(rawData, groupId) {
 		if ( originalData[groupId] === undefined ) {
 			groupIds.push(groupId);
 			originalData[groupId] = rawData;
 		} else {
 			originalData[groupId].concat(rawData);
 		}
-		return that;
+		return me;
 	};
 	
 	/**
@@ -472,15 +563,15 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.regenerate = function() {
+	self.regenerate = function() {
 		if ( originalData === undefined ) {
 			// did you call load() first?
-			return that;
+			return self;
 		}
 		parseConfiguration();
 		setup();
 		draw();
-		return that;
+		return me;
 	};
 	
 	/**
@@ -490,10 +581,10 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the millisecond value, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.transitionMs = function(value) {
+	self.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
 		transitionMs = +value; // the + used to make sure we have a Number
-		return that;
+		return me;
 	};
 
 	/**
@@ -511,7 +602,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 *          If called with a single Object <code>groupId</code> argument, set
 	 *          Otherwise, this object.
 	 */
-	that.scaleFactor = function(groupId, value) {
+	self.scaleFactor = function(groupId, value) {
 		var v;
 		if ( !arguments.length ) return scaleFactors;
 		if ( arguments.length === 1 ) {
@@ -525,7 +616,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		} else if ( arguments.length == 2 ) {
 			scaleFactors[groupId] = value;
 		}
-		return that;
+		return me;
 	};
 	
 	/**
@@ -535,12 +626,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the current color callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.colorCallback = function(value) {
+	self.colorCallback = function(value) {
 		if ( !arguments.length ) return colorCallback;
 		if ( typeof value === 'function' ) {
 			colorCallback = value;
 		}
-		return that;
+		return me;
 	};
 	
 	/**
@@ -552,12 +643,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the current display factor callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.displayFactorCallback = function(value) {
+	self.displayFactorCallback = function(value) {
 		if ( !arguments.length ) return displayFactorCallback;
 		if ( typeof value === 'function' ) {
 			displayFactorCallback = value;
 		}
-		return that;
+		return me;
 	};
 
 	/**
@@ -569,12 +660,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the current source exclude callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.sourceExcludeCallback = function(value) {
+	self.sourceExcludeCallback = function(value) {
 		if ( !arguments.length ) return sourceExcludeCallback;
 		if ( typeof value === 'function' ) {
 			sourceExcludeCallback = value;
 		}
-		return that;
+		return me;
 	};
 
 	/**
@@ -585,12 +676,12 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the current layer key callback function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.layerKeyCallback = function(value) {
+	self.layerKeyCallback = function(value) {
 		if ( !arguments.length ) return layerKeyCallback;
 		if ( typeof value === 'function' ) {
 			layerKeyCallback = value;
 		}
-		return that;
+		return me;
 	};
 
 	/**
@@ -601,16 +692,73 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return when used as a getter, the current layer key sort function, otherwise this object
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	that.layerKeySort = function(value) {
+	self.layerKeySort = function(value) {
 		if ( !arguments.length ) return layerKeySort;
 		if ( typeof value === 'function' ) {
 			layerKeySort = value;
 		}
-		return that;
+		return me;
 	};
 
-	return that;
+	/**
+	 * Get or set a mouseover callback function, which is called in response to mouse entering
+	 * the data area of the chart.
+	 * 
+	 * @param {function} [value] the mouse enter callback
+	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.hoverEnterCallback = function(value) {
+		if ( !arguments.length ) return hoverEnterCallback;
+		getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			hoverEnterCallback = value;
+		} else {
+			hoverEnterCallback = undefined;
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set a mousemove callback function, which is called in response to mouse movement
+	 * over the data area of the chart.
+	 * 
+	 * @param {function} [value] the hover callback
+	 * @return when used as a getter, the current hover callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.hoverMoveCallback = function(value) {
+		if ( !arguments.length ) return hoverMoveCallback;
+		getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			getOrCreateHoverRoot();
+			hoverMoveCallback = value;
+		} else {
+			hoverMoveCallback = undefined;
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set a mouseout callback function, which is called in response to mouse leaving
+	 * the data area of the chart.
+	 * 
+	 * @param {function} [value] the mouse enter callback
+	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.hoverLeaveCallback = function(value) {
+		if ( !arguments.length ) return hoverLeaveCallback;
+		getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			hoverLeaveCallback = value;
+		} else {
+			hoverLeaveCallback = undefined;
+		}
+		return me;
+	};
+	
+	return self;
 };
-
 
 }());
