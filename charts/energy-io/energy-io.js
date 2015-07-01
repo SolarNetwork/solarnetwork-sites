@@ -325,7 +325,8 @@ function handleHoverMove(svgContainer, point, data) {
 	var lastGroupDataType, groupCount = 0, netTotal = 0;
 
 	tooltip.style('left', Math.round(window.pageXOffset + matrix.e - tooltipRect.width / 2) + 'px')
-            .style('top', Math.round(window.pageYOffset + matrix.f - tooltipRect.height) + 'px');
+            .style('top', Math.round(window.pageYOffset + matrix.f - tooltipRect.height) + 'px')
+            .style('display', null);
     tooltip.select('h3').text(sn.dateTimeFormat(data.date));
     tooltip.selectAll('td.desc span.energy').data(sn.runtime.labelColorMap).text(function(d, i) {
     	var index = i, sourceMap,
@@ -358,6 +359,15 @@ function handleHoverMove(svgContainer, point, data) {
     	
 }
 
+function handleDoubleClick(svgContainer, point, data) {
+	var chart = this,
+		currAgg = chart.aggregate();
+	console.log('Got dblclick @ %s for bar %s', point, data.date);
+	sn.runtime.energyBarIOParameters.aggregate = (currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Hour');
+	energyBarIOChartSetup(sn.runtime.reportableEndDate);
+	updateRangeSelection();
+}
+
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
@@ -386,7 +396,8 @@ function onDocumentReady() {
 		.sourceExcludeCallback(sourceExcludeCallback)
 		.hoverEnterCallback(handleHoverEnter)
 		.hoverMoveCallback(handleHoverMove)
-		.hoverLeaveCallback(handleHoverLeave);
+		.hoverLeaveCallback(handleHoverLeave)
+		.doubleClickCallback(handleDoubleClick);
 	
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
 	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
