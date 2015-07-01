@@ -17,6 +17,7 @@ function regenerateChart() {
 	}
 	chart.regenerate();
 	sn.adjustDisplayUnits(container, 'Wh', chart.scale(), 'energy');
+	sn.adjustDisplayUnits(sn.runtime.pieTooltip, 'Wh', chart.scale());
 }
 
 //handle clicks on legend handler
@@ -122,14 +123,16 @@ function setup(repInterval) {
 		// we make use of sn.colorFn, so stash the required color map where expected
 		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
 
-		// set up form-based details
-		d3.select('#details .consumption').style('color', 
-				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]);
-		d3.select('#details .generation').style('color', 
-				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
+		sn.runtime.groupColorMap = {
+			'Generation' : sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]],
+			'Consumption' : sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Consumption'][sn.runtime.sourceGroupMap['Consumption'][0]]]
+		};
 
-		// create copy of color data for reverse ordering so labels vertically match chart layers
-		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+		// set up form-based details
+		d3.select('#details .consumption').style('color', sn.runtime.groupColorMap['Consumption']);
+		d3.select('#details .generation').style('color', sn.runtime.groupColorMap['Generation']);
+
+        sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap, legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -143,6 +146,54 @@ function setup(repInterval) {
 	updateRangeSelection();
 
 	energyPieChartSetup(sn.runtime.reportableEndDate, sn.runtime.energyPieChart, sn.runtime.energyPieParameters);
+}
+
+function handleHoverEnter() {
+	sn.runtime.pieTooltip.style('display', null);
+}
+
+function handleHoverLeave() {
+	sn.runtime.pieTooltip.style('display', 'none');
+}
+
+function handleHoverMove(path, point, data) {
+	var chart = this,
+		tooltip = sn.runtime.pieTooltip,
+		tooltipRect = tooltip.node().getBoundingClientRect(),
+		matrix = data.centerContainer.getScreenCTM().translate(data.center[0] + data.labelTranslate[0], data.center[1] + data.labelTranslate[1]),
+		sourceColorMap = sn.runtime.sourceColorMap,
+		sourceDisplay = sourceColorMap.displaySourceMap[data.groupId][data.source],
+		color = sourceColorMap.colorMap[sourceDisplay],
+		descCell = tooltip.select('td.desc'),
+		totalCell = tooltip.select('tr.total td'),
+		adjustL = 0,
+		adjustT = 0,
+		degrees = data.degrees;
+		
+	// adjust for left/right/top/bottom of circle
+	if ( degrees > 270 ) {
+		// top left
+		adjustT = -tooltipRect.height;
+		adjustL = -tooltipRect.width;
+	} else if ( degrees > 180 ) {
+		// bottom left
+		adjustL = -tooltipRect.width;
+	} else if ( degrees > 90 ) {
+		// bottom right
+		// nothing to adjust here
+	} else {
+		// top right
+		adjustT = -tooltipRect.height;
+	}
+	
+	tooltip.style('left', Math.round(window.pageXOffset + matrix.e + adjustL ) + 'px')
+    	.style('top', Math.round(window.pageYOffset + matrix.f + adjustT) + 'px');
+            
+    tooltip.select('h3').text(sourceDisplay);
+    tooltip.select('.swatch').style('background-color', color);
+    descCell.select('.percent').text(data.percentDisplay);
+    descCell.select('.energy').text(data.valueDisplay);
+	totalCell.select('.energy').text(data.totalValueDisplay);
 }
 
 function urlHelperForAvailbleDataRange(e, i) {
@@ -278,8 +329,13 @@ function onDocumentReady() {
 	sn.runtime.energyPieChart = sn.chart.energyIOPieChart('#pie-io-chart', sn.runtime.energyPieParameters)
 		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.colorCallback(colorForDataTypeSource)
-		.sourceExcludeCallback(sourceExcludeCallback);
+		.sourceExcludeCallback(sourceExcludeCallback)
+		.hoverEnterCallback(handleHoverEnter)
+		.hoverMoveCallback(handleHoverMove)
+		.hoverLeaveCallback(handleHoverLeave);
 
+	sn.runtime.pieTooltip = d3.select('#pie-chart-tooltip');
+	sn.runtime.pieTooltipFormat = d3.format(',.1f');
 
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
 	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
