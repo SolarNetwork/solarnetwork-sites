@@ -162,10 +162,10 @@ function handleHoverMove(path, point, data) {
 		tooltipRect = tooltip.node().getBoundingClientRect(),
 		matrix = data.centerContainer.getScreenCTM().translate(data.center[0] + data.labelTranslate[0], data.center[1] + data.labelTranslate[1]),
 		sourceColorMap = sn.runtime.sourceColorMap,
-		sourceDisplay = sourceColorMap.displaySourceMap[data.groupId][data.source],
+		sourceDisplay = sourceColorMap.displaySourceMap[data.groupId][data.sourceId],
 		color = sourceColorMap.colorMap[sourceDisplay],
 		descCell = tooltip.select('td.desc'),
-		totalCell = tooltip.select('tr.total td'),
+		netCell = tooltip.select('tr.total td'),
 		adjustL = 0,
 		adjustT = 0,
 		degrees = data.degrees;
@@ -186,6 +186,15 @@ function handleHoverMove(path, point, data) {
 		adjustT = -tooltipRect.height;
 	}
 	
+	// calculate net
+	var netTotal = data.allData.reduce(function(prev, curr) {
+		var v = curr.sum;
+		if ( curr.groupId === 'Consumption' ) {
+			v *= -1;
+		}
+		return prev + v;
+	}, 0);
+	
 	tooltip.style('left', Math.round(window.pageXOffset + matrix.e + adjustL ) + 'px')
     	.style('top', Math.round(window.pageYOffset + matrix.f + adjustT) + 'px');
             
@@ -193,7 +202,8 @@ function handleHoverMove(path, point, data) {
     tooltip.select('.swatch').style('background-color', color);
     descCell.select('.percent').text(data.percentDisplay);
     descCell.select('.energy').text(data.valueDisplay);
-	totalCell.select('.energy').text(data.totalValueDisplay);
+    tooltip.select('tr.total').style('color', sn.runtime.groupColorMap[netTotal < 0 ? 'Consumption' : 'Generation'])
+	netCell.select('.energy').text(sn.runtime.pieTooltipFormat(netTotal / chart.scale()));
 }
 
 function urlHelperForAvailbleDataRange(e, i) {

@@ -143,7 +143,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			al = halfAngleForLabel(d);
 		return {
 			groupId : d.data.groupId,
-			source : d.data.sourceId,
+			sourceId : d.data.sourceId,
+			allData : pieSlices.map(function(el) { return el.data; }),
 			value : d.value,
 			valueDisplay : outerText(d),
 			percent : (d.value / totalValue),
