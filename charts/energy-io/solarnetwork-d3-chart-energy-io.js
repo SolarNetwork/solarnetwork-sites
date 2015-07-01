@@ -49,12 +49,12 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	var parent = sn.chart.baseGroupedStackBarChart(containerSelector, chartConfig);
-	var that = (function() {
+	var self = (function() {
 		var	me = sn.util.copy(parent);
 		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
 		return me;
 	}());
-	parent.me = that;
+	parent.me = self;
 
 	// Boolean, true for northern hemisphere seasons, false for southern.
 	var northernHemisphere = undefined;
@@ -80,7 +80,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		.attr('class', 'agg-gen')
 		.attr('transform', 'translate(0,' + (10 - parent.padding[0]) + ')');
 		
-	var chartDrawData = undefined;
+	var chartDrawData = undefined,
+		selectedBarData = undefined;
 	
 	var bisectDate = d3.bisector(function(d) { return d.date; }).left;
 	
@@ -515,14 +516,21 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			return;
 		}
 		var point = d3.mouse(this),
-			callbackData = calculateHoverData(point);
+			callbackData = calculateHoverData(point),
+			hoverBar;
 		
-		var hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([callbackData]);
+		if ( !callbackData ) {
+			return;
+		}
+		
+		hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([callbackData]);
 		hoverBar.attr('x', parent.valueX)
 				.attr('width', parent.xBar.rangeBand());
+				
+		selectedBarData = callbackData;
 		
-        callback.call(that, this, point, callbackData);
-	};
+        callback.call(parent.me, this, point, callbackData);
+	}
 
 	function handleHoverMove() {
 		var callback = parent.hoverMoveCallback();
@@ -530,9 +538,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			return;
 		}
 		var point = d3.mouse(this),
-			callbackData = calculateHoverData(point);
-
-		var hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([callbackData]);
+			callbackData = calculateHoverData(point),
+			hoverBar;
+			
+		if ( !callbackData ) {
+			return;
+		}
+		
+		hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([callbackData]);
 		hoverBar.attr('x', parent.valueX)
 				.attr('width', parent.xBar.rangeBand());
 		hoverBar.enter().append('rect')
@@ -542,22 +555,45 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 				.attr('width', parent.xBar.rangeBand())
 				.classed('highlightbar', true);
 
-        callback.call(that, this, point, callbackData);
-	};
+		selectedBarData = callbackData;
+		
+        callback.call(parent.me, this, point, callbackData);
+	}
 
 	function handleHoverLeave() {
 		var callback = parent.hoverLeaveCallback();
 		if ( !callback ) {
 			return;
 		}
-		var point = d3.mouse(this),
-			callbackData = calculateHoverData(point);
-
-		var hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([]);
+		var args = [],
+			hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([]);
+			
 		hoverBar.exit().remove();
-
-        callback.call(that, this, point, callbackData);
-	};
+		
+		// `this` may not be defined here, if reset is called
+		if ( this ) {
+			args.push(this);
+			args.push(d3.mouse(this));
+		}
+		
+		selectedBarData = undefined;
+		
+        callback.apply(parent.me, args);
+	}
+	
+	function handleDoubleClick() {
+		var callback = parent.doubleClickCallback();
+		if ( !callback ) {
+			return;
+		}
+		var point = d3.mouse(this);
+		var callbackData = selectedBarData;
+		if ( !callbackData ) {
+			callbackData = calculateHoverData(point);
+		}
+		d3.event.preventDefault();
+		callback.call(parent.me, this, point, callbackData);
+	}
 
 	/**
 	 * Toggle showing the sum line, or get the current setting.
@@ -566,7 +602,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	 * @returns when used as a getter, the current setting
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
-	that.showSumLine = function(value) {
+	self.showSumLine = function(value) {
 		if ( !arguments.length ) return !svgSumLineGroup.classed('off');
 		var transitionMs = parent.transitionMs();
 		svgSumLineGroup
@@ -580,7 +616,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 					.style("opacity", null)
 					.classed('off', !value);
 			});
-		return that;
+		return parent.me;
 	};
 	
 	/**
@@ -590,7 +626,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	 * @returns when used as a getter, the current setting
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
-	that.northernHemisphere = function(value) {
+	self.northernHemisphere = function(value) {
 		if ( !arguments.length ) return northernHemisphere;
 		if ( value === northernHemisphere ) {
 			return;
@@ -601,7 +637,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			.style('stroke', seasonColorFn);
 		svgAggGroup.selectAll("text").transition().duration(transitionMs)
 			.style("fill", labelSeasonColors);
-		return that;
+		return parent.me;
 	};
 	
 	/**
@@ -612,7 +648,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	 * @return {Array} when used as a getter, the list of group IDs currently used, otherwise this object
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
-	that.negativeGroupIds = function(value) {
+	self.negativeGroupIds = function(value) {
 		if ( !arguments.length ) {
 			return (function() {
 				var prop,
@@ -629,7 +665,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		value.forEach(function(e) {
 			negativeGroupMap[e] = true;
 		});
-		return that;
+		return parent.me;
 	};
 
 	// define our custom drawing functions
@@ -637,8 +673,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	parent.handleHoverEnter = handleHoverEnter;
 	parent.handleHoverMove = handleHoverMove;
 	parent.handleHoverLeave = handleHoverLeave;
+	parent.handleDoubleClick = handleDoubleClick;
 	
-	return that;
+	return self;
 };
 
 }());
