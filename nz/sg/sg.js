@@ -715,7 +715,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		barEnergyChartParams = new sn.Configuration({
 			// bar chart properties
 			northernHemisphere : false,
-			padding : [20, 0, 30, 40],
+			padding : [20, 0, 34, 40],
 
 			// global chart properties
 			aggregate : 'Month',
