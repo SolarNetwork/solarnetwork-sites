@@ -489,7 +489,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 							callbackData.dateUTC = dataArray[i].created;
 						}
 					} else {
-						dataValue = 0;
+						dataValue = null; // null to flag as missing
 					}
 					totalValue += dataValue;
 					groupHoverData.data.push(dataValue);
@@ -514,6 +514,20 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		callbackData.index = barIndex;
 		return callbackData;
 	}
+	
+	function renderHoverBar(callbackData) {
+		var hoverData = (callbackData && callbackData.dateUTC ? [callbackData] : []),
+			hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data(hoverData);
+		hoverBar.attr('x', parent.valueX)
+				.attr('width', parent.xBar.rangeBand());
+		hoverBar.enter().append('rect')
+				.attr('x', parent.valueX)
+				.attr('y', 0)
+				.attr('height', parent.height)
+				.attr('width', parent.xBar.rangeBand())
+				.classed('highlightbar clickable', true);
+		hoverBar.exit().remove();
+	}
 
 	function handleHoverEnter() {
 		var callback = parent.hoverEnterCallback();
@@ -521,16 +535,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			return;
 		}
 		var point = d3.mouse(this),
-			callbackData = calculateHoverData(point),
-			hoverBar;
+			callbackData = calculateHoverData(point);
 		
 		if ( !callbackData ) {
 			return;
 		}
 		
-		hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([callbackData]);
-		hoverBar.attr('x', parent.valueX)
-				.attr('width', parent.xBar.rangeBand());
+		renderHoverBar(callbackData);
 				
 		selectedBarData = callbackData;
 		
@@ -543,22 +554,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			return;
 		}
 		var point = d3.mouse(this),
-			callbackData = calculateHoverData(point),
-			hoverBar;
+			callbackData = calculateHoverData(point);
 			
 		if ( !callbackData ) {
 			return;
 		}
 		
-		hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([callbackData]);
-		hoverBar.attr('x', parent.valueX)
-				.attr('width', parent.xBar.rangeBand());
-		hoverBar.enter().append('rect')
-				.attr('x', parent.valueX)
-				.attr('y', 0)
-				.attr('height', parent.height)
-				.attr('width', parent.xBar.rangeBand())
-				.classed('highlightbar', true);
+		renderHoverBar(callbackData);
 
 		selectedBarData = callbackData;
 		
@@ -570,16 +572,15 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		if ( !callback ) {
 			return;
 		}
-		var args = [],
-			hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data([]);
+		var args = [];
 			
-		hoverBar.exit().remove();
-		
 		// `this` may not be defined here, if reset is called
 		if ( this ) {
 			args.push(this);
 			args.push(d3.mouse(this));
 		}
+		
+		renderHoverBar();
 		
 		selectedBarData = undefined;
 		
