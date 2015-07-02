@@ -112,8 +112,8 @@ h3 sub {
 	-webkit-box-orient: horizontal;
 	display: -moz-box;
 	-moz-box-orient: horizontal;
-	display: box;
-	box-orient: horizontal;
+	display: flex;
+	flex-direction: row;
 }
 
 .snroot .pie-chart {
@@ -122,6 +122,10 @@ h3 sub {
 
 .snroot .info-col {
 	margin-top: 24px;
+}
+
+.snroot .info-col .pane + .pane {
+	margin-top: 12px;
 }
 
 .snroot .msg {
@@ -315,7 +319,7 @@ h3 sub {
 	height: 22px;
 }
 
-.readings .flipCounter .flipper .value {
+.flipCounter .flipper .value {
 	font-size: 18px;
 	line-height: 18px;
 	font-weight: normal;

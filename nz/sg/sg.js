@@ -21,9 +21,12 @@ var app;
  * @param {string} barEnergyChartSelector - A CSS selector to display the energy bar chart within.
  * @param {string} pieEnergyChartSelector - A CSS selector to display the energy pie chart within.
  * @param {string} outdatedSelector - A CSS selector to display the stale data warning message within.
+ * @param {string} lifetimeGenerationSelector - A CSS selector to display the overall generation watt counter.
+ * @param {string} lifetimeConsumptionSelector - A CSS selector to display the overall consumption watt counter.
  * @class
  */
-var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChartSelector, outdatedSelector) {
+var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChartSelector, outdatedSelector, 
+		lifetimeGenerationSelector, lifetimeConsumptionSelector) {
 	var self = { version : '1.0.0' };
 	var urlHelper = nodeUrlHelper;
 
@@ -60,6 +63,12 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	var chartTooltipDataFormat = d3.format(',.1f'),
 		barEnergyChartTooltip = d3.select(barEnergyChartSelector+'-tooltip'),
 		pieEnergyChartTooltip = d3.select(pieEnergyChartSelector+'-tooltip');
+		
+	// counters
+	var generationCounter,
+		generationCounterFlipper,
+		consumptionCounter,
+		consumptionCounterFlipper;
 	
 	/**
 	 * Get or set the consumption source IDs.
@@ -231,11 +240,54 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	 * @memberOf sgSchoolApp
 	 */
 	function start() {
+		setupCounters();
 		chartRefresh();
 		if ( refreshTimer === undefined ) {
 			refreshTimer = setInterval(chartRefresh, refreshMs);
 		}
 		return self;
+	}
+	
+	/* === Counter Support === */
+	
+	function setupCounters() {
+		var flipperParams = {
+			animate: false,
+			format: d3.format('09d'),
+			flipperWidth: 22
+		};
+		if ( !generationCounterFlipper && lifetimeGenerationSelector ) {
+			generationCounterFlipper = sn.ui.flipCounter(lifetimeGenerationSelector, flipperParams);
+			generationCounterFlipper.render();
+		}
+		if ( !generationCounter ) {
+			generationCounter = sn.util.sumCounter(urlHelper)
+				.sourceIds(generationSources)
+				.callback(function(sum) {
+					var totalKWattHours = sum / 1000;
+					sn.log('{0} total generation kWh', totalKWattHours);
+					if ( generationCounterFlipper ) {
+						generationCounterFlipper.update(Math.round(totalKWattHours));
+					}
+				})
+				.start();
+		}
+		if ( !consumptionCounterFlipper && lifetimeConsumptionSelector ) {
+			consumptionCounterFlipper = sn.ui.flipCounter(lifetimeConsumptionSelector, flipperParams);
+			consumptionCounterFlipper.render();
+		}
+		if ( !consumptionCounter ) {
+			consumptionCounter = sn.util.sumCounter(urlHelper)
+				.sourceIds(consumptionSources)
+				.callback(function(sum) {
+					var totalKWattHours = sum / 1000;
+					sn.log('{0} total consumption kWh', totalKWattHours);
+					if ( consumptionCounterFlipper ) {
+						consumptionCounterFlipper.update(Math.round(totalKWattHours));
+					}
+				})
+				.start();
+		}
 	}
 	
 	/* === Global Chart Support === */
@@ -627,9 +679,15 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	
 	function init() {
 		chartParams = new sn.Configuration({
-			aggregate : 'Hour',
+			// bar chart properties
 			northernHemisphere : false,
+
+			// pie chart properties
 			innerRadius : 40,
+			hideValues : true,
+			
+			// global chart properties
+			aggregate : 'Hour',
 			plotProperties : {TenMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 		});
 		Object.defineProperties(self, {
@@ -662,16 +720,19 @@ function startApp(env) {
 			numYears : 2,
 			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
-			consumptionSourceIds : 'Ph1,Ph2,Ph3',
+			consumptionSourceIds : 'DB',
 			barEnergySelector : '#energy-bar-chart',
 			pieEnergySelector : '#energy-pie-chart',
-			outdatedSelector : '#chart-outdated-msg'
+			outdatedSelector : '#chart-outdated-msg',
+			lifetimeGenerationSelector : '#generation-counter-flipboard',
+			lifetimeConsumptionSelector : '#consumption-counter-flipboard'
 		});
 	}
 	
 	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
-	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector, env.outdatedSelector)
+	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector, env.outdatedSelector, 
+			env.lifetimeGenerationSelector, env.lifetimeConsumptionSelector)
 		.generationSourceIds(env.sourceIds)
 		.consumptionSourceIds(env.consumptionSourceIds)
 		.numHours(env.numHours)
