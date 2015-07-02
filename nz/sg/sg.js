@@ -231,6 +231,34 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	
 	/* === Global Chart Support === */
 
+	function refresh() {
+		var needsRedraw = false;
+		if ( !barEnergyChart ) {
+			barEnergyChart = barEnergyChartCreate();
+			barEnergyChartContainer = d3.select(d3.select(barEnergyChartSelector).node().parentNode);
+			needsRedraw = true;
+		}
+		if ( !pieEnergyChart ) {
+			pieEnergyChart = pieEnergyChartCreate();
+			pieEnergyChartContainer = d3.select(d3.select(pieEnergyChartSelector).node().parentNode);
+			needsRedraw = true;
+		}
+		if ( displayRange ) {
+			if ( needsRedraw ) {
+				chartLoadData();
+			}
+		} else {
+			needsRedraw = (endDate === undefined);
+			sn.datum.availableDataRange(chartSetupSourceSets(), function(repInterval) {
+				var jsonEndDate = repInterval.eDate;
+				if ( needsRedraw || jsonEndDate > endDate ) {
+					endDate = jsonEndDate;
+					chartLoadData();
+				}
+			});
+		}
+	}
+	
 	function chartSetupSourceSets(regenerate) {
 		if ( !chartSourceSets || regenerate ) {
 			chartSourceSets = [
@@ -259,11 +287,11 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function chartColorForDataTypeSource(dataType, sourceId, sourceIndex) {
-		if ( !sourceColorMap ) {
+		if ( !chartSourceColorMap ) {
 			return (dataType === 'Consumption' ? '#00c' : '#0c0');
 		}
-		var mappedSourceId = sourceColorMap.displaySourceMap[dataType][sourceId];
-		return sourceColorMap.colorMap[mappedSourceId];
+		var mappedSourceId = chartSourceColorMap.displaySourceMap[dataType][sourceId];
+		return chartSourceColorMap.colorMap[mappedSourceId];
 	}
 	
 	function chartDatumDate(datum) {
@@ -285,7 +313,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function chartQueryRange() {
-		var range = queryRange;
+		var range = displayRange;
 		if ( !range ) {
 			range = sn.datum.loaderQueryRange(chartParams.aggregate, 
 				{ numHours : hours, numDays : days, numMonths : months, numYears : years}, 
@@ -308,9 +336,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function chartLoadData() {
+		chartSetupColorMap();
 		var sourceSets = chartSetupSourceSets();
 		var queryRange = chartQueryRange(endDate);
-		var plotPropName = parameters.plotProperties[parameters.aggregate];
+		var plotPropName = chartParams.plotProperties[chartParams.aggregate];
 		var loadSets = sourceSets.map(function(sourceSet) {
 			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, chartParams.aggregate);
 		});
@@ -401,18 +430,6 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	/** === Initialization === */
-	
-	function refresh() {
-		if ( !barEnergyChart ) {
-			barEnergyChart = barEnergyChartCreate();
-			barEnergyChartContainer = d3.select(d3.select(barEnergyChartSelector).node().parentNode);
-		}
-		if ( !pieEnergyChart ) {
-			pieEnergyChart = pieEnergyChartCreate();
-			pieEnergyChartContainer = d3.select(d3.select(pieEnergyChartSelector).node().parentNode);
-		}
-		// TODO
-	}
 	
 	function init() {
 		chartParams = new sn.Configuration({
