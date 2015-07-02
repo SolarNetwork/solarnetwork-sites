@@ -16,16 +16,20 @@
 			<h2><span class="time-count"></span> <span class="time-unit">day</span> energy <span class="alt"><span class="unit">kWh</span></span></h2>
 			<div id="energy-bar-chart" class="chart-container"></div>
 		</div>
-		<div class="pane chart pie-chart watthour-chart">
-			<div id="energy-pie-chart" class="chart-container"></div>
-		</div>
-		<div class="pane counter agg-kwh">
-			<h3>Total generated <span class="alt"><span class="unit">kWh</span></span></h3>
-			<br/>
-			<div id="counter-kwh"></div>
-		</div>
-		<div id="outdated-msg" class="msg">
-			Data as of <span class="value">14 June 2014 21:00</span>
+		<div class="hbox">
+			<div class="pane chart pie-chart watthour-chart">
+				<div id="energy-pie-chart" class="chart-container"></div>
+			</div>
+			<div class="info-col">
+				<div class="pane counter agg-kwh">
+					<h3>Total generated <span class="alt"><span class="unit">kWh</span></span></h3>
+					<br/>
+					<div id="counter-kwh"></div>
+				</div>
+				<div id="chart-outdated-msg" class="msg">
+					Data as of <span class="value">14 June 2014 21:00</span>
+				</div>
+			</div>
 		</div>
 	</div>
 

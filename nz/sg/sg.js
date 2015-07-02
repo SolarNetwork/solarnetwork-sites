@@ -20,9 +20,10 @@ var app;
  * @param {object} nodeUrlHelper - A {@link sn.datum.nodeUrlHelper} configured with the school's SolarNetwork node ID.
  * @param {string} barEnergyChartSelector - A CSS selector to display the energy bar chart within.
  * @param {string} pieEnergyChartSelector - A CSS selector to display the energy pie chart within.
+ * @param {string} outdatedSelector - A CSS selector to display the stale data warning message within.
  * @class
  */
-var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChartSelector) {
+var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChartSelector, outdatedSelector) {
 	var self = { version : '1.0.0' };
 	var urlHelper = nodeUrlHelper;
 
@@ -222,16 +223,16 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	 * @memberOf sgSchoolApp
 	 */
 	function start() {
-		refresh();
+		chartRefresh();
 		if ( refreshTimer === undefined ) {
-			refreshTimer = setInterval(refresh, refreshMs);
+			refreshTimer = setInterval(chartRefresh, refreshMs);
 		}
 		return self;
 	}
 	
 	/* === Global Chart Support === */
 
-	function refresh() {
+	function chartRefresh() {
 		var needsRedraw = false;
 		if ( !barEnergyChart ) {
 			barEnergyChart = barEnergyChartCreate();
@@ -247,6 +248,9 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			if ( needsRedraw ) {
 				chartLoadData();
 			}
+			
+			// hide the outdated warning message if we've selected a specific date range
+			chartSetupOutdatedMessage();
 		} else {
 			needsRedraw = (endDate === undefined);
 			sn.datum.availableDataRange(chartSetupSourceSets(), function(repInterval) {
@@ -255,7 +259,19 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 					endDate = jsonEndDate;
 					chartLoadData();
 				}
+				chartSetupOutdatedMessage(endDate);
 			});
+		}
+	}
+	
+	function chartSetupOutdatedMessage(mostRecentDataDate) {
+		// if the data is stale by an hour or more, display the "outdated" message
+		var format;
+		if ( mostRecentDataDate && new Date().getTime() - mostRecentDataDate.getTime() >= (1000 * 60 * 60) ) {
+			format = d3.time.format('%d %b %Y %H:%M');
+			d3.select(outdatedSelector).style('display', null).select('.value').text(format(mostRecentDataDate));
+		} else {
+			d3.select(outdatedSelector).style('display', 'none');
 		}
 	}
 	
@@ -440,6 +456,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		chartParams = new sn.Configuration({
 			aggregate : 'Hour',
 			northernHemisphere : false,
+			innerRadius : 40,
 			plotProperties : {TenMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 		});
 		Object.defineProperties(self, {
@@ -472,15 +489,16 @@ function startApp(env) {
 			numYears : 2,
 			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
-			consumptionSourceIds : 'Ph1,Ph2,Ph3',
+			consumptionSourceIds : 'DB',
 			barEnergySelector : '#energy-bar-chart',
-			pieEnergySelector : '#energy-pie-chart'
+			pieEnergySelector : '#energy-pie-chart',
+			outdatedSelector : '#chart-outdated-msg'
 		});
 	}
 	
 	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
-	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector)
+	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector, env.outdatedSelector)
 		.generationSourceIds(env.sourceIds)
 		.consumptionSourceIds(env.consumptionSourceIds)
 		.numHours(env.numHours)

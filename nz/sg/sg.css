@@ -28,8 +28,7 @@ h1 {
 	font-size: 28px;
 	line-height: 28px;
 	font-weight: 400;
-	margin: 0;
-	margin-bottom: 24px;
+	margin: 24px 0;
 	color: rgb(247,200,25);
 	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
 }
@@ -108,28 +107,29 @@ h3 sub {
 	margin-right: auto;
 }
 
-/* Source labels */
-
-#source-labels a:visited {
-	color: inherit;
+.snroot div.hbox {
+	display: -webkit-box;
+	-webkit-box-orient: horizontal;
+	display: -moz-box;
+	-moz-box-orient: horizontal;
+	display: box;
+	box-orient: horizontal;
 }
 
-#source-labels table {
-	border-collapse: separate;
-	border-spacing: 4px;
-	margin-left: -4px;
+.snroot .pie-chart {
+	width: 250px;
 }
 
-#source-labels td.swatch {
-	margin: 2px;
-	width: 10px;
-	height: 10px;
+.snroot .info-col {
+	margin-top: 24px;
 }
 
-#source-labels td.desc {
+.snroot .msg {
+	display: none;
+	color: #aaa;
 	font-size: 10px;
-	line-height: 10px;
-	margin: 2px;
+	font-style: italic;
+	margin-top: 12px;
 }
 
 /* Tooltip support */
