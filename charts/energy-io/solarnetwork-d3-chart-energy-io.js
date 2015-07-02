@@ -483,9 +483,14 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 				groupArray.forEach(function(dataArray) {
 					// only count the data if the date is the same as our bar date... the bisectDate() function retunrs
 					// the *closest* date, but if there are holes in the data we might not have the *exact* date
-					dataValue = (dataArray[i].date.getTime() === barDate.getTime()
-						? dataArray[i][parent.plotPropertyName] * scale
-						: 0);
+					if ( dataArray[i].date.getTime() === barDate.getTime() ) {
+						dataValue = dataArray[i][parent.plotPropertyName] * scale;
+						if ( callbackData.dateUTC === undefined && dataArray[i].created ) {
+							callbackData.dateUTC = dataArray[i].created;
+						}
+					} else {
+						dataValue = 0;
+					}
 					totalValue += dataValue;
 					groupHoverData.data.push(dataValue);
 					allData.push(dataValue);
