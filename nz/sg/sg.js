@@ -757,7 +757,7 @@ function startApp(env) {
 			numHours : 24,
 			numDays : 5,
 			numMonths : 12,
-			numYears : 2,
+			numYears : 1,
 			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
 			consumptionSourceIds : 'DB',
