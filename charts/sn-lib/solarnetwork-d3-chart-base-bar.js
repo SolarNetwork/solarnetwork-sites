@@ -137,7 +137,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	
 	function axisXTickCount() {
 		var count = parent.config.value('tickCountX');
-		return (count || 12);
+		return (count || (parent.width > 600 ? 12 : 6));
 	}
 	
 	/**
@@ -175,27 +175,29 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		}
 		return (start === 0 ? array : array.slice(start));
 	}
+	
+	function xAxisTickFormatter() {
+		var fxDefault = parent.x.tickFormat(axisXTickCount()),
+			callback = parent.xAxisTickCallback();
+		return function(d, i) {
+			if ( callback ) {
+				return callback.call(parent.me, d, i, parent.x, fxDefault);
+			} else {
+				return fxDefault(d, i);
+			}
+		};
+	}
 
 	function drawAxisX() {
-		var numTicks = axisXTickCount(),
-			fxDefault = parent.x.tickFormat(numTicks),
-			ticks = parent.x.ticks(numTicks),
+		var ticks = parent.x.ticks(axisXTickCount()),
 			transitionMs = parent.transitionMs(),
-			fx,
+			fx = xAxisTickFormatter(),
 			labels;
 			
 		// we may have generated ticks for which we don't have bars... so filter those out
 		ticks = ticks.filter(function(d) { 
 			return xBar(d) !== undefined;
 		});
-
-		fx = function(d, i) {
-			if ( parent.xAxisTickCallback() ) {
-				return parent.xAxisTickCallback().call(parent.me, d, i, parent.x, fxDefault);
-			} else {
-				return fxDefault(d, i);
-			}
-		};
 
 		// Generate x-ticks, centered within bars
 		labels = parent.svgTickGroupX.selectAll('text').data(ticks, Object)
