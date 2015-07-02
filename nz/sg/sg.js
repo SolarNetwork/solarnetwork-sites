@@ -544,7 +544,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function barEnergyHoverLeave() {
-		//barEnergyChartTooltip.style('display', 'none');
+		barEnergyChartTooltip.style('display', 'none');
 	}
 	
 	function barEnergyDoubleClick() {
