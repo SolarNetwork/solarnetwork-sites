@@ -29,7 +29,7 @@ h1 {
 	line-height: 28px;
 	font-weight: 400;
 	margin: 0;
-	margin-bottom: 12px;
+	margin-bottom: 24px;
 	color: rgb(247,200,25);
 	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
 }
@@ -91,17 +91,6 @@ h3 sub {
 	text-transform: none;
 }
 
-div.pane {
-	background-color: rgba(100%,100%,100%,1);
-	border-radius: 8px;
-	box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
-	padding: 8px 12px;
-}
-
-a {
-	color: inherit;
-}
-
 .clickable {
 	cursor: pointer !important;
 }
@@ -115,6 +104,8 @@ a {
 	border-radius: 8px;
 	padding: 10px;
 	box-sizing: content-box;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 /* Source labels */
