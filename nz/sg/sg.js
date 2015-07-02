@@ -48,10 +48,16 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		chartSourceGroupMap = { 'Consumption' : consumptionSources, 'Generation' : generationSources },
 		chartSourceSets,
 		chartSourceColorMap,
+		chartSourceGroupColorMap = {},
 		barEnergyChartContainer,
 		barEnergyChart,
 		pieEnergyChartContainer,
 		pieEnergyChart;
+		
+	// chart tooltips
+	var chartTooltipDataFormat = d3.format(',.1f'),
+		barEnergyChartTooltip = d3.select(barEnergyChartSelector+'-tooltip'),
+		pieEnergyChartTooltip = d3.select(pieEnergyChartSelector+'-tooltip');
 	
 	/**
 	 * Get or set the consumption source IDs.
@@ -231,6 +237,17 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	/* === Global Chart Support === */
+	
+	function findPosition(container) {
+		var l = 0, t = 0;
+		if ( container.offsetParent ) {
+			do {
+				l += container.offsetLeft;
+				t += container.offsetTop;
+			} while ( container = container.offsetParent );
+		}
+		return [l, t];
+	}
 
 	function chartRefresh() {
 		var needsRedraw = false;
@@ -295,9 +312,13 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		}
 
 		chartSourceColorMap = sn.sourceColorMapping(chartSourceGroupMap);
-
-		// we make use of sn.colorFn, so stash the required color map where expected
-		// TODO: is this necessary? sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
+		Object.keys(chartSourceGroupMap).forEach(function(dataType) {
+			// assign the data type the color of the first available source within that data type group
+			var color = chartSourceColorMap.colorMap[chartSourceColorMap.displaySourceMap[dataType][chartSourceGroupMap[dataType][0]]];
+			if ( color ) {
+				chartSourceGroupColorMap[dataType] = color;
+			}
+		});
 		
 		return chartSourceColorMap;
 	}
@@ -366,8 +387,8 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, chartParams.aggregate);
 		});
 		var chartInfos = [
-			{ chart : barEnergyChart, container : barEnergyChartContainer }, // TODO: add tooltipContainer
-			{ chart : pieEnergyChart, container : pieEnergyChartContainer }
+			{ chart : barEnergyChart, container : barEnergyChartContainer, tooltipContainer : barEnergyChartTooltip },
+			{ chart : pieEnergyChart, container : pieEnergyChartContainer, tooltipContainer : pieEnergyChartTooltip }
 			
 		];
 		sn.datum.multiLoader(loadSets).callback(function(error, results) {
@@ -406,7 +427,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function barEnergyHoverEnter() {
-	
+		barEnergyChartTooltip.style('display', 'block');
 	}
 	
 	function barEnergyHoverMove() {
@@ -414,7 +435,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function barEnergyHoverLeave() {
-	
+		barEnergyChartTooltip.style('display', 'none');
 	}
 	
 	function barEnergyDoubleClick() {
@@ -424,19 +445,61 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	/* === Pie Energy Chart Support === */
 	
 	function pieEnergyHoverEnter() {
-	
+		pieEnergyChartTooltip.style('display', 'block');
 	}
 	
-	function pieEnergyHoverMove() {
+	function pieEnergyHoverMove(path, point, data) {
+		var chart = this,
+			tooltip = pieEnergyChartTooltip,
+			tooltipRect = tooltip.node().getBoundingClientRect(),
+			matrix = data.centerContainer.getScreenCTM().translate(data.center[0] + data.labelTranslate[0], data.center[1] + data.labelTranslate[1]),
+			sourceDisplay = chartSourceColorMap.displaySourceMap[data.groupId][data.sourceId],
+			color = chartSourceColorMap.colorMap[sourceDisplay],
+			descCell = tooltip.select('td.desc'),
+			netCell = tooltip.select('tr.total td'),
+			adjustL = 0,
+			adjustT = 0,
+			degrees = data.degrees,
+			tooltipOffset = findPosition(tooltip.node().parentNode);
+		
+		// adjust for left/right/top/bottom of circle
+		if ( degrees > 270 ) {
+			// top left
+			adjustT = -tooltipRect.height;
+			adjustL = -tooltipRect.width;
+		} else if ( degrees > 180 ) {
+			// bottom left
+			adjustL = -tooltipRect.width;
+		} else if ( degrees > 90 ) {
+			// bottom right
+			// nothing to adjust here
+		} else {
+			// top right
+			adjustT = -tooltipRect.height;
+		}
 	
+		// calculate net
+		var netTotal = data.allData.reduce(function(prev, curr) {
+			var v = curr.sum;
+			if ( curr.groupId === 'Consumption' ) {
+				v *= -1;
+			}
+			return prev + v;
+		}, 0);
+	
+		tooltip.style('left', Math.round(window.pageXOffset  - tooltipOffset[0] + matrix.e + adjustL ) + 'px')
+			.style('top', Math.round(window.pageYOffset - tooltipOffset[1] + matrix.f + adjustT) + 'px');
+			
+		tooltip.select('h3').text(sourceDisplay);
+		tooltip.select('.swatch').style('background-color', color);
+		descCell.select('.percent').text(data.percentDisplay);
+		descCell.select('.energy').text(data.valueDisplay);
+		tooltip.select('tr.total').style('color', chartSourceGroupColorMap[netTotal < 0 ? 'Consumption' : 'Generation'])
+		netCell.select('.energy').text(chartTooltipDataFormat(netTotal / chart.scale()));
 	}
 	
 	function pieEnergyHoverLeave() {
-	
-	}
-	
-	function pieEnergyDoubleClick() {
-	
+		pieEnergyChartTooltip.style('display', 'none');
 	}
 	
 	function pieEnergyChartCreate() {
@@ -489,7 +552,7 @@ function startApp(env) {
 			numYears : 2,
 			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
-			consumptionSourceIds : 'DB',
+			consumptionSourceIds : 'Ph1,Ph2,Ph3',
 			barEnergySelector : '#energy-bar-chart',
 			pieEnergySelector : '#energy-pie-chart',
 			outdatedSelector : '#chart-outdated-msg'
