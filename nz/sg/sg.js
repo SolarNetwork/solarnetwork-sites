@@ -172,7 +172,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		var n = undefined;
 		if ( value !== null ) {
 			n = Number(value);
-			if ( !isNaN(n) && isFinite(n) ) {
+			if ( isNaN(n) || !isFinite(n) ) {
 				n = undefined;
 			}
 		}
@@ -294,6 +294,12 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		return chartSourceColorMap.colorMap[mappedSourceId];
 	}
 	
+	function forcedDisplayFactorFn() {
+		return (forcedDisplayFactor > 0 ? function() { 
+			return forcedDisplayFactor;
+		} : null);
+	}
+	
 	function chartDatumDate(datum) {
 		if ( datum.date ) {
 			return datum.date;
@@ -327,7 +333,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		if ( !chart ) {
 			return;
 		}
-		var scale = (chart.yScale ? chart.yScale() : chart.scale());
+		scale = (chart.yScale ? chart.yScale() : chart.scale());
 		chart.regenerate();
 		sn.adjustDisplayUnits(container, 'Wh', scale, 'energy');
 		if ( tooltipContainer ) {
@@ -370,15 +376,12 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			.dataCallback(chartDataCallback)
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
+			.displayFactorCallback(forcedDisplayFactorFn())
 			.hoverEnterCallback(barEnergyHoverEnter)
 			.hoverMoveCallback(barEnergyHoverMove)
 			.hoverLeaveCallback(barEnergyHoverLeave)
 			.doubleClickCallback(barEnergyDoubleClick);
 		return chart;
-	}
-	
-	function barEnergyDataCallback() {
-	
 	}
 	
 	function barEnergyHoverEnter() {
@@ -398,10 +401,6 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	/* === Pie Energy Chart Support === */
-	
-	function pieEnergyDataCallback() {
-	
-	}
 	
 	function pieEnergyHoverEnter() {
 	
@@ -423,6 +422,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		var chart = sn.chart.energyIOPieChart(pieEnergyChartSelector, chartParams)
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
+			.displayFactorCallback(forcedDisplayFactorFn())
 			.hoverEnterCallback(pieEnergyHoverEnter)
 			.hoverMoveCallback(pieEnergyHoverMove)
 			.hoverLeaveCallback(pieEnergyHoverLeave);			
