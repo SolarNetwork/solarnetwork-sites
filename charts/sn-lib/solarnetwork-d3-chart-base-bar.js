@@ -149,7 +149,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		var domain = xBar.domain();
 		var barSpacing = (domain.length > 1 
 			? (xBar(domain[1]) - xBar(domain[0])) 
-			: barWidth);
+			: xBar.rangeBand());
 		var barPadding = (barSpacing - xBar.rangeBand());
 		return barPadding;
 	}
