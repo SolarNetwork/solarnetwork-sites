@@ -47,15 +47,16 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		displayRange; // { start : Date, end : Date }
 	
 	// charts
-	var chartParams,
-		chartSourceGroupMap = { 'Consumption' : consumptionSources, 'Generation' : generationSources },
+	var chartSourceGroupMap = { 'Consumption' : consumptionSources, 'Generation' : generationSources },
 		chartSourceSets,
 		chartSourceColorMap,
 		chartSourceGroupColorMap = {},
+		barEnergyChartParams,
 		barEnergyChartContainer,
 		barEnergyChart,
 		barEnergyChartDataTypeOrder = ['Generation', 'Consumption'],
 		barEnergyChartSourceColors,
+		pieEnergyChartParams,
 		pieEnergyChartContainer,
 		pieEnergyChart;
 		
@@ -417,7 +418,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	function chartQueryRange() {
 		var range = displayRange;
 		if ( !range ) {
-			range = sn.datum.loaderQueryRange(chartParams.aggregate, 
+			range = sn.datum.loaderQueryRange(barEnergyChartParams.aggregate, 
 				{ numHours : hours, numDays : days, numMonths : months, numYears : years}, 
 				(endDate ? endDate : new Date()));
 		}
@@ -429,8 +430,8 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		if ( !chart ) {
 			return;
 		}
-		scale = (chart.yScale ? chart.yScale() : chart.scale());
 		chart.regenerate();
+		scale = (chart.yScale ? chart.yScale() : chart.scale());
 		sn.adjustDisplayUnits(container, 'Wh', scale, 'energy');
 		if ( tooltipContainer ) {
 			sn.adjustDisplayUnits(tooltipContainer, 'Wh', scale, 'energy');
@@ -441,9 +442,9 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		chartSetupColorMap();
 		var sourceSets = chartSetupSourceSets();
 		var queryRange = chartQueryRange();
-		var plotPropName = chartParams.plotProperties[chartParams.aggregate];
+		var plotPropName = barEnergyChartParams.plotProperties[barEnergyChartParams.aggregate];
 		var loadSets = sourceSets.map(function(sourceSet) {
-			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, chartParams.aggregate);
+			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, barEnergyChartParams.aggregate);
 		});
 		var chartInfos = [
 			{ chart : barEnergyChart, container : barEnergyChartContainer, tooltipContainer : barEnergyChartTooltip },
@@ -472,7 +473,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	/* === Bar Energy Chart Support === */
 	
 	function barEnergyChartCreate() {
-		var chart = sn.chart.energyIOBarChart(barEnergyChartSelector, chartParams)
+		var chart = sn.chart.energyIOBarChart(barEnergyChartSelector, barEnergyChartParams)
 			.dataCallback(chartDataCallback)
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
@@ -567,18 +568,20 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		tooltip.select('h3').text(sn.dateTimeFormat(data.date));
 		tooltip.selectAll('td.desc span.energy').data(barEnergyChartSourceColors).text(function(d, i) {
 			var index = i, sourceMap,
-				groupData = data.groups[d.dataType];
+				groupData = data.groups[d.dataType],
+				dataValue;
 			if ( groupData.groupId !== lastGroupDataType ) {
 				groupCount = i;
 				lastGroupDataType = groupData.groupId;
 			}
 			index -= groupCount;
+			dataValue = (index < groupData.data.length ? groupData.data[index] : null);
 			if ( groupData.negate ) {
-				netTotal -= groupData.data[index];
+				netTotal -= dataValue;
 			} else {
-				netTotal += groupData.data[index];
+				netTotal += dataValue;
 			}
-			return chartTooltipDataFormat(groupData.data[index] / chart.yScale());
+			return chartTooltipDataFormat(dataValue / chart.yScale());
 		});
 	
 		// fill in subtotals
@@ -599,8 +602,39 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		barEnergyChartTooltip.style('display', 'none');
 	}
 	
-	function barEnergyDoubleClick() {
-	
+	function barEnergyDoubleClick(path, point, data) {
+		if ( !data ) {
+			return;
+		}
+		var chart = this,
+			agg = chart.aggregate(),
+			clickedDate = sn.timestampFormat.parse(data.dateUTC),
+			destAgg,
+			destDisplayRange;
+		
+		if ( agg === 'Month' ) {
+			// zoom to just the month, at Day aggregate
+			destAgg = 'Day';
+			destDisplayRange = { start : clickedDate, end : d3.time.month.utc.offset(clickedDate, 1), timeCount : 1, timeUnit : 'month' };
+		} else if ( agg === 'Day' ) {
+			// zoom to just day, at Hour aggregate
+			destAgg = 'Hour';
+			destDisplayRange = { start : clickedDate, end : d3.time.day.utc.offset(clickedDate, 1), timeCount : 1, timeUnit : 'hour' };
+		} else if ( agg === 'Hour' ) {
+			// zoom to just hour, at FiveMinute aggregate
+			destAgg = 'FiveMinute';
+			destDisplayRange = { start : clickedDate, end : d3.time.hour.utc.offset(clickedDate, 1), timeCount : 1, timeUnit : 'hour' };
+		} else if ( agg === 'FiveMinute' ) {
+			// pop back out to year to date
+			destAgg = 'Month';
+		}
+		
+		if ( destAgg !== agg ) {
+			barEnergyChartParams.value('aggregate', destAgg);
+			pieEnergyChartParams.value('aggregate', destAgg);
+			displayRange = destDisplayRange;
+			chartLoadData();
+		}
 	}
 	
 	/* === Pie Energy Chart Support === */
@@ -665,7 +699,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function pieEnergyChartCreate() {
-		var chart = sn.chart.energyIOPieChart(pieEnergyChartSelector, chartParams)
+		var chart = sn.chart.energyIOPieChart(pieEnergyChartSelector, pieEnergyChartParams)
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
 			.displayFactorCallback(forcedDisplayFactorFn())
@@ -678,16 +712,22 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	/** === Initialization === */
 	
 	function init() {
-		chartParams = new sn.Configuration({
+		barEnergyChartParams = new sn.Configuration({
 			// bar chart properties
 			northernHemisphere : false,
+			padding : [20, 0, 30, 40],
 
+			// global chart properties
+			aggregate : 'Month',
+			plotProperties : {TenMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+		});
+		pieEnergyChartParams = new sn.Configuration({
 			// pie chart properties
 			innerRadius : 40,
 			hideValues : true,
 			
 			// global chart properties
-			aggregate : 'Hour',
+			aggregate : 'Month',
 			plotProperties : {TenMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 		});
 		Object.defineProperties(self, {
