@@ -619,7 +619,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		} else if ( agg === 'Day' ) {
 			// zoom to just day, at Hour aggregate
 			destAgg = 'Hour';
-			destDisplayRange = { start : clickedDate, end : d3.time.day.utc.offset(clickedDate, 1), timeCount : 1, timeUnit : 'hour' };
+			destDisplayRange = { start : clickedDate, end : d3.time.day.utc.offset(clickedDate, 1), timeCount : 1, timeUnit : 'day' };
 		} else if ( agg === 'Hour' ) {
 			// zoom to just hour, at FiveMinute aggregate
 			destAgg = 'FiveMinute';
