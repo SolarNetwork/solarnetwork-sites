@@ -514,7 +514,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	 * @return the y-axis scale factor
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
-	self.scale = function() { return displayFactor; };
+	self.scale = function() { return (displayFactorCallback ? displayFactorCallback() : displayFactor); };
 
 	/**
 	 * Get the sum total of all slices in the pie chart.

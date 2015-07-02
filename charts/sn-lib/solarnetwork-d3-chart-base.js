@@ -587,7 +587,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * @return the y-axis scale factor
 	 * @memberOf sn.chart.baseGroupedChart
 	 */
-	self.yScale = function() { return displayFactor; };
+	self.yScale = function() { return (displayFactorCallback ? displayFactorCallback() : displayFactor); };
 
 	/**
 	 * Get the current {@code aggregate} value in use.
