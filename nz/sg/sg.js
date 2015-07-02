@@ -51,6 +51,8 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		chartSourceGroupColorMap = {},
 		barEnergyChartContainer,
 		barEnergyChart,
+		barEnergyChartDataTypeOrder = ['Generation', 'Consumption'],
+		barEnergyChartSourceColors,
 		pieEnergyChartContainer,
 		pieEnergyChart;
 		
@@ -312,6 +314,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		}
 
 		chartSourceColorMap = sn.sourceColorMapping(chartSourceGroupMap);
+		
 		Object.keys(chartSourceGroupMap).forEach(function(dataType) {
 			// assign the data type the color of the first available source within that data type group
 			var color = chartSourceColorMap.colorMap[chartSourceColorMap.displaySourceMap[dataType][chartSourceGroupMap[dataType][0]]];
@@ -319,6 +322,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 				chartSourceGroupColorMap[dataType] = color;
 			}
 		});
+		
+		barEnergyChartSourceColors = barEnergyChartSourceLabelsColors(chartSourceGroupMap, chartSourceColorMap);
+		
+		barEnergyChartSetupTooltip(barEnergyChartSelector+'-tooltip .source-labels', chartSourceGroupMap, barEnergyChartSourceColors, chartSourceColorMap);
 		
 		return chartSourceColorMap;
 	}
@@ -426,16 +433,118 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		return chart;
 	}
 	
+	function barEnergyChartSetupTooltip(tableContainerSelector, sourceGroupMap, sourceColors, sourceColorMap) {
+		var tbody,
+			rows, 
+			index = 0, 
+			table = d3.select(tableContainerSelector);
+		
+		table.html(null);
+		sn.colorDataLegendTable(tableContainerSelector, sourceColors, undefined, function(s) {
+			s.html(function(d) {
+				var sourceGroup = sourceColorMap.displaySourceObjects[d];
+				sn.log('Got data type {0} source {1}', sourceGroup.dataType, sourceGroup.source);
+				return '<span class="energy">0</span> <span class="unit">(kWh)</span>';
+			});
+		});
+		tbody = table.select('tbody');
+		rows = tbody.selectAll('tr');
+		barEnergyChartDataTypeOrder.forEach(function(dataType) {
+			var dataTypeSources = sourceGroupMap[dataType];
+			var row, cell;
+			index += dataTypeSources.length;
+			// insert a sub-total row
+			if ( index >= rows[0].length ) {
+				row = tbody.append('tr');
+			} else {
+				row = tbody.insert('tr', function() { 
+					return rows[0][index];
+				});
+			}
+			row.classed('subtotal', true);
+			cell = row.append('td').attr('colspan', '2');
+			if ( dataTypeSources.length > 1 ) {
+				cell.html('<span class="energy">0</span> <span class="unit">(kWh)</span>');
+			}
+		});
+	
+		// add grand total row
+		tbody.append('tr').classed('total', true).html('<td colspan="2"><span class="label">Net:</span> <span class="energy">0</span> <span class="unit">(kWh)</span></td>');
+	}
+	
+	function barEnergyChartSourceLabelsColors(sourceGroupMap, sourceColorMap) {
+		var result = []; // { source : X, color: Y }
+		// note we put generation first here, as we want this order explicitly to match the I/O bar chart
+		barEnergyChartDataTypeOrder.forEach(function(dataType) {
+			var dataTypeSources = sourceGroupMap[dataType];
+			if ( dataType === 'Generation' ) {
+				// reverse the order, to match the chart
+				dataTypeSources = dataTypeSources.slice().reverse();
+			}
+			dataTypeSources.forEach(function(source) {
+				var displaySource = sourceColorMap.displaySourceMap[dataType][source];
+				result.push({ dataType: dataType, source : displaySource, color: sourceColorMap.colorMap[displaySource]});
+			});
+		});
+		return result;
+	}
+
 	function barEnergyHoverEnter() {
 		barEnergyChartTooltip.style('display', 'block');
 	}
 	
-	function barEnergyHoverMove() {
+	function barEnergyHoverMove(svgContainer, point, data) {
+		var chart = this,
+			tooltip = barEnergyChartTooltip,
+			tooltipRect = tooltip.node().getBoundingClientRect(),
+			matrix = svgContainer.getScreenCTM().translate(data.x, Number(d3.select(svgContainer).attr('height'))),
+			tooltipOffset = findPosition(tooltip.node().parentNode);
 	
+		var subTotalDataTypes = barEnergyChartDataTypeOrder.filter(function(dataType) { 
+			var dataTypeSources = chartSourceGroupMap[dataType];
+			return (dataTypeSources.length > 1);
+		});
+	
+		var lastGroupDataType, groupCount = 0, netTotal = 0;
+
+		// position the tooltip below the chart, centered horizontally at the mouse position
+		tooltip.style('left', Math.round(window.pageXOffset - tooltipOffset[0] + matrix.e - tooltipRect.width / 2) + 'px')
+				.style('top', Math.round(window.pageYOffset - tooltipOffset[1] + matrix.f) + 'px')
+				.style('display', 'block');
+		
+		tooltip.select('h3').text(sn.dateTimeFormat(data.date));
+		tooltip.selectAll('td.desc span.energy').data(barEnergyChartSourceColors).text(function(d, i) {
+			var index = i, sourceMap,
+				groupData = data.groups[d.dataType];
+			if ( groupData.groupId !== lastGroupDataType ) {
+				groupCount = i;
+				lastGroupDataType = groupData.groupId;
+			}
+			index -= groupCount;
+			if ( groupData.negate ) {
+				netTotal -= groupData.data[index];
+			} else {
+				netTotal += groupData.data[index];
+			}
+			return chartTooltipDataFormat(groupData.data[index] / chart.yScale());
+		});
+	
+		// fill in subtotals
+		tooltip.selectAll('tr.subtotal span.energy').data(subTotalDataTypes).text(function(dataType) {
+			var groupData = data.groups[dataType].data,
+				sum = d3.sum(groupData);
+			return chartTooltipDataFormat(sum / chart.yScale());
+		});
+	
+		// fill in net total
+		tooltip.select('tr.total')
+				.style('color', chartSourceGroupColorMap[netTotal < 0 ? 'Consumption' : 'Generation'])
+		.select('span.energy')
+			.text(chartTooltipDataFormat(netTotal / chart.yScale()));
 	}
 	
 	function barEnergyHoverLeave() {
-		barEnergyChartTooltip.style('display', 'none');
+		//barEnergyChartTooltip.style('display', 'none');
 	}
 	
 	function barEnergyDoubleClick() {
@@ -487,6 +596,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			return prev + v;
 		}, 0);
 	
+		// position the tooltip at the center of the slice, outside the pie radius
 		tooltip.style('left', Math.round(window.pageXOffset  - tooltipOffset[0] + matrix.e + adjustL ) + 'px')
 			.style('top', Math.round(window.pageYOffset - tooltipOffset[1] + matrix.f + adjustT) + 'px');
 			

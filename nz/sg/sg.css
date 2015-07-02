@@ -134,8 +134,7 @@ h3 sub {
 
 /* Tooltip support */
 
-#energy-pie-chart-tooltip {
-	display: none;
+.tooltip {
 	position: absolute;
 	border: 1px solid #ccc;
 	border-radius: 4px;
@@ -150,10 +149,11 @@ h3 sub {
 	font-size: 10px;
 	font-weight: 700;
 	margin: 0 0 4px 0;
+	white-space: nowrap;
 }
 
 .tooltip table {
-	border-collapse: collapse;
+	border-collapse: separate;
 	width: 100%;
 }
 
@@ -168,6 +168,7 @@ h3 sub {
 	text-align: right;
 	margin: 2px;
 	white-space: nowrap;
+	border-bottom: 2px solid #fdfdfd;
 }
 
 .tooltip td.desc {
