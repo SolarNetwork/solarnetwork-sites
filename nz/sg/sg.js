@@ -102,10 +102,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	 * @memberOf sgSchoolApp
 	 */
 	function numHours(value) {
-		if ( !arguments.length ) return numHours;
+		if ( !arguments.length ) return hours;
 		var n = Number(value);
 		if ( !isNaN(n) && isFinite(n) ) {
-			numHours = n;
+			hours = n;
 		}
 		return self;
 	}
@@ -118,10 +118,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	 * @memberOf sgSchoolApp
 	 */
 	function numDays(value) {
-		if ( !arguments.length ) return numDays;
+		if ( !arguments.length ) return days;
 		var n = Number(value);
 		if ( !isNaN(n) && isFinite(n) ) {
-			numDays = n;
+			days = n;
 		}
 		return self;
 	}
@@ -134,10 +134,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	 * @memberOf sgSchoolApp
 	 */
 	function numMonths(value) {
-		if ( !arguments.length ) return numMonths;
+		if ( !arguments.length ) return months;
 		var n = Number(value);
 		if ( !isNaN(n) && isFinite(n) ) {
-			numMonths = n;
+			months = n;
 		}
 		return self;
 	}
@@ -150,10 +150,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	 * @memberOf sgSchoolApp
 	 */
 	function numYears(value) {
-		if ( !arguments.length ) return numYears;
+		if ( !arguments.length ) return years;
 		var n = Number(value);
 		if ( !isNaN(n) && isFinite(n) ) {
-			numYears = n;
+			years = n;
 		}
 		return self;
 	}
@@ -344,7 +344,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	function chartLoadData() {
 		chartSetupColorMap();
 		var sourceSets = chartSetupSourceSets();
-		var queryRange = chartQueryRange(endDate);
+		var queryRange = chartQueryRange();
 		var plotPropName = chartParams.plotProperties[chartParams.aggregate];
 		var loadSets = sourceSets.map(function(sourceSet) {
 			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, chartParams.aggregate);
@@ -359,6 +359,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 				sn.log("Unable to load data for charts: {0}", error);
 				return;
 			}
+
+			d3.select('.watthour-chart .time-count').text(queryRange.timeCount);
+			d3.select('.watthour-chart .time-unit').text(queryRange.timeUnit);
+
 			chartInfos.forEach(function(chartInfo) {
 				chartInfo.chart.reset();
 				sourceSets.forEach(function(sourceSet, i) {
@@ -377,6 +381,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
 			.displayFactorCallback(forcedDisplayFactorFn())
+			.showSumLine(false)
 			.hoverEnterCallback(barEnergyHoverEnter)
 			.hoverMoveCallback(barEnergyHoverMove)
 			.hoverLeaveCallback(barEnergyHoverLeave)
@@ -462,7 +467,7 @@ function startApp(env) {
 		env = sn.util.copy(sn.env, {
 			nodeId : 175,
 			numHours : 24,
-			numDays : 7,
+			numDays : 5,
 			numMonths : 12,
 			numYears : 2,
 			fixedDisplayFactor : 1000,
