@@ -137,7 +137,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	
 	function axisXTickCount() {
 		var count = parent.config.value('tickCountX');
-		return (count || (parent.width > 600 ? 12 : 6));
+		return (count || (parent.width > 600 ? 12 : 5));
 	}
 	
 	/**
