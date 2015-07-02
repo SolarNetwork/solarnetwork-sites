@@ -719,7 +719,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 
 			// global chart properties
 			aggregate : 'Month',
-			plotProperties : {TenMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+			plotProperties : {FiveMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 		});
 		pieEnergyChartParams = new sn.Configuration({
 			// pie chart properties
@@ -728,7 +728,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			
 			// global chart properties
 			aggregate : 'Month',
-			plotProperties : {TenMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+			plotProperties : {FiveMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 		});
 		Object.defineProperties(self, {
 			consumptionSourceIds 		: { value : consumptionSourceIds },
