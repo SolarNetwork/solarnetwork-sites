@@ -59,6 +59,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 			aggregateType = parent.aggregate(),
 			xDomain = x.domain(),
 			buckets,
+			step = 1,
 			end = xDomain[1]; // d3.time.X.range has an exclusive end date, so we must add 1
 		if ( aggregateType === 'Month' ) {
 			end = d3.time.month.utc.offset(end, 1); 
@@ -66,12 +67,24 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		} else if ( aggregateType === 'Day' ) {
 			end = d3.time.day.utc.offset(end, 1); 
 			buckets = d3.time.days.utc;
+		} else if ( aggregateType === 'FiveMinute' ) {
+			step = 5;
+			end = d3.time.minute.utc.offset(end, step);
+			buckets = d3.time.minutes.utc;
+		} else if ( aggregateType === 'TenMinute' ) {
+			step = 10;
+			end = d3.time.minute.utc.offset(end, step);
+			buckets = d3.time.minutes.utc;
+		} else if ( aggregateType === 'FifteenMinute' ) {
+			step = 15;
+			end = d3.time.minute.utc.offset(end, step);
+			buckets = d3.time.minutes.utc;
 		} else {
 			// assume 'Hour'
 			end = d3.time.hour.utc.offset(end, 1); 
 			buckets = d3.time.hours.utc;
 		}
-		buckets = buckets(xDomain[0], end);
+		buckets = buckets(xDomain[0], end, step);
 		xBar.domain(buckets).rangeRoundBands(x.range(), 0.2); 
 	}
 
