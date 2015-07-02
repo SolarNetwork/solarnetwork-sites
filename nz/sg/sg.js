@@ -44,6 +44,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		years = 24,
 		dataScaleFactors = { 'Consumption' : 1, 'Generation' : 1},
 		endDate, // set to most recently available data date
+		zoomStack = [], // stack of { data : [], range : { ... } } objects to jump back out from zoom-in
 		displayRange; // { start : Date, end : Date }
 	
 	// charts
@@ -316,7 +317,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			pieEnergyChartContainer = d3.select(d3.select(pieEnergyChartSelector).node().parentNode);
 			needsRedraw = true;
 		}
-		if ( displayRange ) {
+		if ( displayRange && displayRange.end < endDate ) {
 			if ( needsRedraw ) {
 				chartLoadData();
 			}
@@ -324,7 +325,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			// hide the outdated warning message if we've selected a specific date range
 			chartSetupOutdatedMessage();
 		} else {
-			needsRedraw = (endDate === undefined);
+			needsRedraw = (needsRedraw || (endDate === undefined));
 			sn.datum.availableDataRange(chartSetupSourceSets(), function(repInterval) {
 				var jsonEndDate = repInterval.eDate;
 				if ( needsRedraw || jsonEndDate > endDate ) {
@@ -438,35 +439,58 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		}
 	}
 	
-	function chartLoadData() {
-		chartSetupColorMap();
-		var sourceSets = chartSetupSourceSets();
-		var queryRange = chartQueryRange();
-		var plotPropName = barEnergyChartParams.plotProperties[barEnergyChartParams.aggregate];
-		var loadSets = sourceSets.map(function(sourceSet) {
-			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, barEnergyChartParams.aggregate);
-		});
-		var chartInfos = [
+	function chartInfos() {
+		return [
 			{ chart : barEnergyChart, container : barEnergyChartContainer, tooltipContainer : barEnergyChartTooltip },
 			{ chart : pieEnergyChart, container : pieEnergyChartContainer, tooltipContainer : pieEnergyChartTooltip }
 			
 		];
+	}
+	
+	function chartShowData(sourceSets, queryRange, results) {
+		d3.select('.watthour-chart .time-count').text(queryRange.timeCount);
+		d3.select('.watthour-chart .time-unit').text(queryRange.timeUnit);
+
+		chartInfos().forEach(function(chartInfo) {
+			chartInfo.chart.reset();
+			sourceSets.forEach(function(sourceSet, i) {
+				chartInfo.chart.load(results[i], sourceSet.dataType);
+			});
+			chartRegenerate(chartInfo.chart, chartInfo.container, chartInfo.tooltipContainer);
+		});
+	}
+	
+	function chartLoadData() {
+		chartSetupColorMap();
+		var sourceSets = chartSetupSourceSets();
+		var queryRange = chartQueryRange();
+		var aggregate = barEnergyChartParams.aggregate;
+		var plotPropName = barEnergyChartParams.plotProperties[aggregate];
+		var loadSets = sourceSets.map(function(sourceSet) {
+			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, aggregate);
+		});
 		sn.datum.multiLoader(loadSets).callback(function(error, results) {
 			if ( !(Array.isArray(results) && results.length === 2) ) {
 				sn.log("Unable to load data for charts: {0}", error);
 				return;
 			}
+			
+			// handle pushing this data onto the range stack, if for a different aggregate level
+			var zoomStackTop;
+			if ( zoomStack.length < 1 || zoomStack[zoomStack.length - 1].aggregate !==  aggregate ) {
+				// push new item onto stack
+				zoomStackTop = {};
+				zoomStack.push(zoomStackTop);
+			} else {
+				// update top item
+				zoomStackTop = zoomStack[zoomStack.length - 1];
+			}
+			
+			zoomStackTop.aggregate = aggregate;
+			zoomStackTop.range = queryRange;
+			zoomStackTop.data = results;
 
-			d3.select('.watthour-chart .time-count').text(queryRange.timeCount);
-			d3.select('.watthour-chart .time-unit').text(queryRange.timeUnit);
-
-			chartInfos.forEach(function(chartInfo) {
-				chartInfo.chart.reset();
-				sourceSets.forEach(function(sourceSet, i) {
-					chartInfo.chart.load(results[i], sourceSet.dataType);
-				});
-				chartRegenerate(chartInfo.chart, chartInfo.container, chartInfo.tooltipContainer);
-			});
+			chartShowData(sourceSets, queryRange, results);
 		}).load();
 	}
 	
@@ -542,8 +566,8 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		return result;
 	}
 
-	function barEnergyHoverEnter() {
-		barEnergyChartTooltip.style('display', 'block');
+	function barEnergyHoverEnter(svgContainer, point, data) {
+		barEnergyChartTooltip.style('display', (data && data.dateUTC ? 'block' : 'none'));
 	}
 	
 	function barEnergyHoverMove(svgContainer, point, data) {
@@ -563,7 +587,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		// position the tooltip below the chart, centered horizontally at the mouse position
 		tooltip.style('left', Math.round(window.pageXOffset - tooltipOffset[0] + matrix.e - tooltipRect.width / 2) + 'px')
 				.style('top', Math.round(window.pageYOffset - tooltipOffset[1] + matrix.f) + 'px')
-				.style('display', 'block');
+				.style('display', (data && data.dateUTC ? 'block' : 'none'));
 		
 		tooltip.select('h3').text(sn.dateTimeFormat(data.date));
 		tooltip.selectAll('td.desc span.energy').data(barEnergyChartSourceColors).text(function(d, i) {
@@ -603,37 +627,67 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function barEnergyDoubleClick(path, point, data) {
-		if ( !data ) {
+		if ( !(data && data.dateUTC) ) {
 			return;
 		}
 		var chart = this,
 			agg = chart.aggregate(),
 			clickedDate = sn.timestampFormat.parse(data.dateUTC),
-			destAgg,
-			destDisplayRange;
+			zoomOut = d3.event.altKey,
+			destAgg = agg,
+			destDisplayRange,
+			destZoomItem;
 		
-		if ( agg === 'Month' ) {
-			// zoom to just the month, at Day aggregate
-			destAgg = 'Day';
-			destDisplayRange = { start : clickedDate, end : d3.time.month.utc.offset(clickedDate, 1), timeCount : 1, timeUnit : 'month' };
-		} else if ( agg === 'Day' ) {
-			// zoom to just day, at Hour aggregate
-			destAgg = 'Hour';
-			destDisplayRange = { start : clickedDate, end : d3.time.day.utc.offset(clickedDate, 1), timeCount : 1, timeUnit : 'day' };
-		} else if ( agg === 'Hour' ) {
-			// zoom to just hour, at FiveMinute aggregate
-			destAgg = 'FiveMinute';
-			destDisplayRange = { start : clickedDate, end : d3.time.hour.utc.offset(clickedDate, 1), timeCount : 1, timeUnit : 'hour' };
-		} else if ( agg === 'FiveMinute' ) {
-			// pop back out to year to date
-			destAgg = 'Month';
+		if ( zoomOut && zoomStack.length > 1 ) {
+			// pop off the stack
+			destZoomItem = zoomStack[zoomStack.length - 2];
+			zoomStack.length -= 1;
+			destAgg = destZoomItem.aggregate;
+			destDisplayRange = destZoomItem.range;
+		} else {
+			if ( agg === 'Month' ) {
+				// zoom to just the month, at Day aggregate
+				destAgg = 'Day';
+				destDisplayRange = {
+					start : clickedDate,
+					end : d3.time.month.utc.offset(clickedDate, 1),
+					timeCount : 1,
+					timeUnit : 'month'
+				};
+			} else if ( agg === 'Day' ) {
+				// zoom to just day, at Hour aggregate
+				destAgg = 'Hour';
+				destDisplayRange = {
+					start : clickedDate,
+					end : d3.time.day.utc.offset(clickedDate, 1),
+					timeCount : 1,
+					timeUnit : 'day'
+				};
+			} else if ( agg === 'Hour' ) {
+				// zoom to just hour, at FiveMinute aggregate
+				destAgg = 'FiveMinute';
+				destDisplayRange = {
+					start : clickedDate,
+					end : d3.time.hour.utc.offset(clickedDate, 1),
+					timeCount : 1,
+					timeUnit : 'hour'
+				};
+			}
 		}
 		
 		if ( destAgg !== agg ) {
 			barEnergyChartParams.value('aggregate', destAgg);
 			pieEnergyChartParams.value('aggregate', destAgg);
 			displayRange = destDisplayRange;
-			chartLoadData();
+			if ( destZoomItem ) {
+				chartShowData(chartSetupSourceSets(), destZoomItem.range, destZoomItem.data);
+				if ( zoomStack.length < 2 ) {
+					// when we pop back to top of stack, reset date range to most available for data
+					displayRange = undefined;
+				}
+			} else {
+				chartLoadData();
+			}
 		}
 	}
 	
