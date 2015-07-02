@@ -300,6 +300,11 @@ a {
 	stroke: black;
 }
 
+.chart rect.highlightbar {
+	stroke: none;
+	fill: rgba(255, 238, 71, 0.5);
+}
+
 /* Flip counters */
 
 .flipCounter {
