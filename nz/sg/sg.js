@@ -66,6 +66,9 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		pieEnergyChartContainer,
 		pieEnergyChart;
 		
+	// range selection limits, adjust based on width of bar chart
+	var barEnergyRangeLimits = { 'Month' : 4, 'Day' : 10, 'Hour' : 12 };
+		
 	// chart tooltips
 	var chartTooltipDataFormat = d3.format(',.1f'),
 		barEnergyChartTooltip = d3.select(barEnergyChartSelector+'-tooltip'),
@@ -493,6 +496,12 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		chartShowTotalWattHourCounts(totalWhs);
 	}
 	
+	function areQueryRangesEqual(r1, r2) {
+		return (r1 && r2 
+			&& r1.start && r2.start && r1.start.getTime() === r2.start.getTime()
+			&& r1.end && r2.end && r1.end.getTime() === r2.end.getTime());
+	}
+	
 	function chartLoadData() {
 		chartSetupColorMap();
 		var sourceSets = chartSetupSourceSets();
@@ -508,15 +517,14 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 				return;
 			}
 			
-			// handle pushing this data onto the range stack, if for a different aggregate level
-			var zoomStackTop;
-			if ( zoomStack.length < 1 || zoomStack[zoomStack.length - 1].aggregate !==  aggregate ) {
+			// handle pushing this data onto the range stack, if for a different data set, otherwise update this set
+			var zoomStackTop = (zoomStack.length > 0 ? zoomStack[zoomStack.length - 1] : undefined);
+			if ( zoomStackTop === undefined
+					|| zoomStackTop.aggregate !== aggregate
+					|| areQueryRangesEqual(zoomStackTop.range, queryRange) !== true ) {
 				// push new item onto stack
 				zoomStackTop = {};
 				zoomStack.push(zoomStackTop);
-			} else {
-				// update top item
-				zoomStackTop = zoomStack[zoomStack.length - 1];
 			}
 			
 			zoomStackTop.aggregate = aggregate;
@@ -709,7 +717,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			}
 		}
 		
-		if ( destAgg !== agg ) {
+		if ( destDisplayRange ) {
 			barEnergyChartParams.value('aggregate', destAgg);
 			pieEnergyChartParams.value('aggregate', destAgg);
 			displayRange = destDisplayRange;
@@ -747,23 +755,29 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		destDisplayRange = { start : startingDate, timeCount : (dataArray[1].index - dataArray[0].index + 1) };
 		
 		if ( agg === 'Month' ) {
-			// zoom to selected days
-			destAgg = 'Day';
-			destDisplayRange.end = d3.time.month.offset(endingDate, 2); // +2 for exclusive end date
+			if ( destDisplayRange.timeCount <= barEnergyRangeLimits[agg] ) {
+				// zoom to selected days
+				destAgg = 'Day';
+			}
+			destDisplayRange.end = d3.time.month.offset(endingDate, 1);
 			destDisplayRange.timeUnit = 'month';
 		} else if ( agg === 'Day' ) {
-			// zoom to just day, at Hour aggregate
-			destAgg = 'Hour';
-			destDisplayRange.end = d3.time.day.offset(endingDate, 2);
+			if ( destDisplayRange.timeCount <= barEnergyRangeLimits[agg] ) {
+				// zoom to just day, at Hour aggregate
+				destAgg = 'Hour';
+			}
+			destDisplayRange.end = d3.time.day.offset(endingDate, 1);
 			destDisplayRange.timeUnit = 'day';
 		} else if ( agg === 'Hour' ) {
-			// zoom to just hour, at FiveMinute aggregate
-			destAgg = 'FiveMinute';
-			destDisplayRange.end = d3.time.hour.offset(endingDate, 2);
+			if ( destDisplayRange.timeCount <= barEnergyRangeLimits[agg] ) {
+				// zoom to just hour, at FiveMinute aggregate
+				destAgg = 'FiveMinute';
+			}
+			destDisplayRange.end = d3.time.hour.offset(endingDate, 1);
 			destDisplayRange.timeUnit = 'hour';
 		}
 
-		if ( destAgg !== agg ) {
+		if ( destDisplayRange.end ) {
 			barEnergyChartParams.value('aggregate', destAgg);
 			pieEnergyChartParams.value('aggregate', destAgg);
 			displayRange = destDisplayRange;
