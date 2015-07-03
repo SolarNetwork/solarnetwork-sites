@@ -46,7 +46,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		days = 7,
 		months = 4,
 		years = 24,
-		co2GramsPerWattHour = 5.1285,
+		co2GramsPerWattHour = 0.1949878,
 		dataScaleFactors = { 'Consumption' : 1, 'Generation' : 1},
 		endDate, // set to most recently available data date
 		zoomStack = [], // stack of { data : [], range : { ... } } objects to jump back out from zoom-in
