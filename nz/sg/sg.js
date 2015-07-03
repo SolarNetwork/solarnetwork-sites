@@ -21,12 +21,14 @@ var app;
  * @param {string} barEnergyChartSelector - A CSS selector to display the energy bar chart within.
  * @param {string} pieEnergyChartSelector - A CSS selector to display the energy pie chart within.
  * @param {string} outdatedSelector - A CSS selector to display the stale data warning message within.
- * @param {string} lifetimeGenerationSelector - A CSS selector to display the overall generation watt counter.
- * @param {string} lifetimeConsumptionSelector - A CSS selector to display the overall consumption watt counter.
+ * @param {string} totalGenerationSelector - A CSS selector to display the overall generation watt counter.
+ * @param {string} totalConsumptionSelector - A CSS selector to display the overall consumption watt counter.
+ * @param {string} lifetimeGenerationSelector - A CSS selector to display the lifetime total generation watt counter.
+ * @param {string} lifetimeConsumptionSelector - A CSS selector to display the lifetime total consumption watt counter.
  * @class
  */
 var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChartSelector, outdatedSelector, 
-		lifetimeGenerationSelector, lifetimeConsumptionSelector) {
+		totalGenerationSelector, totalConsumptionSelector, lifetimeGenerationSelector, lifetimeConsumptionSelector) {
 	var self = { version : '1.0.0' };
 	var urlHelper = nodeUrlHelper;
 
@@ -67,10 +69,12 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		pieEnergyChartTooltip = d3.select(pieEnergyChartSelector+'-tooltip');
 		
 	// counters
-	var generationCounter,
-		generationCounterFlipper,
-		consumptionCounter,
-		consumptionCounterFlipper;
+	var totalGenerationCounterFlipper,
+		lifetimeGenerationCounter,
+		lifetimeGenerationCounterFlipper,
+		totalConsumptionCounterFlipper,
+		lifetimeConsumptionCounter,
+		lifetimeConsumptionCounterFlipper;
 	
 	/**
 	 * Get or set the consumption source IDs.
@@ -256,36 +260,45 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		var flipperParams = {
 			animate: false,
 			format: d3.format('09d'),
-			flipperWidth: 22
+			flipperWidth: 20
 		};
-		if ( !generationCounterFlipper && lifetimeGenerationSelector ) {
-			generationCounterFlipper = sn.ui.flipCounter(lifetimeGenerationSelector, flipperParams);
-			generationCounterFlipper.render();
+		if ( !totalGenerationCounterFlipper && totalGenerationSelector ) {
+			totalGenerationCounterFlipper = sn.ui.flipCounter(totalGenerationSelector, flipperParams);
+			totalGenerationCounterFlipper.render();
 		}
-		if ( !generationCounter ) {
-			generationCounter = sn.util.sumCounter(urlHelper)
+		if ( !lifetimeGenerationCounterFlipper && lifetimeGenerationSelector ) {
+			lifetimeGenerationCounterFlipper = sn.ui.flipCounter(lifetimeGenerationSelector, flipperParams);
+			lifetimeGenerationCounterFlipper.render();
+		}
+		if ( !lifetimeGenerationCounter ) {
+			lifetimeGenerationCounter = sn.util.sumCounter(urlHelper)
 				.sourceIds(generationSources)
 				.callback(function(sum) {
 					var totalKWattHours = sum / 1000;
 					sn.log('{0} total generation kWh', totalKWattHours);
-					if ( generationCounterFlipper ) {
-						generationCounterFlipper.update(Math.round(totalKWattHours));
+					if ( lifetimeGenerationCounterFlipper ) {
+						lifetimeGenerationCounterFlipper.update(Math.round(totalKWattHours));
 					}
 				})
 				.start();
 		}
-		if ( !consumptionCounterFlipper && lifetimeConsumptionSelector ) {
-			consumptionCounterFlipper = sn.ui.flipCounter(lifetimeConsumptionSelector, flipperParams);
-			consumptionCounterFlipper.render();
+
+		if ( !totalConsumptionCounterFlipper && totalConsumptionSelector ) {
+			totalConsumptionCounterFlipper = sn.ui.flipCounter(totalConsumptionSelector, flipperParams);
+			totalConsumptionCounterFlipper.render();
 		}
-		if ( !consumptionCounter ) {
-			consumptionCounter = sn.util.sumCounter(urlHelper)
+		if ( !lifetimeConsumptionCounterFlipper && lifetimeConsumptionSelector ) {
+			lifetimeConsumptionCounterFlipper = sn.ui.flipCounter(lifetimeConsumptionSelector, flipperParams);
+			lifetimeConsumptionCounterFlipper.render();
+		}
+		if ( !lifetimeConsumptionCounter ) {
+			lifetimeConsumptionCounter = sn.util.sumCounter(urlHelper)
 				.sourceIds(consumptionSources)
 				.callback(function(sum) {
 					var totalKWattHours = sum / 1000;
 					sn.log('{0} total consumption kWh', totalKWattHours);
-					if ( consumptionCounterFlipper ) {
-						consumptionCounterFlipper.update(Math.round(totalKWattHours));
+					if ( lifetimeConsumptionCounterFlipper ) {
+						lifetimeConsumptionCounterFlipper.update(Math.round(totalKWattHours));
 					}
 				})
 				.start();
@@ -447,17 +460,39 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		];
 	}
 	
+	function chartShowTotalWattHourCounts(totals) {
+		if ( totalGenerationCounterFlipper ) {
+			totalGenerationCounterFlipper.update(Math.round(totals['Generation'] / 1000));
+		}
+		if ( totalConsumptionCounterFlipper ) {
+			totalConsumptionCounterFlipper.update(Math.round(totals['Consumption'] / 1000));
+		}
+	}
+	
 	function chartShowData(sourceSets, queryRange, results) {
+		// sum up both generation and consumption over the shown date range
+		var totalWhs = {};
+
 		d3.select('.watthour-chart .time-count').text(queryRange.timeCount);
 		d3.select('.watthour-chart .time-unit').text(queryRange.timeUnit);
-
-		chartInfos().forEach(function(chartInfo) {
+		
+		chartInfos().forEach(function(chartInfo, chartIndex) {
 			chartInfo.chart.reset();
 			sourceSets.forEach(function(sourceSet, i) {
+				var totalWh;
 				chartInfo.chart.load(results[i], sourceSet.dataType);
+				if ( chartIndex === 0 ) {
+					totalWh = d3.sum(results[i], function(d) { return d.wattHours; });
+					if ( totalWhs[sourceSet.dataType] === undefined ) {
+						totalWhs[sourceSet.dataType] = 0;
+					}
+					totalWhs[sourceSet.dataType] += totalWh;
+				}
 			});
 			chartRegenerate(chartInfo.chart, chartInfo.container, chartInfo.tooltipContainer);
 		});
+		
+		chartShowTotalWattHourCounts(totalWhs);
 	}
 	
 	function chartLoadData() {
@@ -818,14 +853,17 @@ function startApp(env) {
 			barEnergySelector : '#energy-bar-chart',
 			pieEnergySelector : '#energy-pie-chart',
 			outdatedSelector : '#chart-outdated-msg',
-			lifetimeGenerationSelector : '#generation-counter-flipboard',
-			lifetimeConsumptionSelector : '#consumption-counter-flipboard'
+			totalGenerationSelector : '#generation-counter-flipboard',
+			totalConsumptionSelector : '#consumption-counter-flipboard',
+			lifetimeGenerationSelector : '#lifetime-generation-counter-flipboard',
+			lifetimeConsumptionSelector : '#lifetime-consumption-counter-flipboard'
 		});
 	}
 	
 	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
 	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector, env.outdatedSelector, 
+			env.totalGenerationSelector, env.totalConsumptionSelector,
 			env.lifetimeGenerationSelector, env.lifetimeConsumptionSelector)
 		.generationSourceIds(env.sourceIds)
 		.consumptionSourceIds(env.consumptionSourceIds)
