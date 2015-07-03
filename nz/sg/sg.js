@@ -734,6 +734,12 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		}
 	}
 	
+	function formatMinutesAsTimeUnit(minutes) {
+		var hours = Math.floor(minutes / 60),
+			minutes = (minutes - hours * 60);
+		return ((hours > 0 ? hours +'h, ' : '') + (minutes !== 0 ? minutes +'m' : ''));
+	}
+		
 	function barEnergyRangeSelectionCallback(path, point, dataArray) {
 		var zoom = (dataArray 
 					&& dataArray.length > 1 
@@ -775,6 +781,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			}
 			destDisplayRange.end = d3.time.hour.offset(endingDate, 1);
 			destDisplayRange.timeUnit = 'hour';
+		} else if ( agg === 'FiveMinute' ) {
+			destDisplayRange.end = d3.time.minute.offset(endingDate, 5);
+			destDisplayRange.timeCount = formatMinutesAsTimeUnit(destDisplayRange.timeCount * 5);
+			destDisplayRange.timeUnit = '';
 		}
 
 		if ( destDisplayRange.end ) {
