@@ -539,6 +539,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			.hoverEnterCallback(barEnergyHoverEnter)
 			.hoverMoveCallback(barEnergyHoverMove)
 			.hoverLeaveCallback(barEnergyHoverLeave)
+			.rangeSelectionCallback(barEnergyRangeSelectionCallback)
 			.doubleClickCallback(barEnergyDoubleClick);
 		return chart;
 	}
@@ -712,6 +713,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			barEnergyChartParams.value('aggregate', destAgg);
 			pieEnergyChartParams.value('aggregate', destAgg);
 			displayRange = destDisplayRange;
+			barEnergyHoverLeave();
 			if ( destZoomItem ) {
 				chartShowData(chartSetupSourceSets(), destZoomItem.range, destZoomItem.data);
 				if ( zoomStack.length < 2 ) {
@@ -721,6 +723,52 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			} else {
 				chartLoadData();
 			}
+		}
+	}
+	
+	function barEnergyRangeSelectionCallback(path, point, dataArray) {
+		var zoom = (dataArray 
+					&& dataArray.length > 1 
+					&& dataArray.every(function(d) { return d.dateUTC !== undefined; }) 
+					&& d3.event.shiftKey),
+			chart = this,
+			agg = chart.aggregate(),
+			startingDate,
+			endingDate,
+			destAgg = agg,
+			destDisplayRange;
+
+		if ( !zoom ) {
+			return;
+		}
+		
+		startingDate = sn.timestampFormat.parse(dataArray[0].dateUTC),
+		endingDate = sn.timestampFormat.parse(dataArray[1].dateUTC),
+		destDisplayRange = { start : startingDate, timeCount : (dataArray[1].index - dataArray[0].index + 1) };
+		
+		if ( agg === 'Month' ) {
+			// zoom to selected days
+			destAgg = 'Day';
+			destDisplayRange.end = d3.time.month.offset(endingDate, 2); // +2 for exclusive end date
+			destDisplayRange.timeUnit = 'month';
+		} else if ( agg === 'Day' ) {
+			// zoom to just day, at Hour aggregate
+			destAgg = 'Hour';
+			destDisplayRange.end = d3.time.day.offset(endingDate, 2);
+			destDisplayRange.timeUnit = 'day';
+		} else if ( agg === 'Hour' ) {
+			// zoom to just hour, at FiveMinute aggregate
+			destAgg = 'FiveMinute';
+			destDisplayRange.end = d3.time.hour.offset(endingDate, 2);
+			destDisplayRange.timeUnit = 'hour';
+		}
+
+		if ( destAgg !== agg ) {
+			barEnergyChartParams.value('aggregate', destAgg);
+			pieEnergyChartParams.value('aggregate', destAgg);
+			displayRange = destDisplayRange;
+			barEnergyHoverLeave();
+			chartLoadData();
 		}
 	}
 	

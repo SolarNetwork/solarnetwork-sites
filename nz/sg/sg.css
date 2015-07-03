@@ -302,6 +302,11 @@ h3 sub {
 	fill: rgba(255, 238, 71, 0.5);
 }
 
+.chart rect.selectionbar {
+	stroke: none;
+	fill: rgba(232, 113, 113, 0.3);
+}
+
 /* Flip counters */
 
 .flipCounter {
