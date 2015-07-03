@@ -22,13 +22,15 @@ var app;
  * @param {string} pieEnergyChartSelector - A CSS selector to display the energy pie chart within.
  * @param {string} outdatedSelector - A CSS selector to display the stale data warning message within.
  * @param {string} totalGenerationSelector - A CSS selector to display the overall generation watt counter.
+ * @param {string} totalCO2Selector - A CSS selector to display the overall CO2 kg counter.
  * @param {string} totalConsumptionSelector - A CSS selector to display the overall consumption watt counter.
  * @param {string} lifetimeGenerationSelector - A CSS selector to display the lifetime total generation watt counter.
  * @param {string} lifetimeConsumptionSelector - A CSS selector to display the lifetime total consumption watt counter.
  * @class
  */
 var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChartSelector, outdatedSelector, 
-		totalGenerationSelector, totalConsumptionSelector, lifetimeGenerationSelector, lifetimeConsumptionSelector) {
+		totalGenerationSelector, totalCO2Selector, totalConsumptionSelector, 
+		lifetimeGenerationSelector, lifetimeConsumptionSelector) {
 	var self = { version : '1.0.0' };
 	var urlHelper = nodeUrlHelper;
 
@@ -44,6 +46,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		days = 7,
 		months = 4,
 		years = 24,
+		co2GramsPerWattHour = 5.1285,
 		dataScaleFactors = { 'Consumption' : 1, 'Generation' : 1},
 		endDate, // set to most recently available data date
 		zoomStack = [], // stack of { data : [], range : { ... } } objects to jump back out from zoom-in
@@ -70,6 +73,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		
 	// counters
 	var totalGenerationCounterFlipper,
+		totalCO2CounterFlipper,
 		lifetimeGenerationCounter,
 		lifetimeGenerationCounterFlipper,
 		totalConsumptionCounterFlipper,
@@ -266,6 +270,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			totalGenerationCounterFlipper = sn.ui.flipCounter(totalGenerationSelector, flipperParams);
 			totalGenerationCounterFlipper.render();
 		}
+		if ( !totalCO2CounterFlipper && totalCO2Selector ) {
+			totalCO2CounterFlipper = sn.ui.flipCounter(totalCO2Selector, flipperParams);
+			totalCO2CounterFlipper.render();
+		}
 		if ( !lifetimeGenerationCounterFlipper && lifetimeGenerationSelector ) {
 			lifetimeGenerationCounterFlipper = sn.ui.flipCounter(lifetimeGenerationSelector, flipperParams);
 			lifetimeGenerationCounterFlipper.render();
@@ -450,6 +458,9 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	function chartShowTotalWattHourCounts(totals) {
 		if ( totalGenerationCounterFlipper ) {
 			totalGenerationCounterFlipper.update(Math.round(totals['Generation'] / 1000));
+		}
+		if ( totalCO2CounterFlipper ) {
+			totalCO2CounterFlipper.update(Math.round(totals['Generation'] * co2GramsPerWattHour / 1000));
 		}
 		if ( totalConsumptionCounterFlipper ) {
 			totalConsumptionCounterFlipper.update(Math.round(totals['Consumption'] / 1000));
@@ -841,6 +852,7 @@ function startApp(env) {
 			pieEnergySelector : '#energy-pie-chart',
 			outdatedSelector : '#chart-outdated-msg',
 			totalGenerationSelector : '#generation-counter-flipboard',
+			totalCO2Selector : '#co2-counter-flipboard',
 			totalConsumptionSelector : '#consumption-counter-flipboard',
 			lifetimeGenerationSelector : '#lifetime-generation-counter-flipboard',
 			lifetimeConsumptionSelector : '#lifetime-consumption-counter-flipboard'
@@ -850,7 +862,7 @@ function startApp(env) {
 	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
 	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector, env.outdatedSelector, 
-			env.totalGenerationSelector, env.totalConsumptionSelector,
+			env.totalGenerationSelector, env.totalCO2Selector, env.totalConsumptionSelector,
 			env.lifetimeGenerationSelector, env.lifetimeConsumptionSelector)
 		.generationSourceIds(env.sourceIds)
 		.consumptionSourceIds(env.consumptionSourceIds)
