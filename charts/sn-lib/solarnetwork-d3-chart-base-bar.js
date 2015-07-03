@@ -304,6 +304,29 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	}
 
 	/**
+	 * Render a "selection" rect over a set of bars.
+	 * 
+	 * @param {array} dataArray An array of data elements for which to render a selection over.
+	 *                          Pass an empty array to remove the selection.
+	 */
+	function drawSelection(dataArray) {
+		var firstItem = (dataArray && dataArray.length > 0 ? dataArray.slice(0, 1) : []),
+			firstItemX = (dataArray && dataArray.length > 0 ? valueX(dataArray[0]) : 0),
+			lastItemX = (dataArray && dataArray.length > 0 ? valueX(dataArray[dataArray.length - 1]) : 0),
+			width = (lastItemX - firstItemX) + xBar.rangeBand();
+		var selectBar = parent.svgHoverRoot.selectAll('rect.selectionbar').data(firstItem);
+		selectBar.attr('x', firstItemX)
+				.attr('width', width);
+		selectBar.enter().append('rect')
+				.attr('x', firstItemX)
+				.attr('y', 0)
+				.attr('height', parent.height)
+				.attr('width', width)
+				.classed('selectionbar clickable', true);
+		selectBar.exit().remove();
+	}
+
+	/**
 	 * Scale a date for the x-axis. The values returned are centered within bars.
 	 * 
 	 * @param {Date} the Date to scale
@@ -336,7 +359,8 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	
 		drawAxisXRules : { value : drawAxisXRules },
 		drawBarsForSources : { value : drawBarsForSources },
-		drawHoverHighlightBars : { value : drawHoverHighlightBars}
+		drawHoverHighlightBars : { value : drawHoverHighlightBars },
+		drawSelection : { value : drawSelection }
 	});
 	
 	parent.drawAxisX = drawAxisX;

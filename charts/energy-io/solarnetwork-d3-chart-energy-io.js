@@ -81,7 +81,8 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		.attr('transform', 'translate(0,' + (10 - parent.padding[0]) + ')');
 		
 	var chartDrawData = undefined,
-		selectedBarData = undefined;
+		selectedBarData = undefined,
+		selectionBarData = [];
 	
 	var bisectDate = d3.bisector(function(d) { return d.date; }).left;
 	
@@ -524,6 +525,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			callbackData = calculateHoverData(point);
 		
 		if ( !callbackData ) {
+			selectedBarData = undefined;
 			return;
 		}
 		
@@ -543,12 +545,22 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			callbackData = calculateHoverData(point);
 			
 		if ( !callbackData ) {
+			selectedBarData = undefined;
 			return;
 		}
 		
 		parent.drawHoverHighlightBars(callbackData && callbackData.dateUTC ? [callbackData] : []);
 
 		selectedBarData = callbackData;
+
+		// draw selection as we move, if a selection started
+		if ( selectionBarData.length > 0 ) {
+			if ( callbackData.date > selectionBarData[0].date ) {
+				parent.drawSelection(selectionBarData.concat(callbackData));
+			} else {
+				parent.drawSelection([callbackData, selectionBarData[0]]);
+			}
+		}
 		
         callback.call(parent.me, this, point, callbackData);
 	}
@@ -585,6 +597,50 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		}
 		d3.event.preventDefault();
 		callback.call(parent.me, this, point, callbackData);
+	}
+
+	function handleClick() {
+		var rangeCallback = parent.rangeSelectionCallback();
+		if ( !rangeCallback ) {
+			return;
+		}
+		var point = d3.mouse(this);
+		var callbackData = selectedBarData,
+			selectionCallbackData;
+		
+		if ( !callbackData ) {
+			callbackData = calculateHoverData(point);
+		}
+		if ( !callbackData ) {
+			return;
+		}
+		
+		if ( d3.event.shiftKey && selectionBarData.length > 0 ) {
+			// preserve ascending order
+			if ( callbackData.date > selectionBarData[0].date ) {
+				selectionBarData.push(callbackData);
+			} else {
+				selectionBarData.splice(0, 0, callbackData);
+			}
+		} else if ( selectionBarData.length > 0 ) {
+			// clear the selection
+			selectionBarData.length = 0;
+		} else {
+			// first bar, add to array
+			selectionBarData.push(callbackData);
+		}
+		
+		selectionCallbackData = selectionBarData;
+		if ( selectionBarData.length > 1 ) {
+			// clear the selection after selection
+			selectionCallbackData = selectionBarData.slice(0, selectionBarData.length);
+			selectionBarData.length = 0;
+		}
+		
+		parent.drawSelection(selectionBarData);
+		
+		d3.event.preventDefault();
+		rangeCallback.call(parent.me, this, point, selectionCallbackData);
 	}
 
 	/**
@@ -665,6 +721,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	parent.handleHoverEnter = handleHoverEnter;
 	parent.handleHoverMove = handleHoverMove;
 	parent.handleHoverLeave = handleHoverLeave;
+	parent.handleClick = handleClick;
 	parent.handleDoubleClick = handleDoubleClick;
 	
 	return self;
