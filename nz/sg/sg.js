@@ -411,22 +411,9 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		} : null);
 	}
 	
-	function chartDatumDate(datum) {
-		if ( datum.date ) {
-			return datum.date;
-		}
-		if ( datum.localDate ) {
-			return sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
-		}
-		if ( datum.created ) {
-			return sn.timestampFormat.parse(datum.created);
-		}
-		return null;
-	}
-
 	function chartDataCallback(dataType, datum) {
 		// create date property
-		datum.date = chartDatumDate(datum);
+		datum.date = sn.datum.datumDate(datum);
 	}
 	
 	function chartQueryRange() {
