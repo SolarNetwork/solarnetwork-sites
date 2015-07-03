@@ -285,11 +285,30 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	/**
+	 * Render a "highlight bar" over a set of bars.
+	 * 
+	 * @param {array} dataArray An array of data elements for which to render highlight bars over.
+	 *                          Pass an empty array to remove all bars.
+	 */
+	function drawHoverHighlightBars(dataArray) {
+		var hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data(dataArray);
+		hoverBar.attr('x', valueX)
+				.attr('width', xBar.rangeBand());
+		hoverBar.enter().append('rect')
+				.attr('x', valueX)
+				.attr('y', 0)
+				.attr('height', parent.height)
+				.attr('width', xBar.rangeBand())
+				.classed('highlightbar clickable', true);
+		hoverBar.exit().remove();
+	}
+
+	/**
 	 * Scale a date for the x-axis. The values returned are centered within bars.
 	 * 
 	 * @param {Date} the Date to scale
 	 * @return {Number} the scaled value
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedStackBarChart
 	 */
 	self.scaleDate = function(date) {
 		var barRange = xBar.range(),
@@ -317,6 +336,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	
 		drawAxisXRules : { value : drawAxisXRules },
 		drawBarsForSources : { value : drawBarsForSources },
+		drawHoverHighlightBars : { value : drawHoverHighlightBars}
 	});
 	
 	parent.drawAxisX = drawAxisX;
