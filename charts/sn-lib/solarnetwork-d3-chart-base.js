@@ -305,6 +305,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	var hoverEnterCallback = undefined,
 		hoverMoveCallback = undefined,
 		hoverLeaveCallback = undefined,
+		rangeSelectionCallback = undefined,
 		doubleClickCallback = undefined;
 	
 	// our computed layer data
@@ -343,6 +344,13 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 			return;
 		}
         hoverLeaveCallback.call(me, svgHoverRoot, d3.mouse(this));
+	};
+	
+	var handleClick = function() {
+		if ( !clickCallback ) {
+			return;
+		}
+        clickCallback.call(me, svgHoverRoot, d3.mouse(this));
 	};
 	
 	var handleDoubleClick = function() {
@@ -1121,6 +1129,19 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		return me;
 	};
 	
+	self.rangeSelectionCallback = function(value) {
+		if ( !arguments.length ) return rangeSelectionCallback;
+		var root = getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			rangeSelectionCallback = value;
+			root.on('click', handleClick);
+		} else {
+			rangeSelectionCallback = undefined;
+			root.on('click', null);
+		}
+		return me;
+	};
+	
 	/**
 	 * Get or set the x-axis tick callback function, which is called during x-axis rendering.
 	 * The function will be passed a data object, the index, the d3 scale, and the number of 
@@ -1194,6 +1215,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		handleHoverEnter : { get : function() { return handleHoverEnter; }, set : function(v) { handleHoverEnter = v; } },
 		handleHoverMove : { get : function() { return handleHoverMove; }, set : function(v) { handleHoverMove = v; } },
 		handleHoverLeave : { get : function() { return handleHoverLeave; }, set : function(v) { handleHoverLeave = v; } },
+		handleClick : { get : function() { return handleClick; }, set : function(v) { handleClick = v; } },
 		handleDoubleClick : { get : function() { return handleDoubleClick; }, set : function(v) { handleDoubleClick = v; } },
 
 		groupIds : { get : function() { return groupIds; } },
