@@ -683,7 +683,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 				destAgg = 'Day';
 				destDisplayRange = {
 					start : clickedDate,
-					end : d3.time.month.utc.offset(clickedDate, 1),
+					end : d3.time.month.offset(clickedDate, 1),
 					timeCount : 1,
 					timeUnit : 'month'
 				};
@@ -692,7 +692,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 				destAgg = 'Hour';
 				destDisplayRange = {
 					start : clickedDate,
-					end : d3.time.day.utc.offset(clickedDate, 1),
+					end : d3.time.day.offset(clickedDate, 1),
 					timeCount : 1,
 					timeUnit : 'day'
 				};
@@ -701,7 +701,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 				destAgg = 'FiveMinute';
 				destDisplayRange = {
 					start : clickedDate,
-					end : d3.time.hour.utc.offset(clickedDate, 1),
+					end : d3.time.hour.offset(clickedDate, 1),
 					timeCount : 1,
 					timeUnit : 'hour'
 				};
