@@ -675,7 +675,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		var chart = this,
 			agg = chart.aggregate(),
 			clickedDate = sn.timestampFormat.parse(data.dateUTC),
-			zoomOut = d3.event.altKey,
+			zoomOut = (sn.hasTouchSupport ? d3.event.changedTouches && d3.event.changedTouches.length > 1 : d3.event.altKey),
 			destAgg = agg,
 			destDisplayRange,
 			destZoomItem;
@@ -744,7 +744,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		var zoom = (dataArray 
 					&& dataArray.length > 1 
 					&& dataArray.every(function(d) { return d.dateUTC !== undefined; }) 
-					&& d3.event.shiftKey),
+					&& (sn.hasTouchSupport || d3.event.shiftKey) ),
 			chart = this,
 			agg = chart.aggregate(),
 			startingDate,
