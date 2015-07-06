@@ -595,6 +595,13 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		if ( !callbackData ) {
 			callbackData = calculateHoverData(point);
 		}
+
+		if ( selectionBarData.length > 0 ) {
+			// clear the selection after selection
+			selectionBarData.length = 0;
+			parent.drawSelection(selectionBarData);
+		}
+		
 		d3.event.preventDefault();
 		callback.call(parent.me, this, point, callbackData);
 	}
