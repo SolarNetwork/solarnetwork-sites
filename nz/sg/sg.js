@@ -810,6 +810,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			sourceDisplay = chartSourceColorMap.displaySourceMap[data.groupId][data.sourceId],
 			color = chartSourceColorMap.colorMap[sourceDisplay],
 			descCell = tooltip.select('td.desc'),
+			co2Cell = tooltip.select('td.co2'),
 			netCell = tooltip.select('tr.total td'),
 			adjustL = 0,
 			adjustT = 0,
@@ -849,6 +850,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		tooltip.select('.swatch').style('background-color', color);
 		descCell.select('.percent').text(data.percentDisplay);
 		descCell.select('.energy').text(data.valueDisplay);
+		co2Cell.select('.co2').text(function() { return Math.round(data.value * co2GramsPerWattHour / 1000); });
 		tooltip.select('tr.total').style('color', chartSourceGroupColorMap[netTotal < 0 ? 'Consumption' : 'Generation'])
 		netCell.select('.energy').text(chartTooltipDataFormat(netTotal / chart.scale()));
 	}

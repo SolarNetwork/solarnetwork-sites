@@ -178,6 +178,10 @@ h3 sub {
 	padding-left: 8px;
 }
 
+.tooltip td.co2 {
+	padding-left: 8px;
+}
+
 .tooltip .subtotal td {
 	border-top: 1px dotted #ccc;
 	padding-bottom: 4px;
