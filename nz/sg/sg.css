@@ -85,6 +85,10 @@ h3 sub {
 	top: 2px;
 }
 
+label {
+	font-weight: 700;
+}
+
 .literal {
 	text-transform: none;
 }
@@ -133,6 +137,15 @@ h3 sub {
 	font-size: 10px;
 	font-style: italic;
 	margin-top: 12px;
+}
+
+.chart .totals {
+	font-size: 12px;
+	margin: 10px 0;
+}
+
+.chart .totals > div:first-child {
+	width: 140px;
 }
 
 /* Tooltip support */

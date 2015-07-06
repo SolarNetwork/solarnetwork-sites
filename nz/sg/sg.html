@@ -6,7 +6,6 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 	<title>Schoolgen Energy Profile</title>
-	<link type="text/css" rel="stylesheet" href="css/solarnetwork-d3-ui-flipcounter.css" />
 	<link type="text/css" rel="stylesheet" href="sg.css" />
 </head>
 <body>
@@ -14,7 +13,23 @@
 	<div class="snroot">	
 		<div class="pane chart energy-bar-chart watthour-chart">
 			<h2><span class="time-count"></span> <span class="time-unit">day</span> energy <span class="alt"><span class="unit">kWh</span></span></h2>
+			<div class="energy-bar-generation-totals totals hbox">
+				<div class="energy">
+					<label for="generation-count">Solar:</label> <span id="generation-count">0</span> <span class="unit">kWh</span>
+				</div>
+				<div class="co2 detailed">
+					<label for="generation-co2-count">CO<sub>2</sub> Avoided:</label> <span id="generation-co2-count">0</span> kg</span>
+				</div>
+			</div>
 			<div id="energy-bar-chart" class="chart-container"></div>
+			<div class="energy-bar-consumption-totals totals  hbox">
+				<div class="energy">
+					<label for="consumption-count">Grid:</label> <span id="consumption-count">0</span> <span class="unit">kWh</span>
+				</div>
+				<div class="co2 detailed">
+					<label for="consumption-co2-count">CO<sub>2</sub> Emission:</label> <span id="consumption-co2-count">0</span> kg</span>
+				</div>
+			</div>
 		</div>
 		<div class="hbox">
 			<div class="pane chart pie-chart watthour-chart">
@@ -22,24 +37,12 @@
 			</div>
 			<div class="info-col">
 				<div class="pane counter agg-kwh">
-					<h3>Generated <span class="alt"><span class="unit">kWh</span></span></h3>
-					<div id="generation-counter-flipboard"></div>
-				</div>
-				<div class="pane counter">
-					<h3>CO<sub>2</sub> saved <span class="alt"><span class="unit">kg</span></span></h3>
-					<div id="co2-counter-flipboard"></div>
-				</div>
-				<div class="pane counter agg-kwh">
-					<h3>Consumed <span class="alt"><span class="unit">kWh</span></span></h3>
-					<div id="consumption-counter-flipboard"></div>
-				</div>
-				<div class="pane counter agg-kwh">
 					<h3>Lifetime generated <span class="alt"><span class="unit">kWh</span></span></h3>
-					<div id="lifetime-generation-counter-flipboard"></div>
+					<div id="lifetime-generation-count"></div>
 				</div>
 				<div class="pane counter agg-kwh">
 					<h3>Lifetime consumed <span class="alt"><span class="unit">kWh</span></span></h3>
-					<div id="lifetime-consumption-counter-flipboard"></div>
+					<div id="lifetime-consumption-count"></div>
 				</div>
 				<div id="chart-outdated-msg" class="msg">
 					Data as of <span class="value">14 June 2014 21:00</span>
@@ -80,7 +83,6 @@
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-base-bar.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-energy-io.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-pie-io.js"></script>
-	<script type="text/javascript" src="js-lib/solarnetwork-d3-ui-flipcounter.js"></script>
 	<script type="text/javascript" src="js-lib/solarnetwork-d3-util-counter.js"></script>
 	<script type="text/javascript" src="sg.js"></script>
 	<script type="text/javascript">
