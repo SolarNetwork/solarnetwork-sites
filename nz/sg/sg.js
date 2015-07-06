@@ -66,6 +66,17 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		pieEnergyChartContainer,
 		pieEnergyChart;
 		
+	var chartColorSets = { 'Consumption' : {
+								// oranges
+								'3' : ['#f5b584', '#f59953', '#f47f23'],
+								'5' : ['#f5d1b5', '#f5bc90', '#f5a76c', '#f59247', '#f47f23']
+							},
+							'Generation' : {
+								// yellows
+								'3' : ['#ffdb66', '#ffcf33', '#ffc300'],
+							}
+						};
+		
 	// range selection limits, adjust based on width of bar chart
 	var barEnergyRangeLimits = { 'Month' : 4, 'Day' : 10, 'Hour' : 12 };
 		
@@ -385,13 +396,17 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		}
 		return chartSourceSets;
 	}
+	
+	function chartDataTypeDisplayColorSet(dataType) {
+		return chartColorSets[dataType];
+	}
 
 	function chartSetupColorMap() {
 		if ( chartSourceColorMap ) {
 			return;
 		}
 
-		chartSourceColorMap = sn.sourceColorMapping(chartSourceGroupMap);
+		chartSourceColorMap = sn.sourceColorMapping(chartSourceGroupMap, { displayColor : chartDataTypeDisplayColorSet });
 		
 		Object.keys(chartSourceGroupMap).forEach(function(dataType) {
 			// assign the data type the color of the first available source within that data type group
