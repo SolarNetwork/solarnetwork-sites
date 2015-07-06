@@ -189,6 +189,12 @@ h3 sub {
 	padding-top: 4px;
 }
 
+/* Tooltip total rows are not shown currently */
+
+.tooltip tr.total {
+	display: none;
+}
+
 /* Base chart elements */
 
 .chart {
