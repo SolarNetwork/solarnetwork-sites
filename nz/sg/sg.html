@@ -83,11 +83,6 @@
 	<script type="text/javascript" src="sg.js"></script>
 	<script type="text/javascript">
 	function startApp() {
-		var updateStatusBar = navigator.userAgent.match(/iphone|ipad|ipod/i)/* &&
-			parseInt(navigator.appVersion.match(/OS (\d)/)[1], 10) >= 7*/;
-		if ( updateStatusBar ) {
-			d3.select('body').style('margin-top', '30px');
-		}
 		if ( sn && sn.runtime && sn.runtime.sgSchoolApp ) {
 			sn.runtime.sgSchoolApp();
 		}
