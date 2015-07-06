@@ -307,6 +307,16 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		hoverLeaveCallback = undefined,
 		rangeSelectionCallback = undefined,
 		doubleClickCallback = undefined;
+
+	// keep track of callback handlers attached to specific events
+	var userInteractionHandlerCount = (function() {
+		var counts = {};
+		Object.keys(sn.tapEventNames).forEach(function(n) {
+			counts[sn.tapEventNames[n]] = 0;
+		});
+		return counts;
+	}());
+	var lastUserInteractionInfo = { time : 0 };
 	
 	// our computed layer data
 	var groupIds = [];
@@ -324,41 +334,93 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		drawAxisX();
 		drawAxisY();
 	};
-
+	
 	var handleHoverEnter = function() {
 		if ( !hoverEnterCallback ) {
 			return;
 		}
-        hoverEnterCallback.call(me, svgHoverRoot, d3.mouse(this));
+        hoverEnterCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
 	
 	var handleHoverMove = function() {
 		if ( !hoverMoveCallback ) {
 			return;
 		}
-        hoverMoveCallback.call(me, svgHoverRoot, d3.mouse(this));
+        hoverMoveCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
 	
 	var handleHoverLeave = function() {
 		if ( !hoverLeaveCallback ) {
 			return;
 		}
-        hoverLeaveCallback.call(me, svgHoverRoot, d3.mouse(this));
+        hoverLeaveCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
 	
 	var handleClick = function() {
 		if ( !clickCallback ) {
 			return;
 		}
-        clickCallback.call(me, svgHoverRoot, d3.mouse(this));
+        clickCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
 	
 	var handleDoubleClick = function() {
 		if ( !doubleClickCallback ) {
 			return;
 		}
-        doubleClickCallback.call(me, svgHoverRoot, d3.mouse(this));
+        doubleClickCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
 	};
+	
+	function registerUserInteractionHandler(tapEventName, container, handler) {
+		var eventName = sn.tapEventNames[tapEventName];
+		if ( !eventName ) {
+			return;
+		}
+		if ( !container.on(eventName) ) {
+			container.on(eventName, handler);
+		}
+		userInteractionHandlerCount[eventName] += 1;
+	}
+	
+	function unregsiterUserInteractionHandler(tapEventName, container, handler) {
+		var eventName = sn.tapEventNames[tapEventName];
+		if ( !eventName ) {
+			return;
+		}
+		userInteractionHandlerCount[eventName] -= 1;
+		if ( userInteractionHandlerCount[eventName] < 1 ) {
+			container.on(eventName, null);
+		}
+	}
+		
+	function handleClickInternal() {
+		var event = d3.event,
+			time = new Date().getTime(),
+			dt = time - lastUserInteractionInfo.time,
+			that = this;
+		lastUserInteractionInfo.time = time;
+		if ( event.type === 'dblclick' || (sn.hasTouchSupport && dt < 500) ) {
+			// double click
+			if ( lastUserInteractionInfo.timer ) {
+				clearTimeout(lastUserInteractionInfo.timer);
+				delete lastUserInteractionInfo.timer;
+			}
+			handleDoubleClick.call(that);
+		} else if ( sn.hasTouchSupport ) {
+			// set timeout for single click
+			lastUserInteractionInfo.timer = setTimeout(function() {
+				var prevEvent = d3.event;
+				try {
+					d3.event = event;
+					handleClick.call(that);
+				} finally {
+					d3.event = prevEvent;
+				}
+			}, 500);
+			event.preventDefault();
+		} else {
+			handleClick.call(that);
+		}
+	}
 	
 	function parseConfiguration() {
 		self.aggregate(config.aggregate);
@@ -1121,23 +1183,31 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		var root = getOrCreateHoverRoot();
 		if ( typeof value === 'function' ) {
 			doubleClickCallback = value;
-			root.on('dblclick', handleDoubleClick);
+			registerUserInteractionHandler('dblclick', root, handleClickInternal);
 		} else {
 			doubleClickCallback = undefined;
-			root.on('dblclick', null);
+			unregisterUserInteractionHandler('dblclick', root, handleClickInternal);
 		}
 		return me;
 	};
 	
+	/**
+	 * Get or set a range selection callback function, which is called in response to mouse click or touch start
+	 * events on the data area of the chart.
+	 * 
+	 * @param {function} [value] the range selection callback
+	 * @return when used as a getter, the current range selection callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
 	self.rangeSelectionCallback = function(value) {
 		if ( !arguments.length ) return rangeSelectionCallback;
 		var root = getOrCreateHoverRoot();
 		if ( typeof value === 'function' ) {
 			rangeSelectionCallback = value;
-			root.on('click', handleClick);
+			registerUserInteractionHandler('click', root, handleClickInternal);
 		} else {
 			rangeSelectionCallback = undefined;
-			root.on('click', null);
+			unregisterUserInteractionHandler('click', root, handleClickInternal);
 		}
 		return me;
 	};

@@ -521,7 +521,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		if ( !callback ) {
 			return;
 		}
-		var point = d3.mouse(this),
+		var point = sn.tapCoordinates(this),
 			callbackData = calculateHoverData(point);
 		
 		if ( !callbackData ) {
@@ -541,7 +541,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		if ( !callback ) {
 			return;
 		}
-		var point = d3.mouse(this),
+		var point = sn.tapCoordinates(this),
 			callbackData = calculateHoverData(point);
 			
 		if ( !callbackData ) {
@@ -575,7 +575,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		// `this` may not be defined here, if reset is called
 		if ( this ) {
 			args.push(this);
-			args.push(d3.mouse(this));
+			args.push(sn.tapCoordinates(this));
 		}
 		
 		parent.drawHoverHighlightBars([]);
@@ -590,7 +590,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		if ( !callback ) {
 			return;
 		}
-		var point = d3.mouse(this);
+		var point = sn.tapCoordinates(this);
 		var callbackData = selectedBarData;
 		if ( !callbackData ) {
 			callbackData = calculateHoverData(point);
@@ -611,7 +611,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		if ( !rangeCallback ) {
 			return;
 		}
-		var point = d3.mouse(this);
+		var point = sn.tapCoordinates(this);
 		var callbackData = selectedBarData,
 			selectionCallbackData;
 		
@@ -622,7 +622,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			return;
 		}
 		
-		if ( d3.event.shiftKey && selectionBarData.length > 0 ) {
+		if ( (sn.hasTouchSupport || d3.event.shiftKey) && selectionBarData.length > 0 ) {
 			// preserve ascending order
 			if ( callbackData.date > selectionBarData[0].date ) {
 				selectionBarData.push(callbackData);
