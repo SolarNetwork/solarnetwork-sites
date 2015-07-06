@@ -172,7 +172,69 @@ var sn = {
 		return sn.runtime.colorData.reduce(function(c, obj) {
 			return (obj.source === d.source ? obj.color : c);
 		}, sn.runtime.colorData[0].color);
+	},
+
+	/**
+	 * Flag indicating if the client supports touch events.
+	 * 
+	 * @returns {Boolean} <em>true</em> if have touch support
+	 */
+	hasTouchSupport : (function() {
+		if ( !(window && window.document) ) {
+			return false;
+		}
+		if ( 'createTouch' in window.document ) { // True on the iPhone
+			return true;
+		}
+		try {
+			var event = window.document.createEvent('TouchEvent');
+			return !!event.initTouchEvent;
+		} catch( error ) {
+			return false;
+		}
+	}()),
+};
+
+/**
+ * Names to use for user-interaction events.
+ * 
+ * <p>On non-touch devices these equate to <em>mousedown</em>, 
+ * <em>mouseup</em>, etc. On touch-enabled devices these equate to
+ * <em>touchstart</em>, <em>touchend</em>, etc.</p>
+ *
+ * @retunrs {Object} Mapping of start, move, end, cancel keys to associated event names.
+ */
+sn.tapEventNames = (function() {
+	return (sn.hasTouchSupport ? {
+			start: "touchstart",
+			move: "touchmove",
+			end: "touchend",
+			cancel: "touchcancel",
+			click: "touchstart",
+			dblclick: "touchstart"
+		} : {
+			start: "mousedown",
+			move: "mousemove",
+			end: "mouseup",
+			cancel: "touchcancel",
+			click: "click",
+			dblclick: "dblclick"
+		});
+}());
+
+/**
+ * Get the first user-interaction x,y coordinates relative to a given container element.
+ *
+ * @param {Node} container - A DOM container node to get the relative coordinates for.
+ * @returns {Array} An array like <code>[x, y]</code> or <code>undefined</code> if not known.
+ */
+sn.tapCoordinates = function(container) {
+	var coordinates;
+	if ( sn.hasTouchSupport ) {
+		coordinates = d3.touches(container);
+		return (coordinates && coordinates.length > 0 ? coordinates[0] : undefined);
 	}
+	return d3.mouse(container);
 };
 
 /**
@@ -492,8 +554,10 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 			intervalObj.eLocalDate = sn.dateTimeFormatLocal.parse(intervalObj.endDate);
 		}
 
-		var evt = document.createEvent('Event');
-		evt.initEvent('snAvailableDataRange', true, true);
+		var evt = (window && window.document ? window.document.createEvent('Event') : {});
+		if ( evt.initEvent !== undefined) {
+			evt.initEvent('snAvailableDataRange', true, true);
+		}
 		evt.data = {
 				reportableInterval : intervalObj,
 				availableSourcesMap : {} // mapping of data type -> sources
@@ -525,7 +589,7 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 		}
 		if ( typeof callback === 'function' ) {
 			callback(evt.data);
-		} else {
+		} else if ( window && window.document ) {
 			document.dispatchEvent(evt);
 		}
 	});
