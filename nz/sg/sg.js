@@ -960,7 +960,7 @@ var sgSchoolApp = function(nodeUrlHelper,
 		d3.select(detailToggleSelector).on('click', function() {
 			detailsShown = !detailsShown;
 			d3.selectAll('.detailed').style('display', (detailsShown ? 'inherit' : 'none'));
-			d3.select(this).select('.text').text(detailsShown ? 'Hide details' : 'Show more details');
+			d3.select(this).select('.text').text(detailsShown ? 'Show less detail' : 'Show more detail');
 			chartSetupSourceSets(true); // regenerate source sets
 			chartSourceGroupMap = undefined; // force source groupings to be regenerated
 			chartSourceColorMap = undefined; // force colors to be reassigned based on new sources
