@@ -745,12 +745,9 @@ var sgSchoolApp = function(nodeUrlHelper,
 	}
 	
 	function barEnergyDoubleClick(path, point, data) {
-		if ( !(data && data.dateUTC) ) {
-			return;
-		}
 		var chart = this,
 			agg = chart.aggregate(),
-			clickedDate = sn.timestampFormat.parse(data.dateUTC),
+			clickedDate = (data && data.dateUTC ? sn.timestampFormat.parse(data.dateUTC) : undefined),
 			zoomOut = (sn.hasTouchSupport ? d3.event.changedTouches && d3.event.changedTouches.length > 1 : d3.event.altKey),
 			sourceSets = chartSetupSourceSets(),
 			destAgg = agg,
@@ -763,6 +760,9 @@ var sgSchoolApp = function(nodeUrlHelper,
 			zoomStack.length -= 1;
 			destAgg = destZoomItem.aggregate;
 			destDisplayRange = destZoomItem.range;
+		} else if ( !(data && data.dateUTC) ) {
+			// we can't zoom in unless we know the date
+			return;
 		} else {
 			if ( agg === 'Month' ) {
 				// zoom to just the month, at Day aggregate
