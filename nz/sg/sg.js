@@ -747,7 +747,7 @@ var sgSchoolApp = function(nodeUrlHelper,
 	function barEnergyDoubleClick(path, point, data) {
 		var chart = this,
 			agg = chart.aggregate(),
-			clickedDate = (data && data.dateUTC ? sn.timestampFormat.parse(data.dateUTC) : undefined),
+			clickedDate = (data && data.dateUTC ? data.utcDate : undefined),
 			zoomOut = (sn.hasTouchSupport ? d3.event.changedTouches && d3.event.changedTouches.length > 1 : d3.event.altKey),
 			sourceSets = chartSetupSourceSets(),
 			destAgg = agg,
@@ -837,8 +837,8 @@ var sgSchoolApp = function(nodeUrlHelper,
 			return;
 		}
 		
-		startingDate = sn.timestampFormat.parse(dataArray[0].dateUTC),
-		endingDate = sn.timestampFormat.parse(dataArray[1].dateUTC),
+		startingDate = dataArray[0].utcDate;
+		endingDate = dataArray[1].utcDate;
 		destDisplayRange = { start : startingDate, timeCount : (dataArray[1].index - dataArray[0].index + 1) };
 		
 		if ( agg === 'Month' ) {
