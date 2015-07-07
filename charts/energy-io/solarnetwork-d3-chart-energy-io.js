@@ -462,8 +462,9 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			return;
 		}
 		var barRange = parent.xBar.range(),
-			barIndex = d3.bisectLeft(barRange, point[0]),
-			barDate = parent.xBar.domain()[barIndex < 1 ? 0 : barIndex - 1],
+			barBisection = d3.bisectLeft(barRange, point[0]),
+			barIndex = (barBisection < 1 ? 0 : barBisection - 1),
+			barDate = parent.xBar.domain()[barIndex],
 			allData = [],
 			hoverData = [],
 			callbackData = { data : hoverData, yRange : [parent.y(0), parent.y(0)], allData : allData, groups : {} };
@@ -488,6 +489,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 						dataValue = dataArray[i][parent.plotPropertyName] * scale;
 						if ( callbackData.dateUTC === undefined && dataArray[i].created ) {
 							callbackData.dateUTC = dataArray[i].created;
+							callbackData.utcDate = sn.timestampFormat.parse(callbackData.dateUTC);
 						}
 					} else {
 						dataValue = null; // null to flag as missing
@@ -497,9 +499,6 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 					allData.push(dataValue);
 				});
 				groupHoverData.total = totalValue;
-				if ( callbackData.x === undefined ) {
-					callbackData.x = parent.valueXMidBar(groupArray[0][i]);
-				}
 				groupHoverData.y = parent.y(totalValue);
 				if ( groupHoverData.y < callbackData.yRange[0] ) {
 					callbackData.yRange[0] = groupHoverData.y;
@@ -512,7 +511,50 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			callbackData.groups[groupHoverData.groupId] = groupHoverData;
 		});
 		callbackData.date = barDate;
+		callbackData.x = parent.valueXMidBar({date:barDate});
 		callbackData.index = barIndex;
+		if ( callbackData.utcDate === undefined ) {
+			// find the UTC date based on the offset of some bar's known UTC date value
+			chartDrawData.groupedData.some(function(groupArray) {
+				return groupArray.some(function(dataArray) {
+					var d = (dataArray.length > 0 ? dataArray[0] : undefined),
+						i = -1,
+						dateUTC,
+						time = d3.time.month,
+						step = 1,
+						agg = parent.aggregate();
+					if ( d && d.date && d.created ) {
+						parent.xBar.domain().some(function(date, dateIndex) {
+							if ( date.getTime() === d.date.getTime() ) {
+								i = dateIndex;
+								return true;
+							}
+							return false;
+						});
+						if ( i >= 0 ) {
+							dateUTC = sn.timestampFormat.parse(d.created);
+							if ( agg === 'Day' ) {
+								time = d3.time.day;
+							} else if ( agg === 'Hour' ) {
+								time = d3.time.hour;
+							} else if ( agg === 'FiveMinute' ) {
+								time = d3.time.minute;
+								step = 5;
+							} else if ( agg === 'TenMinute' ) {
+								time = d3.time.minute;
+								step = 10;
+							} else if ( agg === 'FifteenMinute' ) {
+								time = d3.time.minute;
+								step = 15;
+							} // else we've defaulted to Month already
+							callbackData.utcDate = time.offset(dateUTC, step * (barIndex - i));
+							return true;
+						}
+					}
+					return false;
+				});
+			});
+		}
 		return callbackData;
 	}
 
