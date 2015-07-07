@@ -27,11 +27,13 @@ var app;
  * @param {string} totalConsumptionCO2Selector - A CSS selector to display the overall CO2 kg counter.
  * @param {string} lifetimeGenerationSelector - A CSS selector to display the lifetime total generation watt counter.
  * @param {string} lifetimeConsumptionSelector - A CSS selector to display the lifetime total consumption watt counter.
+ * @param {string} detailToggleSelector - A CSS selector for a toggle button to show/hide extra chart details.
  * @class
  */
-var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChartSelector, outdatedSelector, 
+var sgSchoolApp = function(nodeUrlHelper, 
+		barEnergyChartSelector, pieEnergyChartSelector, outdatedSelector, 
 		totalGenerationSelector, totalGenerationCO2Selector, totalConsumptionSelector, totalConsumptionCO2Selector,
-		lifetimeGenerationSelector, lifetimeConsumptionSelector) {
+		lifetimeGenerationSelector, lifetimeConsumptionSelector, detailToggleSelector) {
 	var self = { version : '1.0.0' };
 	var urlHelper = nodeUrlHelper;
 
@@ -41,20 +43,24 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	
 	// configuration
 	var consumptionSources = [],
+		consumptionDetailedSources = [],
 		generationSources = [],
+		generationDetailedSources = [],
 		forcedDisplayFactor = 1000,
 		hours = 24,
 		days = 7,
 		months = 4,
 		years = 24,
 		co2GramsPerWattHour = 0.195,
+		detailsShown = false,
 		dataScaleFactors = { 'Consumption' : 1, 'Generation' : 1},
 		endDate, // set to most recently available data date
 		zoomStack = [], // stack of { data : [], range : { ... } } objects to jump back out from zoom-in
+		displaySourceSets, // display version of chartSourceSets
 		displayRange; // { start : Date, end : Date }
 	
 	// charts
-	var chartSourceGroupMap = { 'Consumption' : consumptionSources, 'Generation' : generationSources },
+	var chartSourceGroupMap,
 		chartSourceSets,
 		chartSourceColorMap,
 		chartSourceGroupColorMap = {},
@@ -112,6 +118,27 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	/**
+	 * Get or set the consumption detailed source IDs.
+	 * 
+	 * @param {array|string} [value] the array of source ID values, or if a string a comma-delimited list of source ID values
+	 * @return when used as a getter, the current source IDs, otherwise this object
+	 * @memberOf sgSchoolApp
+	 */
+	function consumptionDetailedSourceIds(value) {
+		if ( !arguments.length ) return consumptionDetailedSources;
+		var array;
+		if ( Array.isArray(value) ) {
+			array = value;
+		} else if ( typeof value === 'string' ) {
+			array = value.split(/\s*,\s*/);
+		}
+		// we want to maintain our original array instance, so just repopulate with new values
+		consumptionDetailedSources.length = 0;
+		Array.prototype.push.apply(consumptionDetailedSources, array);
+		return self;
+	}
+	
+	/**
 	 * Get or set the generation source IDs.
 	 * 
 	 * @param {array|string} [value] the array of source ID values, or if a string a comma-delimited list of source ID values
@@ -129,6 +156,27 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		// we want to maintain our original array instance, so just repopulate with new values
 		generationSources.length = 0;
 		Array.prototype.push.apply(generationSources, array);
+		return self;
+	}
+	
+	/**
+	 * Get or set the generation detailed source IDs.
+	 * 
+	 * @param {array|string} [value] the array of source ID values, or if a string a comma-delimited list of source ID values
+	 * @return when used as a getter, the current source IDs, otherwise this object
+	 * @memberOf sgSchoolApp
+	 */
+	function generationDetailedSourceIds(value) {
+		if ( !arguments.length ) return generationDetailedSources;
+		var array;
+		if ( Array.isArray(value) ) {
+			array = value;
+		} else if ( typeof value === 'string' ) {
+			array = value.split(/\s*,\s*/);
+		}
+		// we want to maintain our original array instance, so just repopulate with new values
+		generationDetailedSources.length = 0;
+		Array.prototype.push.apply(generationDetailedSources, array);
 		return self;
 	}
 	
@@ -268,6 +316,14 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		return self;
 	}
 	
+	function stop() {
+		if ( refreshTimer !== undefined ) {
+			clearInterval(refreshTimer);
+			refreshTimer = undefined;
+		}
+		return self;
+	}
+	
 	/* === Counter Support === */
 	
 	function setupCounters() {
@@ -306,9 +362,29 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		}
 		return [l, t];
 	}
+	
+	function sourceSetsAreEqual(s1, s2) {
+		if ( !Array.isArray(s1) || !Array.isArray(s2) ) {
+			return false;
+		}
+		return s1.every(function(sourceSet, idx) {
+			// verify dataType and sourceIds are the same
+			var i, len, other = s2[idx];
+			if ( sourceSet.dataType !== other.dataType || sourceSet.sourceIds.length !== other.sourceIds.length ) {
+				return false;
+			}
+			for ( i = 0, len = sourceSet.sourceIds.length; i < len; i += 1 ) {
+				if ( sourceSet.sourceIds[i] !== other.sourceIds[i] ) {
+					return false;
+				}
+			}
+			return true;
+		});
+	}
 
 	function chartRefresh() {
-		var needsRedraw = false;
+		var sourceSets = chartSetupSourceSets();
+		var needsRedraw = (displaySourceSets !== undefined ? !sourceSetsAreEqual(sourceSets, displaySourceSets) : false);
 		if ( !barEnergyChart ) {
 			barEnergyChart = barEnergyChartCreate();
 			barEnergyChartContainer = d3.select(d3.select(barEnergyChartSelector).node().parentNode);
@@ -328,7 +404,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			chartSetupOutdatedMessage();
 		} else {
 			needsRedraw = (needsRedraw || (endDate === undefined));
-			sn.datum.availableDataRange(chartSetupSourceSets(), function(repInterval) {
+			sn.datum.availableDataRange(sourceSets, function(repInterval) {
 				var jsonEndDate = repInterval.eDate;
 				if ( needsRedraw || jsonEndDate > endDate ) {
 					endDate = jsonEndDate;
@@ -354,10 +430,10 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		if ( !chartSourceSets || regenerate ) {
 			chartSourceSets = [
 				{ nodeUrlHelper : urlHelper, 
-					sourceIds : consumptionSources, 
+					sourceIds : (detailsShown && consumptionDetailedSources.length > 0 ? consumptionDetailedSources : consumptionSources), 
 					dataType : 'Consumption' },
 				{ nodeUrlHelper : urlHelper, 
-					sourceIds : generationSources, 
+					sourceIds : (detailsShown && generationDetailedSources.length > 0 ? generationDetailedSources : generationSources), 
 					dataType : 'Generation' }
 			];
 		}
@@ -367,15 +443,27 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	function chartDataTypeDisplayColorSet(dataType) {
 		return chartColorSets[dataType];
 	}
+	
+	function chartSetupSourceGroupMap() {
+		if ( chartSourceGroupMap ) {
+			return chartSourceGroupMap;
+		}
+		chartSourceGroupMap = { 
+			'Consumption' : (detailsShown && consumptionDetailedSources.length > 0 ? consumptionDetailedSources : consumptionSources), 
+			'Generation' : (detailsShown && generationDetailedSources.length > 0 ? generationDetailedSources : generationSources)
+		};
+		return chartSourceGroupMap;
+	}
 
 	function chartSetupColorMap() {
+		var sourceGroupMap;
 		if ( chartSourceColorMap ) {
-			return;
+			return chartSourceColorMap;
 		}
-
-		chartSourceColorMap = sn.sourceColorMapping(chartSourceGroupMap, { displayColor : chartDataTypeDisplayColorSet });
+		sourceGroupMap = chartSetupSourceGroupMap();
+		chartSourceColorMap = sn.sourceColorMapping(sourceGroupMap, { displayColor : chartDataTypeDisplayColorSet });
 		
-		Object.keys(chartSourceGroupMap).forEach(function(dataType) {
+		Object.keys(sourceGroupMap).forEach(function(dataType) {
 			// assign the data type the color of the first available source within that data type group
 			var color = chartSourceColorMap.colorMap[chartSourceColorMap.displaySourceMap[dataType][chartSourceGroupMap[dataType][0]]];
 			if ( color ) {
@@ -383,9 +471,9 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			}
 		});
 		
-		barEnergyChartSourceColors = barEnergyChartSourceLabelsColors(chartSourceGroupMap, chartSourceColorMap);
+		barEnergyChartSourceColors = barEnergyChartSourceLabelsColors(sourceGroupMap, chartSourceColorMap);
 		
-		barEnergyChartSetupTooltip(barEnergyChartSelector+'-tooltip .source-labels', chartSourceGroupMap, barEnergyChartSourceColors, chartSourceColorMap);
+		barEnergyChartSetupTooltip(barEnergyChartSelector+'-tooltip .source-labels', sourceGroupMap, barEnergyChartSourceColors, chartSourceColorMap);
 		
 		return chartSourceColorMap;
 	}
@@ -456,6 +544,8 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	}
 	
 	function chartShowData(sourceSets, queryRange, results) {
+		displaySourceSets = sourceSets;
+		
 		// sum up both generation and consumption over the shown date range
 		var totalWhs = {};
 
@@ -481,7 +571,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 		chartShowTotalWattHourCounts(totalWhs);
 	}
 	
-	function areQueryRangesEqual(r1, r2) {
+	function queryRangesAreEqual(r1, r2) {
 		return (r1 && r2 
 			&& r1.start && r2.start && r1.start.getTime() === r2.start.getTime()
 			&& r1.end && r2.end && r1.end.getTime() === r2.end.getTime());
@@ -506,7 +596,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			var zoomStackTop = (zoomStack.length > 0 ? zoomStack[zoomStack.length - 1] : undefined);
 			if ( zoomStackTop === undefined
 					|| zoomStackTop.aggregate !== aggregate
-					|| areQueryRangesEqual(zoomStackTop.range, queryRange) !== true ) {
+					|| queryRangesAreEqual(zoomStackTop.range, queryRange) !== true ) {
 				// push new item onto stack
 				zoomStackTop = {};
 				zoomStack.push(zoomStackTop);
@@ -515,6 +605,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			zoomStackTop.aggregate = aggregate;
 			zoomStackTop.range = queryRange;
 			zoomStackTop.data = results;
+			zoomStackTop.sourceSets = sourceSets;
 
 			chartShowData(sourceSets, queryRange, results);
 		}).load();
@@ -661,6 +752,7 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			agg = chart.aggregate(),
 			clickedDate = sn.timestampFormat.parse(data.dateUTC),
 			zoomOut = (sn.hasTouchSupport ? d3.event.changedTouches && d3.event.changedTouches.length > 1 : d3.event.altKey),
+			sourceSets = chartSetupSourceSets(),
 			destAgg = agg,
 			destDisplayRange,
 			destZoomItem;
@@ -708,7 +800,11 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			displayRange = destDisplayRange;
 			barEnergyHoverLeave();
 			if ( destZoomItem ) {
-				chartShowData(chartSetupSourceSets(), destZoomItem.range, destZoomItem.data);
+				if ( sourceSetsAreEqual(sourceSets, destZoomItem.sourceSets) ) {
+					chartShowData(sourceSets, destZoomItem.range, destZoomItem.data);
+				} else {
+					chartLoadData();
+				}
 				if ( zoomStack.length < 2 ) {
 					// when we pop back to top of stack, reset date range to most available for data
 					displayRange = undefined;
@@ -857,6 +953,21 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 	
 	/** === Initialization === */
 	
+	function setupDetailedToggle() {
+		if ( !detailToggleSelector ) {
+			return;
+		}
+		d3.select(detailToggleSelector).on('click', function() {
+			detailsShown = !detailsShown;
+			d3.selectAll('.detailed').style('display', (detailsShown ? 'inherit' : 'none'));
+			d3.select(this).select('.text').text(detailsShown ? 'Hide details' : 'Show more details');
+			chartSetupSourceSets(true); // regenerate source sets
+			chartSourceGroupMap = undefined; // force source groupings to be regenerated
+			chartSourceColorMap = undefined; // force colors to be reassigned based on new sources
+			stop().start();
+		});
+	}
+	
 	function init() {
 		barEnergyChartParams = new sn.Configuration({
 			// bar chart properties
@@ -876,17 +987,20 @@ var sgSchoolApp = function(nodeUrlHelper, barEnergyChartSelector, pieEnergyChart
 			aggregate : 'Month',
 			plotProperties : {FiveMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 		});
+		setupDetailedToggle();
 		Object.defineProperties(self, {
-			consumptionSourceIds 		: { value : consumptionSourceIds },
-			generationSourceIds 		: { value : generationSourceIds },
-			consumptionDataScaleFactor 	: { value : consumptionDataScaleFactor },
-			generationDataScaleFactor 	: { value : generationDataScaleFactor },
-			numHours					: { value : numHours },
-			numDays						: { value : numDays },
-			numMonths					: { value : numMonths },
-			numYears					: { value : numYears },
-			fixedDisplayFactor			: { value : fixedDisplayFactor },
-			start 						: { value : start }
+			consumptionSourceIds 			: { value : consumptionSourceIds },
+			consumptionDetailedSourceIds	: { value : consumptionDetailedSourceIds },
+			generationSourceIds 			: { value : generationSourceIds },
+			generationDetailedSourceIds 	: { value : generationDetailedSourceIds },
+			consumptionDataScaleFactor 		: { value : consumptionDataScaleFactor },
+			generationDataScaleFactor 		: { value : generationDataScaleFactor },
+			numHours						: { value : numHours },
+			numDays							: { value : numDays },
+			numMonths						: { value : numMonths },
+			numYears						: { value : numYears },
+			fixedDisplayFactor				: { value : fixedDisplayFactor },
+			start 							: { value : start }
 		});
 		return self;
 	}
@@ -907,6 +1021,7 @@ function startApp(env) {
 			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
 			consumptionSourceIds : 'DB',
+			consumptionDetailedSourceIds : 'Ph1,Ph2,Ph3',
 			barEnergySelector : '#energy-bar-chart',
 			pieEnergySelector : '#energy-pie-chart',
 			outdatedSelector : '#chart-outdated-msg',
@@ -915,7 +1030,8 @@ function startApp(env) {
 			totalConsumptionSelector : '#consumption-count',
 			totalConsumptionCO2Selector : '#consumption-co2-count',
 			lifetimeGenerationSelector : '#lifetime-generation-count',
-			lifetimeConsumptionSelector : '#lifetime-consumption-count'
+			lifetimeConsumptionSelector : '#lifetime-consumption-count',
+			detailToggleSelector : '#chart-detail-toggle'
 		});
 	}
 	
@@ -924,9 +1040,11 @@ function startApp(env) {
 	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector, env.outdatedSelector, 
 			env.totalGenerationSelector, env.totalGenerationCO2Selector,
 			env.totalConsumptionSelector, env.totalConsumptionCO2Selector,
-			env.lifetimeGenerationSelector, env.lifetimeConsumptionSelector)
+			env.lifetimeGenerationSelector, env.lifetimeConsumptionSelector,
+			env.detailToggleSelector)
 		.generationSourceIds(env.sourceIds)
 		.consumptionSourceIds(env.consumptionSourceIds)
+		.consumptionDetailedSourceIds(env.consumptionDetailedSourceIds)
 		.numHours(env.numHours)
 		.numDays(env.numDays)
 		.numMonths(env.numMonths)

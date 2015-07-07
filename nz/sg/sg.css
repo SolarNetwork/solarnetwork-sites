@@ -17,12 +17,6 @@ body {
 	padding: none;
 }
 
-h1, h2, h3 {
-    color: inherit;
-    font-family: inherit;
-    text-rendering: optimizelegibility;
-}
-
 h1 {
 	text-align: center;
 	font-size: 28px;
@@ -31,70 +25,7 @@ h1 {
 	margin: 24px 0;
 	color: rgb(247,200,25);
 	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
-}
-
-h2 {
-	font-size: 24px;
-	line-height: 24px;
-	margin-top: 0;
-	margin-bottom: 4px;
-	text-transform: uppercase;
-	border-bottom: 1px solid black;
-}
-
-h2 .alt {
-	color: gray;
-}
-
-h2 .unit {
-	text-transform: none;
-	font-weight: 200;
-}
-
-h2 sub {
-	line-height: 0;
-	font-size: 12px;
-	vertical-align: baseline;
-	position: relative;
-	top: 0.3em;
-}
-
-h3 {
-	font-size: 14px;
-	line-height: 14px;
-	font-weight: 500;
-	margin-top: 0;
-	margin-bottom: 4px;
-	text-transform: uppercase;
-}
-
-h3 .alt {
-	color: gray;
-}
-
-h3 .unit {
-	text-transform: none;
-	font-weight: 200;
-}
-
-h3 sub {
-	line-height: 0;
-	font-size: 10px;
-	vertical-align: baseline;
-	position: relative;
-	top: 2px;
-}
-
-label {
-	font-weight: 700;
-}
-
-.literal {
-	text-transform: none;
-}
-
-.clickable {
-	cursor: pointer !important;
+    text-rendering: optimizelegibility;
 }
 
 /* Structural */
@@ -119,16 +50,25 @@ label {
 	flex-direction: row;
 }
 
+.snroot div.hbox > * {
+	display: block;
+}
+
 .snroot .pie-chart {
 	width: 250px;
 }
 
 .snroot .info-col {
+	margin-left: 24px;
 	margin-top: 24px;
 }
 
 .snroot .info-col .pane + .pane {
 	margin-top: 12px;
+}
+
+.snroot .info-col .detail-toggle {
+	margin-bottom: 24px;
 }
 
 .snroot .msg {
@@ -139,18 +79,115 @@ label {
 	margin-top: 12px;
 }
 
-.chart .totals {
+.snroot .chart .totals {
 	font-size: 12px;
 	margin: 10px 0;
 }
 
-.chart .totals > div:first-child {
+.snroot .chart .totals > div:first-child {
 	width: 140px;
+}
+
+.snroot .lifetime {
+	font-size: 12px;
+	line-height: 15px;
+}
+
+.snroot .lifetime.hbox {
+	-webkit-box-align: baseline;
+	align-items: baseline;
+}
+
+.snroot .lifetime label {
+	width: 90px;
+}
+
+.snroot .lifetime .count {
+	width: 90px;
+	text-align: right;
+}
+
+.snroot .lifetime + .lifetime {
+	margin-top: 12px;
+}
+
+.snroot .detailed {
+	display: none;
+}
+
+.snroot h2, h3 {
+    color: inherit;
+    font-family: inherit;
+    text-rendering: optimizelegibility;
+}
+
+.snroot h2 {
+	font-size: 24px;
+	line-height: 24px;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+.snroot h2 .alt {
+	color: gray;
+}
+
+.snroot h2 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+.snroot h2 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+.snroot h3 {
+	font-size: 14px;
+	line-height: 14px;
+	font-weight: 500;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+}
+
+.snroot h3 .alt {
+	color: gray;
+}
+
+.snroot h3 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+.snroot h3 sub {
+	line-height: 0;
+	font-size: 10px;
+	vertical-align: baseline;
+	position: relative;
+	top: 2px;
+}
+
+.snroot label {
+	font-weight: 700;
+}
+
+.snroot .literal {
+	text-transform: none;
+}
+
+.snroot .clickable {
+	cursor: pointer !important;
 }
 
 /* Tooltip support */
 
-.tooltip {
+.snroot .tooltip {
 	position: absolute;
 	border: 1px solid #ccc;
 	border-radius: 4px;
@@ -161,24 +198,24 @@ label {
 	box-shadow: 0px 2px 5px 1px rgba(0,0,0,0.65);
 }
 
-.tooltip h3 {
+.snroot .tooltip h3 {
 	font-size: 10px;
 	font-weight: 700;
 	margin: 0 0 4px 0;
 	white-space: nowrap;
 }
 
-.tooltip table {
+.snroot .tooltip table {
 	border-collapse: separate;
 	width: 100%;
 }
 
-.tooltip td.swatch {
+.snroot .tooltip td.swatch {
 	width: 10px;
 	height: 10px;
 }
 
-.tooltip td {
+.snroot .tooltip td {
 	font-size: 10px;
 	line-height: 10px;
 	text-align: right;
@@ -187,34 +224,34 @@ label {
 	border-bottom: 2px solid #fdfdfd;
 }
 
-.tooltip td.desc {
+.snroot .tooltip td.desc {
 	padding-left: 8px;
 }
 
-.tooltip td.co2 {
+.snroot .tooltip td.co2 {
 	padding-left: 8px;
 }
 
-.tooltip .subtotal td {
+.snroot .tooltip .subtotal td {
 	border-top: 1px dotted #ccc;
 	padding-bottom: 4px;
 	font-style: italic;
 }
 
-.tooltip .total td {
+.snroot .tooltip .total td {
 	font-weight: 700;
 	padding-top: 4px;
 }
 
 /* Tooltip total rows are not shown currently */
 
-.tooltip tr.total {
+.snroot .tooltip tr.total {
 	display: none;
 }
 
 /* Base chart elements */
 
-.chart {
+.snroot .chart {
 	font-size: 10px;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -223,134 +260,108 @@ label {
     user-select: none;
 }
 
-.crisp {
+.snroot .crisp {
 	shape-rendering: crispEdges;
 }
 
-.chart rect {
+.snroot .chart rect {
 	fill-opacity: 0.8;
 }
 
-.chart text {
+.snroot .chart text {
 	fill: #333;
 }
 
-.chart g.ticks text {
+.snroot .chart g.ticks text {
 	text-anchor: middle;
 }
 
-.chart g.ticks text.agg {
+.snroot .chart g.ticks text.agg {
 	fill: black;
 	font-weight: bold;
 }
 
-.chart g.ticks text.agg.neg {
+.snroot .chart g.ticks text.agg.neg {
 	fill: #DF3038;
 }
 
-.chart g.agg text,
-.chart g.ticks text.major {
+.snroot .chart g.agg text,
+.snroot .chart g.ticks text.major {
 	font-weight: 600;
 }
 
-.chart g.agg-gen text {
+.snroot .chart g.agg-gen text {
 	text-anchor: middle;
 	font-weight: bold;
 	fill: #1B7D30;
 }
 
-.chart g.rule,
-.chart g.vertrule {
+.snroot .chart g.rule,
+.snroot .chart g.vertrule {
 	shape-rendering: crispEdges;
 }
 
-.chart g.rule line,
-.chart g.vertrule line {
+.snroot .chart g.rule line,
+.snroot .chart g.vertrule line {
 	stroke: black;
 	opacity: 0.1;
 }
 
-.chart g.vertrule line {
+.snroot .chart g.vertrule line {
 	opacity: 0.05;
 	stroke-dasharray: 2 1;
 }
 
-.chart g.rule line.origin,
-.chart g.vertrule line.origin {
+.snroot .chart g.rule line.origin,
+.snroot .chart g.vertrule line.origin {
 	stroke: black !important;
 	opacity: 1 !important;
 }
 
-.chart g.rule text {
+.snroot .chart g.rule text {
 	text-anchor: end;
 	alignment-baseline: middle;
 }
 
-.chart g.agg-band line {
+.snroot .chart g.agg-band line {
 	stroke: black;
 	stroke-width: 15px;
 }
 
-.chart g.agg-band-ticks text {
+.snroot .chart g.agg-band-ticks text {
 	fill: white;
 	text-anchor: middle;
 	font-weight: bold;
 }
 
-.chart g.agg-sum path {
+.snroot .chart g.agg-sum path {
 	stroke-width: 1px;
 	stroke: #C42F2F;
 	fill: none;
 }
 
-.chart .off {
+.snroot .chart .off {
 	display: none;
 }
 
-.chart path.area {
+.snroot .chart path.area {
 	fill-opacity: 1;
 }
 
-.chart path.line {
+.snroot .chart path.line {
   fill: none;
 }
 
-.chart line.axis {
+.snroot .chart line.axis {
 	stroke: black;
 }
 
-.chart rect.highlightbar {
+.snroot .chart rect.highlightbar {
 	stroke: none;
 	fill: rgba(255, 238, 71, 0.5);
 }
 
-.chart rect.selectionbar {
+.snroot .chart rect.selectionbar {
 	stroke: none;
 	fill: rgba(232, 113, 113, 0.3);
-}
-
-/* Flip counters */
-
-.flipCounter {
-	height: 28px;
-}
-
-.flipCounter .flipper {
-	width: 19px;
-	height: 22px;
-}
-
-.flipper .face {
-	border-radius: 4px;
-	width: 19px;
-	height: 22px;
-}
-
-.flipCounter .flipper .value {
-	font-size: 18px;
-	line-height: 18px;
-	font-weight: normal;
-	text-align: center;
-	width: 19px;
-	height: 22px;
 }
