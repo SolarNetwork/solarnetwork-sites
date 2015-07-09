@@ -54,6 +54,24 @@ h1 {
 	display: block;
 }
 
+.snroot .energy-bar-chart .y-axis-label {
+	width: 20px;
+}
+
+.snroot .energy-bar-chart .y-axis-label .label {
+	-moz-transform: translate(-150px, 150px) rotate(-90deg);
+	-ms-transform: translate(-150px, 150px) rotate(-90deg);
+	-o-transform: translate(-150px, 150px) rotate(-90deg);
+	-webkit-transform: translate(-150px, 150px) rotate(-90deg);
+	transform: translate(-150px, 150px) rotate(-90deg);
+	width: 300px;
+	text-align: center;
+}
+
+.snroot .energy-bar-chart .chart-container {
+	width: 510px;
+}
+
 .snroot .pie-chart {
 	width: 250px;
 }
