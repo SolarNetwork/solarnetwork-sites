@@ -550,16 +550,62 @@ var sgSchoolApp = function(nodeUrlHelper,
 		}
 	}
 	
+	function chartMinuteStepValue(agg) {
+		var result;
+		if ( agg === 'FiveMinute' ) {
+			result = 5;
+		} else if ( agg === 'TenMinute' ) {
+			result = 10;
+		} else if ( agg === 'FifteenMinute' ) {
+			result = 15;
+		} else {
+			// assume Hour here
+			result = 60;
+		}
+		return result;
+	}
+		
+	function chartRenderTimeRange(chart) {
+		var chartDomain = chart.xDomain(),
+			chartAgg = chart.aggregate(),
+			format,
+			r1,
+			r2;
+			
+		if ( chartAgg === 'Month' || (chartAgg === 'Day' 
+				&& chartDomain[0].getUTCDate() === 1 && d3.time.day.utc.offset(chartDomain[1], 1).getUTCDate() === 1) ) {
+			format = d3.time.format.utc('%b %Y');
+		} else if ( chartAgg === 'Day' || (chartAgg === 'Hour' 
+				&& chartDomain[0].getUTCHours() === 0 && d3.time.hour.utc.offset(chartDomain[1], 1).getUTCHours() === 0) ) {
+			format = d3.time.format.utc('%-d %b %Y');
+		} else if ( chartAgg === 'Hour' || (chartAgg.search(/Minute$/) !== -1
+				&& chartDomain[0].getUTCMinutes() === 0 && d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg)).getUTCMinutes() === 0) ) {
+			format = d3.time.format.utc('%-d %b %Y %H:00');
+		} else {
+			// might want to round end date to exclusive value, which for minutes might be less confusing
+			//chartDomain[1] = d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg));
+			format = d3.time.format.utc('%-d %b %Y %H:%M');
+		}
+		r1 = format(chartDomain[0]);
+		r2 = format(chartDomain[1]);
+		if ( r1 === r2 ) {
+			return r1;
+		}
+		return r1 + ' - ' + r2;
+	}
+	
 	function chartShowData(sourceSets, queryRange, results) {
 		displaySourceSets = sourceSets;
 		
 		// sum up both generation and consumption over the shown date range
-		var totalWhs = {};
+		var totalWhs = {}, 
+			infos = chartInfos(), 
+			barChart = infos[0].chart;
 
 		d3.select('.watthour-chart .time-count').text(queryRange.timeCount);
 		d3.select('.watthour-chart .time-unit').text(queryRange.timeUnit);
 		
-		chartInfos().forEach(function(chartInfo, chartIndex) {
+		infos.forEach(function(chartInfo, chartIndex) {
 			chartInfo.chart.reset();
 			sourceSets.forEach(function(sourceSet, i) {
 				var totalWh;
@@ -576,6 +622,10 @@ var sgSchoolApp = function(nodeUrlHelper,
 		});
 		
 		chartShowTotalWattHourCounts(totalWhs);
+		
+		d3.select('.time-range').text(function() {
+			return chartRenderTimeRange(barChart);
+		});
 	}
 	
 	function queryRangesAreEqual(r1, r2) {
