@@ -88,13 +88,22 @@ var sgSchoolApp = function(nodeUrlHelper,
 	var barEnergyRangeLimits = { 'Month' : 4, 'Day' : 10, 'Hour' : 12 };
 		
 	// chart tooltips
-	var chartTooltipDataFormat = d3.format(',.1f'),
-		barEnergyChartTooltip = d3.select(barEnergyChartSelector+'-tooltip'),
+	var barEnergyChartTooltip = d3.select(barEnergyChartSelector+'-tooltip'),
 		pieEnergyChartTooltip = d3.select(pieEnergyChartSelector+'-tooltip');
 		
 	// counters
 	var lifetimeGenerationCounter,
 		lifetimeConsumptionCounter;
+
+	var decimalValueFormat = d3.format(',.1f'),
+		integerValueFormat = d3.format(',d'),
+		kiloValueFormat = function valueFormat(v) {
+		v /= 1000; // convert to k
+		if ( v > 100 ) {
+			return integerValueFormat(Math.round(v));
+		}
+		return decimalValueFormat(v);
+	};
 	
 	/**
 	 * Get or set the consumption source IDs.
@@ -331,9 +340,8 @@ var sgSchoolApp = function(nodeUrlHelper,
 			lifetimeGenerationCounter = sn.util.sumCounter(urlHelper)
 				.sourceIds(generationSources)
 				.callback(function(sum) {
-					var totalKWattHours = sum / 1000;
-					sn.log('{0} total generation kWh', totalKWattHours);
-					d3.select(lifetimeGenerationSelector).text(chartTooltipDataFormat(totalKWattHours));
+					sn.log('{0} total generation kWh', (sum/1000));
+					d3.select(lifetimeGenerationSelector).text(kiloValueFormat(sum));
 				})
 				.start();
 		}
@@ -342,9 +350,8 @@ var sgSchoolApp = function(nodeUrlHelper,
 			lifetimeConsumptionCounter = sn.util.sumCounter(urlHelper)
 				.sourceIds(consumptionSources)
 				.callback(function(sum) {
-					var totalKWattHours = sum / 1000;
-					sn.log('{0} total consumption kWh', totalKWattHours);
-					d3.select(lifetimeConsumptionSelector).text(chartTooltipDataFormat(totalKWattHours));
+					sn.log('{0} total consumption kWh', (sum/1000));
+					d3.select(lifetimeConsumptionSelector).text(kiloValueFormat(sum));
 				})
 				.start();
 		}
@@ -530,16 +537,16 @@ var sgSchoolApp = function(nodeUrlHelper,
 	
 	function chartShowTotalWattHourCounts(totals) {
 		if ( totalGenerationSelector ) {
-			d3.select(totalGenerationSelector).text(chartTooltipDataFormat(totals['Generation'] / 1000));
+			d3.select(totalGenerationSelector).text(kiloValueFormat(totals['Generation']));
 		}
 		if ( totalGenerationCO2Selector ) {
-			d3.select(totalGenerationCO2Selector).text(chartTooltipDataFormat(totals['Generation'] * co2GramsPerWattHour / 1000));
+			d3.select(totalGenerationCO2Selector).text(kiloValueFormat(totals['Generation'] * co2GramsPerWattHour));
 		}
 		if ( totalConsumptionSelector ) {
-			d3.select(totalConsumptionSelector).text(chartTooltipDataFormat(totals['Consumption'] / 1000));
+			d3.select(totalConsumptionSelector).text(kiloValueFormat(totals['Consumption']));
 		}
 		if ( totalConsumptionCO2Selector ) {
-			d3.select(totalConsumptionCO2Selector).text(chartTooltipDataFormat(totals['Consumption'] * co2GramsPerWattHour / 1000));
+			d3.select(totalConsumptionCO2Selector).text(kiloValueFormat(totals['Consumption'] * co2GramsPerWattHour));
 		}
 	}
 	
@@ -723,21 +730,21 @@ var sgSchoolApp = function(nodeUrlHelper,
 			} else {
 				netTotal += dataValue;
 			}
-			return chartTooltipDataFormat(dataValue / chart.yScale());
+			return kiloValueFormat(dataValue);
 		});
 	
 		// fill in subtotals
 		tooltip.selectAll('tr.subtotal span.energy').data(subTotalDataTypes).text(function(dataType) {
 			var groupData = data.groups[dataType].data,
 				sum = d3.sum(groupData);
-			return chartTooltipDataFormat(sum / chart.yScale());
+			return kiloValueFormat(sum);
 		});
 	
 		// fill in net total
 		tooltip.select('tr.total')
 				.style('color', chartSourceGroupColorMap[netTotal < 0 ? 'Consumption' : 'Generation'])
 		.select('span.energy')
-			.text(chartTooltipDataFormat(netTotal / chart.yScale()));
+			.text(kiloValueFormat(netTotal));
 	}
 	
 	function barEnergyHoverLeave() {
@@ -930,10 +937,10 @@ var sgSchoolApp = function(nodeUrlHelper,
 		tooltip.select('h3').text(sourceDisplay);
 		tooltip.select('.swatch').style('background-color', color);
 		descCell.select('.percent').text(data.percentDisplay);
-		descCell.select('.energy').text(data.valueDisplay);
-		co2Cell.select('.co2').text(function() { return Math.round(data.value * co2GramsPerWattHour / 1000); });
+		descCell.select('.energy').text(kiloValueFormat(data.value));
+		co2Cell.select('.co2').text(function() { return kiloValueFormat(data.value * co2GramsPerWattHour); });
 		tooltip.select('tr.total').style('color', chartSourceGroupColorMap[netTotal < 0 ? 'Consumption' : 'Generation'])
-		netCell.select('.energy').text(chartTooltipDataFormat(netTotal / chart.scale()));
+		netCell.select('.energy').text(kiloValueFormat(netTotal));
 	}
 	
 	function pieEnergyHoverLeave() {
@@ -959,7 +966,7 @@ var sgSchoolApp = function(nodeUrlHelper,
 		}
 		d3.select(detailToggleSelector).on('click', function() {
 			detailsShown = !detailsShown;
-			d3.selectAll('.detailed').style('display', (detailsShown ? 'inherit' : 'none'));
+			d3.selectAll('.detailed').style('display', (detailsShown ? null : 'none'));
 			d3.select(this).select('.text').text(detailsShown ? 'Show less detail' : 'Show more detail');
 			chartSetupSourceSets(true); // regenerate source sets
 			chartSourceGroupMap = undefined; // force source groupings to be regenerated
@@ -1034,6 +1041,9 @@ function startApp(env) {
 			detailToggleSelector : '#chart-detail-toggle'
 		});
 	}
+	
+	// make detailed items initially hidden
+	d3.selectAll('.detailed').style('display', 'none');
 	
 	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
