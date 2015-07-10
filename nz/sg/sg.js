@@ -1020,7 +1020,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		d3.select(config.detailToggleSelector).on('click', function toggleDetails() {
 			detailsShown = !detailsShown;
 			d3.selectAll('.detailed').style('display', (detailsShown ? null : 'none'));
-			d3.select(this).select('.text').text(detailsShown ? 'Show less detail' : 'Show more detail');
+			d3.select(this).select('.text').text(detailsShown ? 'Show less' : 'Show more');
 			chartSetupSourceSets(true); // regenerate source sets
 			chartSourceGroupMap = undefined; // force source groupings to be regenerated
 			chartSourceColorMap = undefined; // force colors to be reassigned based on new sources
@@ -1040,6 +1040,23 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			pieEnergyChartParams.value('aggregate', 'Hour');
 			displayRange = destDisplayRange;
 			chartLoadData();
+		});
+	}
+	
+	function setupHowtoButton() {
+		if ( !config.howtoSelector ) {
+			return;
+		}
+		var howtoVisible = false,
+			howto = d3.select(config.howtoSelector),
+			modal = d3.select(howto.attr('data-modal'));
+		howto.on('click', function viewHowto() {
+			howtoVisible = !howtoVisible;
+			modal.style('display', (howtoVisible ? null : 'none'));
+		});
+		d3.select(howto.attr('data-modal') + ' button.close').on('click', function closeHowto() {
+			howtoVisible = false;
+			modal.style('display', 'none');
 		});
 	}
 	
@@ -1064,6 +1081,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		});
 		setupDetailedToggle();
 		setupViewTodayButton();
+		setupHowtoButton();
 		Object.defineProperties(self, {
 			consumptionSourceIds 			: { value : consumptionSourceIds },
 			consumptionDetailedSourceIds	: { value : consumptionDetailedSourceIds },
@@ -1108,7 +1126,8 @@ function startApp(env) {
 			lifetimeGenerationSelector : '#lifetime-generation-count',
 			lifetimeConsumptionSelector : '#lifetime-consumption-count',
 			detailToggleSelector : '#chart-detail-toggle',
-			viewTodaySelector : '#time-range-view-today'
+			viewTodaySelector : '#time-range-view-today',
+			howtoSelector : '#help-howto'
 		});
 	}
 	
