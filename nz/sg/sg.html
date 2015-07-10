@@ -11,9 +11,10 @@
 </head>
 <body>
 	<h1>Schoolgen Energy Profile</h1>
-	<div class="snroot noselect">	
+	<div class="snroot noselect">
+		<button type="button" id="time-range-view-today">View Today</button>
+		<h2 class="time-range"></h2>
 		<div class="pane chart energy-bar-chart watthour-chart">
-			<h2 class="time-range"></h2>
 			<div class="energy-bar-chart hbox">
 				<div class="y-axis-label">
 					<h3 class="label">Energy <span class="alt"><span class="unit">kWh</span></span></h3>
@@ -25,12 +26,12 @@
 			<tbody>
 				<tr>
 					<td colspan="2" style="text-align: left; width: 35%;">
-						<button>Lifetime</button>
+						<!--button>Lifetime</button-->
 					</td>
 					<th class="generation">Solar:</td>
 					<td class="generation"><span id="generation-count">0</span> <span class="alt unit">kWh</span></td>
 					<td colspan="2" style="width: 35%;">
-						<button>Today</button>
+						<!--button type="button" id="time-range-view-today">View Today</button-->
 					</td>
 				</tr>
 				<tr>

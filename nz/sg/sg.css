@@ -54,6 +54,10 @@ h1 {
 	display: block;
 }
 
+.snroot .energy-bar-chart {
+	margin-bottom: 10px;
+}
+
 .snroot .energy-bar-chart .y-axis-label {
 	width: 20px;
 }
@@ -83,6 +87,16 @@ h1 {
 	color: #603913;
 	font-size: 14px;
 	font-weight: 700;
+}
+
+.snroot button:active {
+	color: #b66c22;
+}
+
+#time-range-view-today {
+	position: absolute;
+	top: 10px;
+	right: 10px;
 }
 
 .snroot .info-col {

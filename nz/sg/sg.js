@@ -18,24 +18,24 @@ var app;
  * Schoolgen school app. Displays a set of charts and data related to a single school.
  * 
  * @param {object} nodeUrlHelper - A {@link sn.datum.nodeUrlHelper} configured with the school's SolarNetwork node ID.
- * @param {string} barEnergyChartSelector - A CSS selector to display the energy bar chart within.
- * @param {string} pieEnergyChartSelector - A CSS selector to display the energy pie chart within.
- * @param {string} outdatedSelector - A CSS selector to display the stale data warning message within.
- * @param {string} totalGenerationSelector - A CSS selector to display the overall generation watt counter.
- * @param {string} totalGenerationCO2Selector - A CSS selector to display the overall CO2 kg counter.
- * @param {string} totalConsumptionSelector - A CSS selector to display the overall consumption watt counter.
- * @param {string} totalConsumptionCO2Selector - A CSS selector to display the overall CO2 kg counter.
- * @param {string} lifetimeGenerationSelector - A CSS selector to display the lifetime total generation watt counter.
- * @param {string} lifetimeConsumptionSelector - A CSS selector to display the lifetime total consumption watt counter.
- * @param {string} detailToggleSelector - A CSS selector for a toggle button to show/hide extra chart details.
+ * @param {object} options - An options object.
+ * @param {string} options.barEnergyChartSelector - A CSS selector to display the energy bar chart within.
+ * @param {string} options.pieEnergyChartSelector - A CSS selector to display the energy pie chart within.
+ * @param {string} options.outdatedSelector - A CSS selector to display the stale data warning message within.
+ * @param {string} options.totalGenerationSelector - A CSS selector to display the overall generation watt counter.
+ * @param {string} options.totalGenerationCO2Selector - A CSS selector to display the overall CO2 kg counter.
+ * @param {string} options.totalConsumptionSelector - A CSS selector to display the overall consumption watt counter.
+ * @param {string} options.totalConsumptionCO2Selector - A CSS selector to display the overall CO2 kg counter.
+ * @param {string} options.lifetimeGenerationSelector - A CSS selector to display the lifetime total generation watt counter.
+ * @param {string} options.lifetimeConsumptionSelector - A CSS selector to display the lifetime total consumption watt counter.
+ * @param {string} options.detailToggleSelector - A CSS selector for a toggle button to show/hide extra chart details.
+ * @param {string} options.viewTodaySelector - A CSS selector for a button to set the data date range to today's date.
  * @class
  */
-var sgSchoolApp = function(nodeUrlHelper, 
-		barEnergyChartSelector, pieEnergyChartSelector, outdatedSelector, 
-		totalGenerationSelector, totalGenerationCO2Selector, totalConsumptionSelector, totalConsumptionCO2Selector,
-		lifetimeGenerationSelector, lifetimeConsumptionSelector, detailToggleSelector) {
+var sgSchoolApp = function(nodeUrlHelper, options) {
 	var self = { version : '1.0.0' };
 	var urlHelper = nodeUrlHelper;
+	var config = (options || {});
 
 	// auto-refresh settings
 	var refreshMs = 60000,
@@ -88,8 +88,8 @@ var sgSchoolApp = function(nodeUrlHelper,
 	var barEnergyRangeLimits = { 'Month' : 4, 'Day' : 10, 'Hour' : 12 };
 		
 	// chart tooltips
-	var barEnergyChartTooltip = d3.select(barEnergyChartSelector+'-tooltip'),
-		pieEnergyChartTooltip = d3.select(pieEnergyChartSelector+'-tooltip');
+	var barEnergyChartTooltip = d3.select(config.barEnergyChartSelector+'-tooltip'),
+		pieEnergyChartTooltip = d3.select(config.pieEnergyChartSelector+'-tooltip');
 		
 	// counters
 	var lifetimeGenerationCounter,
@@ -336,22 +336,22 @@ var sgSchoolApp = function(nodeUrlHelper,
 	/* === Counter Support === */
 	
 	function setupCounters() {
-		if ( !lifetimeGenerationCounter && lifetimeGenerationSelector ) {
+		if ( !lifetimeGenerationCounter && config.lifetimeGenerationSelector ) {
 			lifetimeGenerationCounter = sn.util.sumCounter(urlHelper)
 				.sourceIds(generationSources)
 				.callback(function(sum) {
 					sn.log('{0} total generation kWh', (sum/1000));
-					d3.select(lifetimeGenerationSelector).text(kiloValueFormat(sum));
+					d3.select(config.lifetimeGenerationSelector).text(kiloValueFormat(sum));
 				})
 				.start();
 		}
 
-		if ( !lifetimeConsumptionCounter && lifetimeConsumptionSelector ) {
+		if ( !lifetimeConsumptionCounter && config.lifetimeConsumptionSelector ) {
 			lifetimeConsumptionCounter = sn.util.sumCounter(urlHelper)
 				.sourceIds(consumptionSources)
 				.callback(function(sum) {
 					sn.log('{0} total consumption kWh', (sum/1000));
-					d3.select(lifetimeConsumptionSelector).text(kiloValueFormat(sum));
+					d3.select(config.lifetimeConsumptionSelector).text(kiloValueFormat(sum));
 				})
 				.start();
 		}
@@ -394,12 +394,12 @@ var sgSchoolApp = function(nodeUrlHelper,
 		var needsRedraw = (displaySourceSets !== undefined ? !sourceSetsAreEqual(sourceSets, displaySourceSets) : false);
 		if ( !barEnergyChart ) {
 			barEnergyChart = barEnergyChartCreate();
-			barEnergyChartContainer = d3.select(d3.select(barEnergyChartSelector).node().parentNode);
+			barEnergyChartContainer = d3.select(d3.select(config.barEnergyChartSelector).node().parentNode);
 			needsRedraw = true;
 		}
 		if ( !pieEnergyChart ) {
 			pieEnergyChart = pieEnergyChartCreate();
-			pieEnergyChartContainer = d3.select(d3.select(pieEnergyChartSelector).node().parentNode);
+			pieEnergyChartContainer = d3.select(d3.select(config.pieEnergyChartSelector).node().parentNode);
 			needsRedraw = true;
 		}
 		if ( displayRange && displayRange.end < endDate ) {
@@ -425,11 +425,14 @@ var sgSchoolApp = function(nodeUrlHelper,
 	function chartSetupOutdatedMessage(mostRecentDataDate) {
 		// if the data is stale by an hour or more, display the "outdated" message
 		var format;
+		if ( !config.outdatedSelector ) {
+			return;
+		}
 		if ( mostRecentDataDate && new Date().getTime() - mostRecentDataDate.getTime() >= (1000 * 60 * 60) ) {
 			format = d3.time.format('%d %b %Y %H:%M');
-			d3.select(outdatedSelector).style('display', null).select('.value').text(format(mostRecentDataDate));
+			d3.select(config.outdatedSelector).style('display', null).select('.value').text(format(mostRecentDataDate));
 		} else {
-			d3.select(outdatedSelector).style('display', 'none');
+			d3.select(config.outdatedSelector).style('display', 'none');
 		}
 	}
 	
@@ -480,7 +483,7 @@ var sgSchoolApp = function(nodeUrlHelper,
 		
 		barEnergyChartSourceColors = barEnergyChartSourceLabelsColors(sourceGroupMap, chartSourceColorMap);
 		
-		barEnergyChartSetupTooltip(barEnergyChartSelector+'-tooltip .source-labels', sourceGroupMap, barEnergyChartSourceColors, chartSourceColorMap);
+		barEnergyChartSetupTooltip(config.barEnergyChartSelector+'-tooltip .source-labels', sourceGroupMap, barEnergyChartSourceColors, chartSourceColorMap);
 		
 		return chartSourceColorMap;
 	}
@@ -536,17 +539,17 @@ var sgSchoolApp = function(nodeUrlHelper,
 	}
 	
 	function chartShowTotalWattHourCounts(totals) {
-		if ( totalGenerationSelector ) {
-			d3.select(totalGenerationSelector).text(kiloValueFormat(totals['Generation']));
+		if ( config.totalGenerationSelector ) {
+			d3.select(config.totalGenerationSelector).text(kiloValueFormat(totals['Generation']));
 		}
-		if ( totalGenerationCO2Selector ) {
-			d3.select(totalGenerationCO2Selector).text(kiloValueFormat(totals['Generation'] * co2GramsPerWattHour));
+		if ( config.totalGenerationCO2Selector ) {
+			d3.select(config.totalGenerationCO2Selector).text(kiloValueFormat(totals['Generation'] * co2GramsPerWattHour));
 		}
-		if ( totalConsumptionSelector ) {
-			d3.select(totalConsumptionSelector).text(kiloValueFormat(totals['Consumption']));
+		if ( config.totalConsumptionSelector ) {
+			d3.select(config.totalConsumptionSelector).text(kiloValueFormat(totals['Consumption']));
 		}
-		if ( totalConsumptionCO2Selector ) {
-			d3.select(totalConsumptionCO2Selector).text(kiloValueFormat(totals['Consumption'] * co2GramsPerWattHour));
+		if ( config.totalConsumptionCO2Selector ) {
+			d3.select(config.totalConsumptionCO2Selector).text(kiloValueFormat(totals['Consumption'] * co2GramsPerWattHour));
 		}
 	}
 	
@@ -671,7 +674,7 @@ var sgSchoolApp = function(nodeUrlHelper,
 	/* === Bar Energy Chart Support === */
 	
 	function barEnergyChartCreate() {
-		var chart = sn.chart.energyIOBarChart(barEnergyChartSelector, barEnergyChartParams)
+		var chart = sn.chart.energyIOBarChart(config.barEnergyChartSelector, barEnergyChartParams)
 			.dataCallback(chartDataCallback)
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
@@ -998,7 +1001,7 @@ var sgSchoolApp = function(nodeUrlHelper,
 	}
 	
 	function pieEnergyChartCreate() {
-		var chart = sn.chart.energyIOPieChart(pieEnergyChartSelector, pieEnergyChartParams)
+		var chart = sn.chart.energyIOPieChart(config.pieEnergyChartSelector, pieEnergyChartParams)
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
 			.displayFactorCallback(forcedDisplayFactorFn())
@@ -1011,10 +1014,10 @@ var sgSchoolApp = function(nodeUrlHelper,
 	/** === Initialization === */
 	
 	function setupDetailedToggle() {
-		if ( !detailToggleSelector ) {
+		if ( !config.detailToggleSelector ) {
 			return;
 		}
-		d3.select(detailToggleSelector).on('click', function() {
+		d3.select(config.detailToggleSelector).on('click', function() {
 			detailsShown = !detailsShown;
 			d3.selectAll('.detailed').style('display', (detailsShown ? null : 'none'));
 			d3.select(this).select('.text').text(detailsShown ? 'Show less detail' : 'Show more detail');
@@ -1079,8 +1082,8 @@ function startApp(env) {
 			sourceIds : 'Solar',
 			consumptionSourceIds : 'DB',
 			consumptionDetailedSourceIds : 'Ph1,Ph2,Ph3',
-			barEnergySelector : '#energy-bar-chart',
-			pieEnergySelector : '#energy-pie-chart',
+			barEnergyChartSelector : '#energy-bar-chart',
+			pieEnergyChartSelector : '#energy-pie-chart',
 			outdatedSelector : '#chart-outdated-msg',
 			totalGenerationSelector : '#generation-count',
 			totalGenerationCO2Selector : '#generation-co2-count',
@@ -1088,7 +1091,8 @@ function startApp(env) {
 			totalConsumptionCO2Selector : '#consumption-co2-count',
 			lifetimeGenerationSelector : '#lifetime-generation-count',
 			lifetimeConsumptionSelector : '#lifetime-consumption-count',
-			detailToggleSelector : '#chart-detail-toggle'
+			detailToggleSelector : '#chart-detail-toggle',
+			viewTodaySelector : '#time-range-view-today'
 		});
 	}
 	
@@ -1097,11 +1101,7 @@ function startApp(env) {
 	
 	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
-	app = sgSchoolApp(urlHelper, env.barEnergySelector, env.pieEnergySelector, env.outdatedSelector, 
-			env.totalGenerationSelector, env.totalGenerationCO2Selector,
-			env.totalConsumptionSelector, env.totalConsumptionCO2Selector,
-			env.lifetimeGenerationSelector, env.lifetimeConsumptionSelector,
-			env.detailToggleSelector)
+	app = sgSchoolApp(urlHelper, env)
 		.generationSourceIds(env.sourceIds)
 		.consumptionSourceIds(env.consumptionSourceIds)
 		.consumptionDetailedSourceIds(env.consumptionDetailedSourceIds)
