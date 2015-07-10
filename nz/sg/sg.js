@@ -1017,7 +1017,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		if ( !config.detailToggleSelector ) {
 			return;
 		}
-		d3.select(config.detailToggleSelector).on('click', function() {
+		d3.select(config.detailToggleSelector).on('click', function toggleDetails() {
 			detailsShown = !detailsShown;
 			d3.selectAll('.detailed').style('display', (detailsShown ? null : 'none'));
 			d3.select(this).select('.text').text(detailsShown ? 'Show less detail' : 'Show more detail');
@@ -1025,6 +1025,21 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			chartSourceGroupMap = undefined; // force source groupings to be regenerated
 			chartSourceColorMap = undefined; // force colors to be reassigned based on new sources
 			stop().start();
+		});
+	}
+	
+	function setupViewTodayButton() {
+		if ( !config.viewTodaySelector ) {
+			return;
+		}
+		d3.select(config.viewTodaySelector).on('click', function viewToday() {
+			var end = d3.time.hour.utc.ceil(endDate ? endDate : new Date()),
+				start = d3.time.hour.utc.offset(end, -24),
+				destDisplayRange = { start : start, end: end, timeCount : 1, timeUnit : 'day' };
+			barEnergyChartParams.value('aggregate', 'Hour');
+			pieEnergyChartParams.value('aggregate', 'Hour');
+			displayRange = destDisplayRange;
+			chartLoadData();
 		});
 	}
 	
@@ -1048,6 +1063,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			plotProperties : {FiveMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 		});
 		setupDetailedToggle();
+		setupViewTodayButton();
 		Object.defineProperties(self, {
 			consumptionSourceIds 			: { value : consumptionSourceIds },
 			consumptionDetailedSourceIds	: { value : consumptionDetailedSourceIds },
