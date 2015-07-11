@@ -227,6 +227,65 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		normalizeDataTimeGaps = (value === true);
 		return self.me;
 	};
+	
+	/**
+	 * Iterate over the time values in the chart's data, calling a function for each date.
+	 * The callback function will be passed an object with source IDs for keys with corresponding
+	 * data value objects as values. If a source does not have a value for a given date, that key
+	 * will not be defined. The callback function will be passed a second Date argument representing
+	 * the date of the associated data. The callback's <code>this</code> object will be set to this chart object.
+	 * 
+	 * @param {function} callback - The callback function to invoke.
+	 * @return This object.
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.enumerateDataOverTime = function(callback) {
+		if ( typeof callback !== 'function' ) {
+			return self.me;
+		}
+		var groupIds = self.groupIds,
+			layerContext = {},
+			callbackData,
+			date = self.xDomain()[0];
+		if ( !groupIds || groupIds.length < 1 ) {
+			return self.me;
+		}
+		// there can be holes in the data, and each group can have different data array lengths, 
+		// so our iteration over time is a bit more complicated than simply iterating over array elements 
+		while ( true ) {
+			callbackData = { date : date };
+			groupIds.forEach(function(groupId) {
+				var groupArray = groupLayers[groupId];
+				if ( layerContext[groupId] === undefined ) {
+					layerContext[groupId] = { index : 0, date : date };
+				}
+				if ( groupArray.length < 1 || groupArray[0].values.length < layerContext[groupId].index ) {
+					return;
+				}
+				if ( groupArray[0].values[layerContext[groupId].index].date.getTime() === date.getTime() ) {
+					groupArray.forEach(function sourceIterator(sourceLayer) {
+						callbackData[sourceLayer.key] = sourceLayer.values[layerContext[groupId].index];
+					});
+					layerContext[groupId].index += 1;
+					layerContext[groupId].date = (layerContext[groupId].index < groupArray[0].values.length 
+						? groupArray[0].values[layerContext[groupId].index].date 
+						: null);
+				}
+			});
+			callback.call(self.me, callbackData, date);
+			
+			// move to the next available date, which is the largest in our layer context or null if no more data
+			date = layerContext[groupIds.reduce(function(l, r) {
+				var lDate = layerContext[l].date,
+					rDate = layerContext[r].date;
+				return (lDate > rDate ? l : r);
+			})].date;
+			if ( date === null ) {
+				break;
+			}
+		}
+		return self.me;
+	};
 
 	Object.defineProperties(self, {
 		groupOpacityFn : { value : groupOpacityFn },
