@@ -253,18 +253,21 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		// there can be holes in the data, and each group can have different data array lengths, 
 		// so our iteration over time is a bit more complicated than simply iterating over array elements 
 		while ( true ) {
-			callbackData = { date : date };
+			callbackData = { date : date, data : {} };
 			groupIds.forEach(function(groupId) {
 				var groupArray = groupLayers[groupId];
 				if ( layerContext[groupId] === undefined ) {
-					layerContext[groupId] = { index : 0, date : date };
+					layerContext[groupId] = { index : 0 };
 				}
-				if ( groupArray.length < 1 || groupArray[0].values.length < layerContext[groupId].index ) {
+				if ( groupArray.length < 1 || groupArray[0].values.length <= layerContext[groupId].index ) {
 					return;
+				}
+				if ( layerContext[groupId].date === undefined ) {
+					layerContext[groupId].date = groupArray[0].values[0].date;
 				}
 				if ( groupArray[0].values[layerContext[groupId].index].date.getTime() === date.getTime() ) {
 					groupArray.forEach(function sourceIterator(sourceLayer) {
-						callbackData[sourceLayer.key] = sourceLayer.values[layerContext[groupId].index];
+						callbackData.data[sourceLayer.key] = sourceLayer.values[layerContext[groupId].index];
 					});
 					layerContext[groupId].index += 1;
 					layerContext[groupId].date = (layerContext[groupId].index < groupArray[0].values.length 
@@ -272,13 +275,19 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 						: null);
 				}
 			});
-			callback.call(self.me, callbackData, date);
+			callback.call(self.me, callbackData.data, date);
 			
-			// move to the next available date, which is the largest in our layer context or null if no more data
+			// move to the next available date, which is the smallest in our layer context or null if no more data
 			date = layerContext[groupIds.reduce(function(l, r) {
 				var lDate = layerContext[l].date,
 					rDate = layerContext[r].date;
-				return (lDate > rDate ? l : r);
+				if ( lDate === null ) {
+					return r;
+				}
+				if ( rDate === null ) {
+					return l;
+				}
+				return (lDate < rDate ? l : r);
 			})].date;
 			if ( date === null ) {
 				break;
