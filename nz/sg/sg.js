@@ -673,8 +673,29 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		}).load();
 	}
 	
+	function chartGenerateCSV(chart) {
+		var records = [];
+		records.push(['Date (' + chart.aggregate() +')', 'Source', 'Energy (kWh)', 'CO2 (kg)']);
+		chart.enumerateDataOverTime(function timeIterator(data, date) {
+			var keys = Object.keys(data).sort();
+			var localDate;
+			keys.forEach(function sourceIterator(sourceId) {
+				var d = data[sourceId],
+					row;
+				if ( localDate === undefined ) {
+					localDate = d.localDate + ' ' + d.localTime;
+				}
+				row = [localDate, sourceId];
+				row.push(d.wattHours / 1000);
+				row.push((d.wattHours * co2GramsPerWattHour) / 1000);
+				records.push(row);
+			});
+		});
+		return d3.csv.format(records);
+	}
+	
 	function chartExportDataCSV(dataArray) {
-		var csvContent = 'test,one,two,three\n'; // TODO
+		var csvContent = chartGenerateCSV(barEnergyChart);
 		var blob = new Blob([csvContent],{type: 'text/csv;charset=utf-8;'});
 		var url = URL.createObjectURL(blob);
 		var link = document.createElement('a');
