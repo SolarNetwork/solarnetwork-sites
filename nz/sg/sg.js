@@ -695,22 +695,28 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 	}
 	
 	function chartExportDataCSV(dataArray) {
-		var csvContent = chartGenerateCSV(barEnergyChart);
-		var blob = new Blob([csvContent],{type: 'text/csv;charset=utf-8;'});
-		var url = URL.createObjectURL(blob);
-		var link = document.createElement('a');
-		link.setAttribute('href', url);
+		var csvContent = chartGenerateCSV(barEnergyChart),
+			blob = new Blob([csvContent],{type: 'text/csv;charset=utf-8;'}),
+			url = URL.createObjectURL(blob),
+			fileName = 'data-export-' +urlHelper.nodeId +'.csv',
+			link;
 		
-		if ( link.download !== undefined ) {
-			link.setAttribute('download', 'data-export.csv');
+		if ( navigator && navigator.msSaveBlob ) {
+			navigator.msSaveBlob(blob, fileName);
 		} else {
-			link.setAttribute('target', '_blank');
-		}
-		link.setAttribute('style', 'visibility: hidden;');
+			link = document.createElement('a');
+			link.setAttribute('href', url);
+			if ( link.download !== undefined ) {
+				link.setAttribute('download', fileName);
+			} else {
+				link.setAttribute('target', '_blank');
+			}
+			link.setAttribute('style', 'visibility: hidden;');
 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+        }
 	}
 	
 	/* === Bar Energy Chart Support === */
