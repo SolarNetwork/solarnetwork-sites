@@ -583,10 +583,12 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			format = d3.time.format.utc('%-d %b %Y');
 		} else if ( chartAgg === 'Hour' || (chartAgg.search(/Minute$/) !== -1
 				&& chartDomain[0].getUTCMinutes() === 0 && d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg)).getUTCMinutes() === 0) ) {
+			// bump up end date to exclusive value, which minutes reads a bit less confusing
+			chartDomain[1] = d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg));
 			format = d3.time.format.utc('%-d %b %Y %H:00');
 		} else {
-			// might want to round end date to exclusive value, which for minutes might be less confusing
-			//chartDomain[1] = d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg));
+			// bump up end date to exclusive value, which minutes reads a bit less confusing
+			chartDomain[1] = d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg));
 			format = d3.time.format.utc('%-d %b %Y %H:%M');
 		}
 		r1 = format(chartDomain[0]);
