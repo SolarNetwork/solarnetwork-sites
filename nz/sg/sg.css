@@ -85,7 +85,7 @@ h1 {
 	border: 2px solid #f47f23;
 	background-color: #f5d1b5;
 	color: #603913;
-	font-size: 14px;
+	font-size: 12px;
 	font-weight: 700;
 }
 
@@ -141,12 +141,8 @@ li + li {
 	text-align: right;
 }
 
-.snroot .info-col .pane + .pane {
+.snroot .info-col > * + * {
 	margin-top: 12px;
-}
-
-.snroot .info-col .detail-toggle {
-	margin-bottom: 24px;
 }
 
 .snroot .msg {

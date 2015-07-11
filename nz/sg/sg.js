@@ -673,6 +673,25 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		}).load();
 	}
 	
+	function chartExportDataCSV(dataArray) {
+		var csvContent = 'test,one,two,three\n'; // TODO
+		var blob = new Blob([csvContent],{type: 'text/csv;charset=utf-8;'});
+		var url = URL.createObjectURL(blob);
+		var link = document.createElement('a');
+		link.setAttribute('href', url);
+		
+		if ( link.download !== undefined ) {
+			link.setAttribute('download', 'data-export.csv');
+		} else {
+			link.setAttribute('target', '_blank');
+		}
+		link.setAttribute('style', 'visibility: hidden;');
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+	}
+	
 	/* === Bar Energy Chart Support === */
 	
 	function barEnergyChartCreate() {
@@ -1062,6 +1081,19 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		});
 	}
 	
+	function setupDownloadCsvButton() {
+		if ( !config.downloadCsvSelector ) {
+			return;
+		}
+		d3.select(config.downloadCsvSelector).on('click', function downloadCsv() {
+			var zoomStackTop = (zoomStack.length > 0 ? zoomStack[zoomStack.length - 1] : undefined);
+			if ( zoomStackTop === undefined ) {
+				return; // perhaps could alert user here
+			}
+			chartExportDataCSV(zoomStackTop.data);
+		});
+	}
+	
 	function init() {
 		barEnergyChartParams = new sn.Configuration({
 			// bar chart properties
@@ -1084,6 +1116,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		setupDetailedToggle();
 		setupViewTodayButton();
 		setupHowtoButton();
+		setupDownloadCsvButton();
 		Object.defineProperties(self, {
 			consumptionSourceIds 			: { value : consumptionSourceIds },
 			consumptionDetailedSourceIds	: { value : consumptionDetailedSourceIds },
@@ -1129,7 +1162,8 @@ function startApp(env) {
 			lifetimeConsumptionSelector : '#lifetime-consumption-count',
 			detailToggleSelector : '#chart-detail-toggle',
 			viewTodaySelector : '#time-range-view-today',
-			howtoSelector : '#help-howto'
+			howtoSelector : '#help-howto',
+			downloadCsvSelector : '#download-data-csv'
 		});
 	}
 	
