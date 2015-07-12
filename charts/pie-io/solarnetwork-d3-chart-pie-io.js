@@ -72,7 +72,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
 	var hoverEnterCallback = undefined,
 		hoverMoveCallback = undefined,
-		hoverLeaveCallback = undefined;
+		hoverLeaveCallback = undefined,
+		clickCallback = undefined;
 	
 	var percentFormatter = d3.format('.0%');
 
@@ -83,7 +84,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	var innerRadius = 0;
 	var arc = d3.svg.arc();
 	
-	var handleHoverEnter = function() {
+	var handleHoverEnter = function hoverEnter() {
 		if ( !hoverEnterCallback ) {
 			return;
 		}
@@ -97,7 +98,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
         hoverEnterCallback.call(me, this, point, callbackData);
 	};
 	
-	var handleHoverMove = function() {
+	var handleHoverMove = function hoverMove() {
 		if ( !hoverMoveCallback ) {
 			return;
 		}
@@ -107,7 +108,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
         hoverMoveCallback.call(me, this, point, callbackData);
 	};
 	
-	var handleHoverLeave = function() {
+	var handleHoverLeave = function hoverLeave() {
 		if ( !hoverLeaveCallback ) {
 			return;
 		}
@@ -122,6 +123,16 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			});
 
        hoverLeaveCallback.call(me, this, point, callbackData);
+	};
+	
+	var handleClick = function click() {
+		if ( !clickCallback ) {
+			return;
+		}
+ 		var slice = d3.select(this),
+ 			point = d3.mouse(this),
+			callbackData = calculateHoverData(slice, point);
+		clickCallback.call(me, this, point, callbackData);
 	};
 	
 	function hoverHighlightFn(d) {
@@ -331,6 +342,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			.on('mouseover', handleHoverEnter)
 			.on('mousemove', handleHoverMove)
 			.on('mouseout', handleHoverLeave)
+			.on(sn.tapEventNames.click, handleClick)
 			.each(function(d) { this._data_start = d; }) // to support transitions
 		.transition().duration(transitionMs)
 			.style('opacity', 1)
@@ -501,6 +513,26 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 		innerLabels.exit().transition().duration(transitionMs)
 			.style("opacity", 1e-6)
 			.remove();
+	}
+
+	function registerUserInteractionHandler(tapEventName, container, handler) {
+		var eventName = sn.tapEventNames[tapEventName];
+		if ( !eventName ) {
+			return;
+		}
+		if ( !container.on(eventName) ) {
+			container.on(eventName, handler);
+		}
+	}
+	
+	function unregsiterUserInteractionHandler(tapEventName, container, handler) {
+		var eventName = sn.tapEventNames[tapEventName];
+		if ( !eventName ) {
+			return;
+		}
+		if ( container.on(eventName) ) {
+			container.on(eventName, null);
+		}
 	}
 
 	self.sources = sources;
@@ -761,6 +793,24 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 			hoverLeaveCallback = value;
 		} else {
 			hoverLeaveCallback = undefined;
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set a mouseout click function, which is called in response to mouse click or touch start
+	 * events on the data area of the chart.
+	 * 
+	 * @param {function} [value] the click callback
+	 * @return when used as a getter, the current click callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.clickCallback = function(value) {
+		if ( !arguments.length ) return clickCallback;
+		if ( typeof value === 'function' ) {
+			clickCallback = value;
+		} else {
+			clickCallback = undefined;
 		}
 		return me;
 	};
