@@ -648,7 +648,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		var loadSets = sourceSets.map(function(sourceSet) {
 			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, aggregate);
 		});
-		sn.datum.multiLoader(loadSets).callback(function(error, results) {
+		sn.datum.multiLoader(loadSets).callback(function handleDataResults(error, results) {
 			if ( !(Array.isArray(results) && results.length === 2) ) {
 				sn.log("Unable to load data for charts: {0}", error);
 				return;
