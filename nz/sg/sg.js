@@ -64,6 +64,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		chartSourceSets,
 		chartSourceColorMap,
 		chartSourceGroupColorMap = {},
+		chartSourceExcludes = new sn.Configuration(),
 		barEnergyChartParams,
 		barEnergyChartContainer,
 		barEnergyChart,
@@ -604,18 +605,17 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		
 		// sum up both generation and consumption over the shown date range
 		var totalWhs = {}, 
-			infos = chartInfos(), 
-			barChart = infos[0].chart;
+			infos = chartInfos();
 
 		d3.select('.watthour-chart .time-count').text(queryRange.timeCount);
 		d3.select('.watthour-chart .time-unit').text(queryRange.timeUnit);
 		
-		infos.forEach(function(chartInfo, chartIndex) {
+		infos.forEach(function(chartInfo) {
 			chartInfo.chart.reset();
 			sourceSets.forEach(function(sourceSet, i) {
 				var totalWh;
 				chartInfo.chart.load(results[i], sourceSet.dataType);
-				if ( chartIndex === 0 ) {
+				if ( chartInfo.chart === barEnergyChart ) {
 					totalWh = d3.sum(results[i], function(d) { return d.wattHours; });
 					if ( totalWhs[sourceSet.dataType] === undefined ) {
 						totalWhs[sourceSet.dataType] = 0;
@@ -629,7 +629,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		chartShowTotalWattHourCounts(totalWhs);
 		
 		d3.select('.time-range').text(function() {
-			return chartRenderTimeRange(barChart);
+			return chartRenderTimeRange(barEnergyChart);
 		});
 	}
 	
@@ -672,6 +672,14 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			chartShowData(sourceSets, queryRange, results);
 		}).load();
 	}
+	
+	function chartSourceExcludeCallback(dataType, sourceId) {
+		// we show/hide entire data types at a time, e.g. click on solar slice hides all consumption
+		return chartSourceExcludes.enabled(dataType);
+	}
+
+	
+	/* === CSV Export Support === */
 	
 	function chartGenerateCSV(chart) {
 		var records = [];
@@ -727,6 +735,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
 			.displayFactorCallback(forcedDisplayFactorFn())
+			.sourceExcludeCallback(chartSourceExcludeCallback)
 			.showSumLine(false)
 			.hoverEnterCallback(barEnergyHoverEnter)
 			.hoverMoveCallback(barEnergyHoverMove)
@@ -1048,6 +1057,19 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		pieEnergyChartTooltip.style('display', 'none');
 	}
 	
+	function pieEnergyClick(path, point, data) {
+		// clicking on the Generation slice of the pie energy chart toggles the visibility 
+		// of the Consumption sources in the bar energy chart
+		if ( data.groupId === 'Generation' ) {
+			// toggle the consumption sources on/off
+			chartSourceExcludes.toggle('Consumption');
+			if ( barEnergyChart ) {
+				barEnergyChart.regenerate();
+				d3.selectAll('.totals .consumption').style('opacity', (chartSourceExcludes.enabled('Consumption') ? 0.33 : null));
+			}
+		}
+	}
+	
 	function pieEnergyChartCreate() {
 		var chart = sn.chart.energyIOPieChart(config.pieEnergyChartSelector, pieEnergyChartParams)
 			.colorCallback(chartColorForDataTypeSource)
@@ -1055,7 +1077,8 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			.displayFactorCallback(forcedDisplayFactorFn())
 			.hoverEnterCallback(pieEnergyHoverEnter)
 			.hoverMoveCallback(pieEnergyHoverMove)
-			.hoverLeaveCallback(pieEnergyHoverLeave);			
+			.hoverLeaveCallback(pieEnergyHoverLeave)
+			.clickCallback(pieEnergyClick);			
 		return chart;
 	}
 	
