@@ -151,6 +151,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			groupIds = parent.groupIds,
 			maxPositiveY = 0,
 			maxNegativeY = 0,
+			aggregateType = parent.aggregate(),
 			sumLineData,
 			timeAggregateData;
 
@@ -191,8 +192,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			});
 			
 		timeAggregateData = d3.nest()
-			.key(function(d) {
-				var aggregateType = parent.aggregate();
+			.key(function timeAggregateKey(d) {
 				var date;
 				if ( aggregateType === 'Day' ) {
 					// rollup to month
@@ -341,7 +341,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		var barWidth = xBar.rangeBand();
 		var barPadding = parent.xBarPadding() / 2;
 		var aggBands = svgAggBandGroup.selectAll("line").data(bandTicks, parent.keyX);
-		var bandPosition = function(s) {
+		var bandPosition = function setupBandPosition(s) {
 				s.attr("x1", function(d) {
 					var date = d.date;
 					if ( date.getTime() < xDomain[0].getTime() ) {
