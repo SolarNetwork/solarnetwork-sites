@@ -140,6 +140,14 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		return (count || (parent.width > 600 ? 12 : 5));
 	}
 	
+	function axisXTicks() {
+		var barTicks = xBar.domain();
+		if ( barTicks.length < 7 ) {
+			return barTicks;
+		}
+		return parent.x.ticks(axisXTickCount());
+	}
+
 	/**
 	 * Get the number of pixels used for padding between bars.
 	 *
@@ -187,9 +195,9 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 			}
 		};
 	}
-
+	
 	function drawAxisX() {
-		var ticks = parent.x.ticks(axisXTickCount()),
+		var ticks = axisXTicks(),
 			transitionMs = parent.transitionMs(),
 			fx = xAxisTickFormatter(),
 			labels;
