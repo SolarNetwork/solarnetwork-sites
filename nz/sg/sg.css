@@ -1,4 +1,4 @@
-html {
+html.standalone {
 	background-color: rgba(34,175,176,1.0);
 	background: -webkit-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
 	background: -moz-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
@@ -14,7 +14,14 @@ body {
 	font-family:  "Helvetica Neue", Helvetica, Arial, sans-serif;
 	margin: 10px;
 	background: none;
-	padding: none;
+	padding: 0;
+}
+
+body.embedded {
+	margin: 0;
+	padding: 10px;
+	background-color: #ede4c7;
+	width: 530px;
 }
 
 h1 {
@@ -30,7 +37,7 @@ h1 {
 
 /* Structural */
 
-.snroot {
+div.snroot {
 	position: relative;
 	width : 530px;
 	background-color: #ede4c7;
