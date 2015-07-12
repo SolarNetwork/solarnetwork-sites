@@ -259,7 +259,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 				if ( layerContext[groupId] === undefined ) {
 					layerContext[groupId] = { index : 0 };
 				}
-				if ( groupArray.length < 1 || groupArray[0].values.length <= layerContext[groupId].index ) {
+				if ( !groupArray || groupArray.length < 1 || groupArray[0].values.length <= layerContext[groupId].index ) {
 					return;
 				}
 				if ( layerContext[groupId].date === undefined ) {
@@ -281,15 +281,15 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			date = layerContext[groupIds.reduce(function(l, r) {
 				var lDate = layerContext[l].date,
 					rDate = layerContext[r].date;
-				if ( lDate === null ) {
+				if ( !lDate ) {
 					return r;
 				}
-				if ( rDate === null ) {
+				if ( !rDate ) {
 					return l;
 				}
 				return (lDate < rDate ? l : r);
 			})].date;
-			if ( date === null ) {
+			if ( !date ) {
 				break;
 			}
 		}
