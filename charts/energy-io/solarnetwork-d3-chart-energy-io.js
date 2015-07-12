@@ -356,7 +356,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 						return xBar(bandTicks[i+1].date) - barPadding;
 					}
 					// for last band, set to end of last bar
-					if ( bandTicks.length > 1 ) {
+					if ( bandTicks.length > 0 ) {
 						return (xBar(xDomain[1]) + barWidth + barPadding);
 					}
 					return xBar(d.date) + barPadding;
