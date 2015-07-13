@@ -40,7 +40,7 @@ h1 {
 div.snroot {
 	position: relative;
 	width : 530px;
-	background-color: #ede4c7;
+	background-color: #fbf5e2;
 	border-radius: 8px;
 	padding: 10px;
 	box-sizing: content-box;
@@ -61,6 +61,19 @@ div.snroot {
 	display: block;
 }
 
+.snroot div.vbox {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	display: -moz-box;
+	-moz-box-orient: vertical;
+	display: flex;
+	flex-direction: column;
+}
+
+.snroot div.vbox > * {
+	display: block;
+}
+
 .snroot .energy-bar-chart {
 	margin-bottom: 10px;
 }
@@ -70,11 +83,11 @@ div.snroot {
 }
 
 .snroot .energy-bar-chart .y-axis-label .label {
-	-moz-transform: translate(-150px, 150px) rotate(-90deg);
-	-ms-transform: translate(-150px, 150px) rotate(-90deg);
-	-o-transform: translate(-150px, 150px) rotate(-90deg);
-	-webkit-transform: translate(-150px, 150px) rotate(-90deg);
-	transform: translate(-150px, 150px) rotate(-90deg);
+	-moz-transform: translate(-145px, 150px) rotate(-90deg);
+	-ms-transform: translate(-145px, 150px) rotate(-90deg);
+	-o-transform: translate(-145px, 150px) rotate(-90deg);
+	-webkit-transform: translate(-145px, 150px) rotate(-90deg);
+	transform: translate(-145px, 150px) rotate(-90deg);
 	width: 300px;
 	text-align: center;
 }
@@ -163,16 +176,88 @@ li + li {
 .snroot .totals {
 	font-size: 16px;
 	line-height: 21px;
-	width: 100%;
-	/*background-color: #d6ceb4;*/
 }
 
-.snroot .totals th.generation {
-	color: #eab300; /*#ffc300;*/
+.snroot .totals .label {
+	font-weight: 700;
+	color: white;
 }
 
-.snroot .totals th.consumption {
-	color: #f47f23;
+.snroot .totals .generation.label {
+	background-color: #eab300;
+}
+
+.snroot .totals .consumption.label {
+	background-color: #f47f23;
+}
+
+.snroot .totals .hbox {
+	margin-bottom: 6px;
+	-webkit-box-pack: center;
+	justify-content: center;
+}
+
+.snroot .totals .hbox > .count + .label {
+	margin-left: 24px;
+}
+
+.snroot .totals .label {
+	padding: 2px 8px 0 8px;
+	border-radius: 4px;
+	border-bottom-right-radius: 0;
+}
+
+.snroot .totals.shown .label {
+	width: 46px;
+}
+
+.snroot .totals .hbox .count {
+	width: 100px;
+	text-align: right;
+	margin-left: -2px;
+	padding: 2px 0 0 0;
+}
+
+.snroot .totals .hbox.generation > *,
+.snroot .totals.lifetime .generation {
+	border-bottom: 2px solid #eab300;
+}
+
+.snroot .totals .hbox.consumption > *,
+.snroot .totals.lifetime .consumption {
+	border-bottom: 2px solid #f47f23;
+}
+
+.snroot .totals .vbox {
+	height: 180px;
+	-webkit-box-pack: center;
+	justify-content: center;
+}
+
+.snroot .totals .vbox .label {
+	padding: 2px 0 1px 0;
+	border-radius: 4px;
+	text-align: center;
+}
+
+.snroot .totals .vbox.generation .label {
+	border-bottom-left-radius: 0;
+}
+
+.snroot .totals .vbox.generation .count {
+	text-align: left;
+	padding: 2px 2px 2px 16px;
+	border-left: 3px solid #eab300;
+}
+
+.snroot .totals .vbox.consumption .label {
+	border-bottom-right-radius: 0;
+}
+
+.snroot .totals .vbox.consumption .count {
+	text-align: right;
+	padding: 2px 16px 2px 2px;
+	border-right: 3px solid #f47f23;
 }
 
 .snroot .totals .alt {

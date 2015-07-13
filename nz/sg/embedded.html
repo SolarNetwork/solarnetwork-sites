@@ -20,31 +20,29 @@
 			<div id="energy-bar-chart" class="chart-container"></div>
 		</div>
 	</div>
-	<table class="totals">
-		<tbody>
-			<tr>
-				<td colspan="2" style="text-align: left; width: 35%;">
-					<!--button>Lifetime</button-->
-				</td>
-				<th class="generation">Solar:</td>
-				<td class="generation"><span id="generation-count">0</span> <span class="alt unit">kWh</span></td>
-				<td colspan="2" style="width: 35%;">
-					<!--button type="button" id="time-range-view-today">View Today</button-->
-				</td>
-			</tr>
-			<tr>
-				<th class="consumption"><span class="detailed">CO<sub>2</sub> Emitted:</span></th>
-				<td class="consumption"><span class="detailed"><span id="consumption-co2-count">0</span> <span class="alt unit">kg</span></span></td>
-				<th class="consumption">Grid:</th>
-				<td class="consumption"><span id="consumption-count">0</span> <span class="alt unit">kWh</span></td>
-				<th class="generation"><span class="detailed">CO<sub>2</sub> Avoided:</span></th>
-				<td class="generation"><span class="detailed"><span id="generation-co2-count">0</span> <span class="alt unit">kg</span></span></td>
-			</tr>
-		</tbody>
-	</table>
+	<div class="totals shown">
+		<div class="generation hbox">
+			<div class="label generation">Solar</div>
+			<div class="count">
+				<span id="generation-count">0</span> <span class="alt unit">kWh</span>
+			</div>
+		</div>
+		<div class="consumption hbox">
+			<div class="label consumption">Grid</div>
+			<div class="count">
+				<span id="consumption-count">0</span> <span class="alt unit">kWh</span>
+			</div>
+		</div>
+	</div>
 	<div class="hbox">
 		<div class="info-col">
 			<button type="button" id="help-howto" data-modal="#help-howto-modal"><i class="fa fa-question-circle"></i> <span class="text">How to use</span></button>
+			<div class="totals">
+				<div class="consumption vbox">
+					<div class="label consumption detailed">CO<sub>2</sub> Emitted</div>
+					<div class="count detailed"><span id="consumption-co2-count">0</span> <span class="alt unit">kg</span></div>
+				</div>
+			</div>
 			<button type="button" id="download-data-csv"><i class="fa fa-download"></i> <span class="text">Download data</span></button>
 		</div>
 		<div class="pane chart pie-chart watthour-chart">
@@ -54,21 +52,25 @@
 			<div class="detail-toggle">
 				<button type="button" id="chart-detail-toggle"><i class="fa fa-info-circle"></i> <span class="text">Show more</span></button>
 			</div>
+			<div class="totals">
+				<div class="generation vbox">
+					<div class="label generation detailed">CO<sub>2</sub> Avoided</div>
+					<div class="count detailed"><span id="generation-co2-count">0</span> <span class="alt unit">kg</span></div>
+				</div>
+			</div>
 			<div id="chart-outdated-msg" class="msg">
 				Data as of <span class="value">14 June 2014 21:00</span>
 			</div>
 		</div>
 	</div>
-	<table class="totals detailed">
-		<tbody>
-			<tr>
-				<th class="consumption">Lifetime Grid:</th>
-				<td class="consumption"><span id="lifetime-consumption-count">0</span> <span class="alt unit">kWh</span></td>
-				<th class="generation">Lifetime Solar:</th>
-				<td class="generation"><span id="lifetime-generation-count"></span> <span class="alt unit">kWh</span></td>
-			</tr>
-		</tbody>
-	</table>
+	<div class="totals lifetime detailed">
+		<div class="hbox">
+			<div class="label consumption">Lifetime Grid</div>
+			<div class="count consumption"><span id="lifetime-consumption-count">0</span> <span class="alt unit">kWh</span></div>
+			<div class="label generation">Lifetime Solar</div>
+			<div class="count generation"><span id="lifetime-generation-count"></span> <span class="alt unit">kWh</span></div>
+		</div>
+	</div>
 	<div id="energy-bar-chart-tooltip" style="display: none;" class="tooltip">
 		<h3></h3>
 		<div class="source-labels"></div>
