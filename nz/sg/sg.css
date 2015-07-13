@@ -324,9 +324,16 @@ li + li {
 	padding-top: 4px;
 }
 
-/* Tooltip total rows are not shown currently */
+/* General overrides for Schoolgen */
 
 .snroot .tooltip tr.total {
+	display: none;
+}
+
+
+#energy-bar-chart g.agg-band,
+#energy-bar-chart g.agg-band-ticks,
+#energy-bar-chart g.agg-gen {
 	display: none;
 }
 
