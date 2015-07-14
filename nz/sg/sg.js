@@ -568,36 +568,52 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		}
 		return result;
 	}
-		
-	function chartRenderTimeRange(chart) {
-		var chartDomain = chart.xDomain(),
-			chartAgg = chart.aggregate(),
+	
+	/**
+	 * Render a date range as a display string.
+	 *
+	 * @param {Array|Date} dateRange - Either an array with start and end Date objects representing the date range
+	 *                                 or a single Date to render.
+	 * @param {String} aggregate - The aggregate level associated with the date range, e.g. Month, Day, etc.
+	 * @return {String} The date range as a display string.
+	 */
+	function timeRangeDisplayValue(dateRange, aggregate) {
+		var start = (Array.isArray(dateRange) ? dateRange[0] : dateRange),
+			end = (Array.isArray(dateRange) && dateRange.length > 1 ? dateRange[1] : null),
 			format,
 			r1,
 			r2;
 			
-		if ( chartAgg === 'Month' || (chartAgg === 'Day' 
-				&& chartDomain[0].getUTCDate() === 1 && d3.time.day.utc.offset(chartDomain[1], 1).getUTCDate() === 1) ) {
+		if ( aggregate === 'Month' || (end && aggregate === 'Day' 
+				&& start.getUTCDate() === 1 && d3.time.day.utc.offset(end, 1).getUTCDate() === 1) ) {
 			format = d3.time.format.utc('%b %Y');
-		} else if ( chartAgg === 'Day' || (chartAgg === 'Hour' 
-				&& chartDomain[0].getUTCHours() === 0 && d3.time.hour.utc.offset(chartDomain[1], 1).getUTCHours() === 0) ) {
+		} else if ( aggregate === 'Day' || (end && aggregate === 'Hour' 
+				&& start.getUTCHours() === 0 && d3.time.hour.utc.offset(end, 1).getUTCHours() === 0) ) {
 			format = d3.time.format.utc('%-d %b %Y');
-		} else if ( chartAgg === 'Hour' || (chartAgg.search(/Minute$/) !== -1
-				&& chartDomain[0].getUTCMinutes() === 0 && d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg)).getUTCMinutes() === 0) ) {
-			// bump up end date to exclusive value, which minutes reads a bit less confusing
-			chartDomain[1] = d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg));
+		} else if ( aggregate === 'Hour' || (end && aggregate.search(/Minute$/) !== -1
+				&& start.getUTCMinutes() === 0 && d3.time.minute.utc.offset(end, chartMinuteStepValue(aggregate)).getUTCMinutes() === 0) ) {
+			if ( end ) {
+				// bump up end date to exclusive value, which minutes reads a bit less confusing
+				end = d3.time.minute.utc.offset(end, chartMinuteStepValue(aggregate));
+			}
 			format = d3.time.format.utc('%-d %b %Y %H:00');
 		} else {
-			// bump up end date to exclusive value, which minutes reads a bit less confusing
-			chartDomain[1] = d3.time.minute.utc.offset(chartDomain[1], chartMinuteStepValue(chartAgg));
+			if ( end ) {
+				// bump up end date to exclusive value, which minutes reads a bit less confusing
+				end = d3.time.minute.utc.offset(end, chartMinuteStepValue(aggregate));
+			}
 			format = d3.time.format.utc('%-d %b %Y %H:%M');
 		}
-		r1 = format(chartDomain[0]);
-		r2 = format(chartDomain[1]);
+		r1 = format(start);
+		r2 = (end ? format(end) : r1);
 		if ( r1 === r2 ) {
 			return r1;
 		}
 		return r1 + ' - ' + r2;
+	}
+		
+	function chartRenderTimeRange(chart) {
+		return timeRangeDisplayValue(chart.xDomain(), chart.aggregate());
 	}
 	
 	function chartShowData(sourceSets, queryRange, results) {
@@ -824,7 +840,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 				.style('top', Math.round(window.pageYOffset - tooltipOffset[1] + matrix.f) + 'px')
 				.style('display', (data && data.dateUTC ? 'block' : 'none'));
 		
-		tooltip.select('h3').text(sn.dateTimeFormat(data.date));
+		tooltip.select('h4').text(timeRangeDisplayValue(data.date, barEnergyChart.aggregate()));
 		tooltip.selectAll('td.desc span.energy').data(barEnergyChartSourceColors).text(function(d, i) {
 			var index = i, sourceMap,
 				groupData = data.groups[d.dataType],
