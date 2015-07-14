@@ -119,6 +119,12 @@ div.snroot {
 	right: 10px;
 }
 
+#time-range-view-lifetime {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+}
+
 .modal {
 	padding: 10px;
 	border-radius: 4px;
@@ -161,8 +167,14 @@ li + li {
 	text-align: right;
 }
 
-.snroot .info-col > * + * {
+.snroot .info-col > button {
 	margin-top: 12px;
+	margin-bottom: 12px;
+}
+
+.snroot .info-col.vbox {
+	-webkit-box-pack: justify;
+	justify-content: justify;
 }
 
 .snroot .msg {
@@ -178,13 +190,18 @@ li + li {
 	line-height: 21px;
 }
 
+.snroot > .totals {
+	margin-top: 12px;
+	margin-bottom: 12px;
+}
+
 .snroot .totals .label {
 	font-weight: 700;
 	color: white;
 }
 
 .snroot .totals .generation.label {
-	background-color: #eab300;
+	background-color: #ffc600;
 }
 
 .snroot .totals .consumption.label {
@@ -219,12 +236,12 @@ li + li {
 }
 
 .snroot .totals .hbox.generation > *,
-.snroot .totals.lifetime .generation {
-	border-bottom: 2px solid #eab300;
+.snroot .totals .count.generation {
+	border-bottom: 2px solid #ffc600;
 }
 
 .snroot .totals .hbox.consumption > *,
-.snroot .totals.lifetime .consumption {
+.snroot .totals .count.consumption {
 	border-bottom: 2px solid #f47f23;
 }
 
@@ -247,7 +264,7 @@ li + li {
 .snroot .totals .vbox.generation .count {
 	text-align: left;
 	padding: 2px 2px 2px 16px;
-	border-left: 3px solid #eab300;
+	border-left: 3px solid #ffc600;
 }
 
 .snroot .totals .vbox.consumption .label {
@@ -263,23 +280,6 @@ li + li {
 .snroot .totals .alt {
 	color: gray;
 	font-weight: 300;
-}
-
-.snroot .totals th {
-	font-weight: 900;
-	text-align: right;
-	vertical-align: baseline;
-}
-
-.snroot .totals td {
-	font-weight: 700;
-	text-align: right;
-	padding-left: 5px;
-	vertical-align: baseline;
-}
-
-.snroot .totals td + th {
-	padding-left: 10px;
 }
 
 .snroot h2, h3 {

@@ -1114,6 +1114,22 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		});
 	}
 	
+	function setupViewLifetimeButton() {
+		if ( !config.viewLifetimeSelector ) {
+			return;
+		}
+		d3.select(config.viewLifetimeSelector).on('click', function viewLifetime() {
+			var numYears = 30, // hard-coded to 30 for now; when chart supports year aggregates can remove limit
+				end = d3.time.month.utc.ceil(endDate ? endDate : new Date()),
+				start = d3.time.year.utc.offset(end, -numYears),
+				destDisplayRange = { start : start, end: end, timeCount : (numYears * 12), timeUnit : 'month' };
+			barEnergyChartParams.value('aggregate', 'Month');
+			pieEnergyChartParams.value('aggregate', 'Month');
+			displayRange = destDisplayRange;
+			chartLoadData();
+		});
+	}
+	
 	function setupHowtoButton() {
 		if ( !config.howtoSelector ) {
 			return;
@@ -1165,6 +1181,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		});
 		setupDetailedToggle();
 		setupViewTodayButton();
+		setupViewLifetimeButton();
 		setupHowtoButton();
 		setupDownloadCsvButton();
 		Object.defineProperties(self, {
@@ -1208,10 +1225,11 @@ function startApp(env) {
 			totalGenerationCO2Selector : '#generation-co2-count',
 			totalConsumptionSelector : '#consumption-count',
 			totalConsumptionCO2Selector : '#consumption-co2-count',
-			lifetimeGenerationSelector : '#lifetime-generation-count',
-			lifetimeConsumptionSelector : '#lifetime-consumption-count',
+			//lifetimeGenerationSelector : '#lifetime-generation-count',
+			//lifetimeConsumptionSelector : '#lifetime-consumption-count',
 			detailToggleSelector : '#chart-detail-toggle',
 			viewTodaySelector : '#time-range-view-today',
+			viewLifetimeSelector : '#time-range-view-lifetime',
 			howtoSelector : '#help-howto',
 			downloadCsvSelector : '#download-data-csv'
 		});
