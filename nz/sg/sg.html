@@ -31,20 +31,6 @@
 				<div class="count generation"><span id="generation-count"></span> <span class="alt unit">kWh</span></div>
 			</div>
 		</div>
-		<!--div class="totals shown">
-			<div class="generation hbox">
-				<div class="label generation">Solar</div>
-				<div class="count">
-					<span id="generation-count">0</span> <span class="alt unit">kWh</span>
-				</div>
-			</div>
-			<div class="consumption hbox">
-				<div class="label consumption">Grid</div>
-				<div class="count">
-					<span id="consumption-count">0</span> <span class="alt unit">kWh</span>
-				</div>
-			</div>
-		</div-->
 		<div class="hbox">
 			<div class="info-col vbox">
 				<button type="button" id="help-howto" data-modal="#help-howto-modal"><i class="fa fa-question-circle"></i> <span class="text">How to use</span></button>
@@ -55,10 +41,11 @@
 					</div>
 				</div>
 				<!-- The following button makes this vbox mirror the layout of the right-side info-col --> 
-				<button type="button" id="help-howto" style="visibility: hidden;"><i class="fa fa-question-circle"></i> <span class="text">Placeholder</span></button>
+				<button type="button" style="visibility: hidden;"><i class="fa fa-question-circle"></i> <span class="text">Placeholder</span></button>
 			</div>
-			<div class="pane chart pie-chart watthour-chart">
+			<div class="chart pie-chart watthour-chart">
 				<div id="energy-pie-chart" class="chart-container"></div>
+				<button type="button" id="download-data-csv"><i class="fa fa-download"></i> <span class="text">Download data</span></button>
 			</div>
 			<div class="info-col vbox">
 				<button type="button" id="chart-detail-toggle"><i class="fa fa-info-circle"></i> <span class="text">Show more</span></button>
@@ -68,7 +55,8 @@
 						<div class="count detailed"><span id="generation-co2-count">0</span> <span class="alt unit">kg</span></div>
 					</div>
 				</div>
-				<button type="button" id="download-data-csv"><i class="fa fa-download"></i> <span class="text">Download data</span></button>
+				<!-- The following button makes this vbox mirror the layout of the right-side info-col --> 
+				<button type="button" style="visibility: hidden;"><i class="fa fa-question-circle"></i> <span class="text">Placeholder</span></button>
 			</div>
 		</div>
 		<p id="chart-outdated-msg" class="msg">

@@ -1188,6 +1188,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		});
 		pieEnergyChartParams = new sn.Configuration({
 			// pie chart properties
+			height: 250,
 			innerRadius : 40,
 			hideValues : true,
 			

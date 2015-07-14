@@ -98,6 +98,12 @@ div.snroot {
 
 .snroot .pie-chart {
 	width: 250px;
+	text-align: center;
+}
+
+#energy-pie-chart {
+	width: 250px;
+	height: 250px;
 }
 
 .snroot button {
@@ -246,7 +252,7 @@ li + li {
 }
 
 .snroot .totals .vbox {
-	height: 180px;
+	height: 170px;
 	-webkit-box-pack: center;
 	justify-content: center;
 }
