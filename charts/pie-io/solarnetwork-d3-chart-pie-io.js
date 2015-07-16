@@ -54,6 +54,8 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 
 	var transitionMs = undefined;
 	
+	var plotProperty = 'wattHours';
+	
 	var chartData = undefined,
 		chartLabels = undefined;
 
@@ -263,8 +265,11 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 					if ( group.length ) {
 						result.sourceId = group[0].sourceId;
 						result.sum = d3.sum(group, function(d) {
-							return (sourceExcludeCallback && sourceExcludeCallback.call(self, groupId, d.sourceId)
-								? 0 : d.wattHours); // TODO add plotProperty
+							var val = d[plotProperty];
+							if ( (val && val < 0) || (sourceExcludeCallback && sourceExcludeCallback.call(self, groupId, d.sourceId)) ) {
+								val = 0;
+							}
+							return val;
 						}) * self.scaleFactor(groupId);
 					}
 					return result;
@@ -551,7 +556,7 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	/**
 	 * Get the sum total of all slices in the pie chart.
 	 *  
-	 * @return the sum total energy value, in watt hours
+	 * @return the sum total energy value
 	 * @memberOf sn.chart.energyIOPieChart
 	 */
 	self.totalValue = function() { return totalValue; };
@@ -617,6 +622,19 @@ sn.chart.energyIOPieChart = function(containerSelector, chartConfig) {
 	self.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
 		transitionMs = +value; // the + used to make sure we have a Number
+		return me;
+	};
+
+	/**
+	 * Get or set the plot property names to display data for.
+	 * 
+	 * @param {string} [value] The data property to plot in the chart.
+	 * @return When used as a getter, the current plot property name value, otherwise this object,
+	 * @memberOf sn.chart.energyIOPieChart
+	 */
+	self.plotProperty = function(value) {
+		if ( !arguments.length ) return plotProperty;
+		plotProperty = value;
 		return me;
 	};
 
