@@ -86,7 +86,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 						};
 		
 	// range selection limits, adjust based on width of bar chart
-	var barEnergyRangeLimits = { 'Month' : 4, 'Day' : 10, 'Hour' : 12 };
+	var barEnergyRangeLimits = { 'Month' : 4, 'Day' : 9, 'Hour' : 12 };
 		
 	// chart tooltips
 	var barEnergyChartTooltip = d3.select(config.barEnergyChartSelector+'-tooltip'),
