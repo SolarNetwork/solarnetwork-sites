@@ -99,12 +99,12 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 	var decimalValueFormat = d3.format(',.1f'),
 		integerValueFormat = d3.format(',d'),
 		kiloValueFormat = function valueFormat(v) {
-		v /= 1000; // convert to k
-		if ( v > 100 ) {
-			return integerValueFormat(Math.round(v));
-		}
-		return decimalValueFormat(v);
-	};
+			v /= 1000; // convert to k
+			if ( Math.abs(v) > 100 ) {
+				return integerValueFormat(Math.round(v));
+			}
+			return decimalValueFormat(v);
+		};
 	
 	/**
 	 * Get or set the consumption source IDs.
