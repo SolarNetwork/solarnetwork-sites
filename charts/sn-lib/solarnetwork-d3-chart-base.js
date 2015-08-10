@@ -60,12 +60,44 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return (1 - (i * grade));
 	}
 	
+	function negativeAccumulationOffset(data) {
+		// data is 3d array: 1) layers 2) time 3) [x,y];
+		// we return 2d array based on time dimension of overall layer offset
+		var i, 
+			iLen = data[0].length, 
+			j, jLen = data.length,
+			sum, val,
+			y0 = [];
+		for ( i  = 0; i < iLen; i += 1 ) {
+			sum = 0;
+			for ( j = 0; j < jLen; j += 1 ) {
+				val = data[j][i][1];
+				if ( val < 0 ) {
+					sum += val;
+					data[j][i][1] = -val; // flip the height of the stack back to posative
+				}
+			}
+			y0[i] = sum;
+		}
+		return y0;
+	}
+	
+	function internalStackOffsetFn() {
+		var fn;
+		if ( stackOffset !== 'zero' ) {
+			fn = d3.layout.stack().offset(stackOffset).offset();
+		} else {
+			fn = negativeAccumulationOffset;
+		}
+		return fn;
+	}
+	
 	function setup() {
 		var plotPropName = self.plotPropertyName;
 		var minX, maxX;
-		var maxY;
+		var minY, maxY;
 		var stack = d3.layout.stack()
-			.offset(stackOffset)
+			.offset(internalStackOffsetFn())
 			.values(function(d) { 
 				return d.values;
 			})
@@ -75,7 +107,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			.y(function(d) { 
 				var y = d[plotPropName],
 					scale = parent.scaleFactor(d[parent.internalPropName].groupId);
-				if ( y === undefined || y < 0 || y === null ) {
+				if ( y === undefined || y === null || (stackOffset !== 'zero' && y < 0) ) {
 					y = 0;
 				}
 				return (y * scale);
@@ -146,7 +178,11 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			}
 			var layers = stack(layerData);
 			groupLayers[groupId] = layers;
-			var rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
+			var rangeY = [d3.min(layers[0].values, function(d) { return d.y0; }), 
+							d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
+			if ( minY === undefined || rangeY[0] < minY ) {
+				minY = rangeY[0];
+			}
 			if ( maxY === undefined || rangeY[1] > maxY ) {
 				maxY = rangeY[1];
 			}
@@ -158,8 +194,8 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		}
 		
 		// setup Y domain
-		if ( maxY !== undefined ) {
-			self.y.domain([0, maxY]).nice();
+		if ( minY !== undefined && maxY !== undefined ) {
+			self.y.domain([minY, maxY]).nice();
 		}
 		
 		self.computeUnitsY();
