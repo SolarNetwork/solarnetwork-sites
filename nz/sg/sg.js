@@ -441,11 +441,11 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		if ( !chartSourceSets || regenerate ) {
 			chartSourceSets = [
 				{ nodeUrlHelper : urlHelper, 
-					sourceIds : (detailsShown && consumptionDetailedSources.length > 0 ? consumptionDetailedSources : consumptionSources), 
-					dataType : 'Consumption' },
-				{ nodeUrlHelper : urlHelper, 
 					sourceIds : (detailsShown && generationDetailedSources.length > 0 ? generationDetailedSources : generationSources), 
-					dataType : 'Generation' }
+					dataType : 'Generation' },
+				{ nodeUrlHelper : urlHelper, 
+					sourceIds : (detailsShown && consumptionDetailedSources.length > 0 ? consumptionDetailedSources : consumptionSources), 
+					dataType : 'Consumption' }
 			];
 		}
 		return chartSourceSets;
