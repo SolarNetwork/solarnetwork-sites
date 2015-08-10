@@ -55,27 +55,26 @@ function sourceExcludeCallback(dataType, sourceId) {
 }
 
 // Watt stacked area overlap chart
-function setupEnergyIOChart(container, chart, parameters, endDate, sourceMap) {
+function setupEnergyIOChart(container, chart, parameters, endDate, sourceSets) {
 	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
+	var loadSets = sourceSets.map(function(sourceSet) {
+		return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, parameters.aggregate);
+	});
 	
 	container.selectAll('.time-count').text(queryRange.timeCount);
 	container.selectAll('.time-unit').text(queryRange.timeUnit);
 	
-	sn.datum.multiLoader([
-		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
-			queryRange.start, queryRange.end, parameters.aggregate),
-		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
-			queryRange.start, queryRange.end, parameters.aggregate)
-	]).callback(function(error, results) {
+	sn.datum.multiLoader(loadSets).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 2) ) {
 			sn.log("Unable to load data for Energy Bar chart: {0}", error);
 			return;
 		}
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
-		chart.reset()
-			.load(results[0], 'Consumption')
-			.load(results[1], 'Generation');
+		chart.reset();
+		sourceSets.forEach(function(sourceSet, idx) {
+			chart.load(results[idx], sourceSet.dataType);
+		});
 		regenerateChart();
 		sn.log("Energy Bar chart watt range: {0}", chart.yDomain());
 		sn.log("Energy Bar chart time range: {0}", chart.xDomain());
@@ -88,7 +87,7 @@ function energyBarIOChartSetup(endDate) {
 		sn.runtime.energyBarIOChart,
 		sn.runtime.energyBarIOParameters,
 		endDate,
-		sn.runtime.sourceGroupMap);
+		sn.runtime.sourceSets);
 }
 
 function setupSourceGroupMap() {
@@ -107,12 +106,12 @@ function sourceSets(regenerate) {
 	if ( !sn.runtime.sourceGroupMap || !sn.runtime.sourceSets || regenerate ) {
 		setupSourceGroupMap();
 		sn.runtime.sourceSets = [
-			{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, 
-				sourceIds : sn.runtime.sourceGroupMap['Consumption'], 
-				dataType : 'Consumption' },
 			{ nodeUrlHelper : sn.runtime.urlHelper, 
 				sourceIds : sn.runtime.sourceGroupMap['Generation'], 
-				dataType : 'Generation' }
+				dataType : 'Generation' },
+			{ nodeUrlHelper : sn.runtime.consumptionUrlHelper, 
+				sourceIds : sn.runtime.sourceGroupMap['Consumption'], 
+				dataType : 'Consumption' }
 		];
 	}
 	return sn.runtime.sourceSets;
