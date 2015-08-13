@@ -7,7 +7,7 @@
  * @require queue 1.0
  */
 var sn = {
-	version : '0.1.0',
+	version : '0.2.0',
 	
 	/**
 	 * @namespace the SolarNetwork chart namespace.
@@ -1925,6 +1925,37 @@ sn.util.copyAll = function(obj1, obj2) {
 		}
 	}
 	return obj2;
+};
+
+/**
+ * Compare two arrays for equality, that is they have the same length and same values
+ * using strict quality.
+ *
+ * @param {Array} a1 The first array to compare.
+ * @param {Array} a2 The second array to compare.
+ * @return {Boolean} True if the arrays are equal.
+ * @since 0.2.0
+ */
+sn.util.arraysAreEqual = function arraysAreEqual(a1, a2) {
+	var i, len;
+	if ( !(Array.isArray(a1) && Array.isArray(a2)) ) {
+		return false;
+	}
+
+	// compare lengths first
+	if ( a1.length !== a2.length) {
+		return false;
+	}
+
+	for ( i = 0, len = a1.length; i < len; i += 1 ) {
+		// support nested arrays
+		if ( Array.isArray(a1[i]) && Array.isArray(a2[i]) && arraysAreEqual(a1[i], a2[i]) !== true ) {
+			return false;
+		} else if ( a1[i] !== a2[i] ) {
+			return false;
+		}
+	}
+	return true;
 };
 
 // parse URL parameters into sn.env, e.g. ?nodeId=11 puts sn.env.nodeId === '11'
