@@ -64,7 +64,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		chartSourceSets,
 		chartSourceColorMap,
 		chartSourceGroupColorMap = {},
-		chartSourceExcludes = new sn.Configuration(),
+		chartSourceExcludes = new sn.Configuration({Consumption : true}), // hide consumption by default
 		barEnergyChartParams,
 		barEnergyChartContainer,
 		barEnergyChart,
