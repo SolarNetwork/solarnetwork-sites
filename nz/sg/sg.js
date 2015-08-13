@@ -1,7 +1,7 @@
 /**
  * @require d3 3.0
  * @require queue 1.0
- * @require solarnetwork-d3 0.0.3
+ * @require solarnetwork-d3 0.2.0
  * @require solarnetwork-d3-chart-energy-io 1.0.0
  * @require solarnetwork-d3-chart-pie-io 1.0.0
  */
@@ -33,7 +33,7 @@ var app;
  * @class
  */
 var sgSchoolApp = function(nodeUrlHelper, options) {
-	var self = { version : '1.0.0' };
+	var self = { version : '1.1.0' };
 	var urlHelper = nodeUrlHelper;
 	var config = (options || {});
 
@@ -694,7 +694,19 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		return chartSourceExcludes.enabled(dataType);
 	}
 
-	
+	function chartToggleConsumptionVisibility() {
+		// toggle the consumption sources on/off
+		chartSourceExcludes.toggle('Consumption');
+		
+		// we only change visibility in the bar chart
+		if ( barEnergyChart ) {
+			barEnergyChart.regenerate();
+		}
+		
+		// fade the consumpition values slightly if hidden
+		d3.selectAll('.totals .consumption').style('opacity', (chartSourceExcludes.enabled('Consumption') ? 0.33 : null));
+	}
+
 	/* === CSV Export Support === */
 	
 	function chartGenerateCSV(chart) {
@@ -1073,19 +1085,6 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		pieEnergyChartTooltip.style('display', 'none');
 	}
 	
-	function pieEnergyClick(path, point, data) {
-		// clicking on the Generation slice of the pie energy chart toggles the visibility 
-		// of the Consumption sources in the bar energy chart
-		if ( data.groupId === 'Generation' ) {
-			// toggle the consumption sources on/off
-			chartSourceExcludes.toggle('Consumption');
-			if ( barEnergyChart ) {
-				barEnergyChart.regenerate();
-				d3.selectAll('.totals .consumption').style('opacity', (chartSourceExcludes.enabled('Consumption') ? 0.33 : null));
-			}
-		}
-	}
-	
 	function pieEnergyChartCreate() {
 		var chart = sn.chart.energyIOPieChart(config.pieEnergyChartSelector, pieEnergyChartParams)
 			.colorCallback(chartColorForDataTypeSource)
@@ -1093,26 +1092,32 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			.displayFactorCallback(forcedDisplayFactorFn())
 			.hoverEnterCallback(pieEnergyHoverEnter)
 			.hoverMoveCallback(pieEnergyHoverMove)
-			.hoverLeaveCallback(pieEnergyHoverLeave)
-			.clickCallback(pieEnergyClick);			
+			.hoverLeaveCallback(pieEnergyHoverLeave);			
 		return chart;
 	}
 	
 	/** === Initialization === */
 	
-	function setupDetailedToggle() {
-		if ( !config.detailToggleSelector ) {
-			return;
-		}
-		d3.select(config.detailToggleSelector).on('click', function toggleDetails() {
-			detailsShown = !detailsShown;
-			d3.selectAll('.detailed').style('display', (detailsShown ? null : 'none'));
-			d3.select(this).select('.text').text(detailsShown ? 'Show less' : 'Show more');
+	function toggleDetailVisibility() {
+		detailsShown = !detailsShown;
+		chartToggleConsumptionVisibility();
+		d3.selectAll('.detailed').style('display', (detailsShown ? null : 'none'));
+		d3.select(this).select('.text').text(detailsShown ? 'Show less' : 'Show more');
+		
+		// still support showing Ph1 etc consumption sources for details
+		if ( sn.util.arraysAreEqual(consumptionSources, consumptionDetailedSources) !== true ) {
 			chartSetupSourceSets(true); // regenerate source sets
 			chartSourceGroupMap = undefined; // force source groupings to be regenerated
 			chartSourceColorMap = undefined; // force colors to be reassigned based on new sources
 			stop().start();
-		});
+		}
+	}
+	
+	function setupDetailedToggle() {
+		if ( !config.detailToggleSelector ) {
+			return;
+		}
+		d3.select(config.detailToggleSelector).on('click', toggleDetailVisibility);
 	}
 	
 	function setupViewTodayButton() {
@@ -1234,7 +1239,7 @@ function startApp(env) {
 			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
 			consumptionSourceIds : 'DB',
-			consumptionDetailedSourceIds : 'Ph1,Ph2,Ph3',
+			consumptionDetailedSourceIds : 'DB',
 			barEnergyChartSelector : '#energy-bar-chart',
 			pieEnergyChartSelector : '#energy-pie-chart',
 			outdatedSelector : '#chart-outdated-msg',
