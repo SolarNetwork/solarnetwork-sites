@@ -74,7 +74,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 				val = data[j][i][1];
 				if ( val < 0 ) {
 					sum += val;
-					data[j][i][1] = -val; // flip the height of the stack back to posative
+					data[j][i][1] = -val; // flip the height of the stack back to positive
 				}
 			}
 			y0[i] = sum;
