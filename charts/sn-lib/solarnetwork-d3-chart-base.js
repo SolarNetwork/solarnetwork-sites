@@ -43,6 +43,9 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	// the d3 stack offset method, or function
 	var stackOffset = undefined;
 	
+	// toggle on/off the reverse plot property support
+	var negativeOffsetFromReversePlotProperty = true;
+	
 	// our computed layer data
 	var groupLayers = {};
 	
@@ -52,6 +55,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	function parseConfiguration() {
 		superParseConfiguration();
 		stackOffset = (self.config.value('wiggle') === true ? 'wiggle' : 'zero');
+		negativeOffsetFromReversePlotProperty = (self.config.value('reverseValueSupport') === true ? true : false);
 	}
 	
 	// get the opacity level for a given group
@@ -60,44 +64,46 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return (1 - (i * grade));
 	}
 	
-	function negativeAccumulationOffset(data) {
-		// data is 3d array: 1) layers 2) time 3) [x,y];
-		// we return 2d array based on time dimension of overall layer offset
-		var i, 
-			iLen = data[0].length, 
-			j, jLen = data.length,
-			sum, val,
-			y0 = [];
-		for ( i  = 0; i < iLen; i += 1 ) {
-			sum = 0;
-			for ( j = 0; j < jLen; j += 1 ) {
-				val = data[j][i][1];
-				if ( val < 0 ) {
-					sum += val;
-					data[j][i][1] = -val; // flip the height of the stack back to positive
-				}
-			}
-			y0[i] = sum;
-		}
-		return y0;
-	}
-	
-	function internalStackOffsetFn() {
-		var fn;
+	function internalStackOffsetFn(layerData) {
+		var plotReversePropName = self.plotReversePropertyName,
+			fn;
 		if ( stackOffset !== 'zero' ) {
 			fn = d3.layout.stack().offset(stackOffset).offset();
 		} else {
-			fn = negativeAccumulationOffset;
+			fn = function negativeAccumulationOffset(data) {
+				// data is 3d array: 1) layers 2) time 3) [x,y];
+				// we return 2d array based on time dimension of overall layer offset
+				var i, 
+					iLen = data[0].length, 
+					j, jLen = data.length,
+					sum, val, valR,
+					y0 = [];
+				for ( i  = 0; i < iLen; i += 1 ) {
+					sum = 0;
+					for ( j = 0; j < jLen; j += 1 ) {
+						val = data[j][i][1];
+						valR = (negativeOffsetFromReversePlotProperty ? layerData[j].values[i][plotReversePropName] : 0);
+						if ( val < 0 ) {
+							sum += val;
+							data[j][i][1] = -val; // flip the height of the stack back to positive
+						} else if ( valR ) {
+							sum -= valR; // shift column; height already adjusted in stack.y function
+						}
+					}
+					y0[i] = sum;
+				}
+				return y0;
+			};
 		}
 		return fn;
 	}
 	
 	function setup() {
-		var plotPropName = self.plotPropertyName;
+		var plotPropName = self.plotPropertyName,
+			plotReversePropName = self.plotReversePropertyName;
 		var minX, maxX;
 		var minY, maxY;
 		var stack = d3.layout.stack()
-			.offset(internalStackOffsetFn())
 			.values(function(d) { 
 				return d.values;
 			})
@@ -106,11 +112,14 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			})
 			.y(function(d) { 
 				var y = d[plotPropName],
+					yR = 0,
 					scale = parent.scaleFactor(d[parent.internalPropName].groupId);
 				if ( y === undefined || y === null || (stackOffset !== 'zero' && y < 0) ) {
 					y = 0;
+				} else if ( negativeOffsetFromReversePlotProperty && stackOffset === 'zero' && d[plotReversePropName] !== undefined ) {
+					yR = d[plotReversePropName];
 				}
-				return (y * scale);
+				return ((y + yR) * scale);
 			});
 		groupLayers = {};
 		self.groupIds.forEach(function(groupId) {
@@ -176,6 +185,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			if ( maxX === undefined || rangeX[1].getTime() > maxX.getTime() ) {
 				maxX = rangeX[1];
 			}
+			stack.offset(internalStackOffsetFn(layerData)); // pass layer data to offset, to calculate reverse and negative shifts
 			var layers = stack(layerData);
 			groupLayers[groupId] = layers;
 			var rangeY = [d3.min(layers[0].values, function(d) { return d.y0; }), 
@@ -233,7 +243,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		stackOffset = value;
 		return self.me;
 	};
-
+	
 	/**
 	 * Get or set the "wiggle" stack offset method.
 	 * 
@@ -333,6 +343,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	};
 
 	Object.defineProperties(self, {
+		negativeOffsetFromReversePlotProperty : { get : function() { return negativeOffsetFromReversePlotProperty; }, set : function(v) { negativeOffsetFromReversePlotProperty = v; } },
 		groupOpacityFn : { value : groupOpacityFn },
 		discardId : { value : discardId },
 		groupLayers : { get : function() { return groupLayers; } }
@@ -593,6 +604,10 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	
 	function plotPropertyName() {
 		return plotProperties[aggregateType];
+	}
+
+	function plotReversePropertyName() {
+		return plotProperties[aggregateType] + 'Reverse';
 	}
 
 	function setup() {
@@ -886,7 +901,9 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	function insertNormalizedDurationIntoLayerData(layerData) {
-		var i, j, row, datum, plotPropName = plotPropertyName();
+		var i, j, row, datum,
+			plotPropName = plotPropertyName(),
+			plotReversePropName = plotReversePropertyName();
 		for ( j = 0; j < layerData.length; j += 1 ) {
 			row = layerData[j].values;
 			for ( i = 0; i < row.length - 1; i += 1 ) {
@@ -894,6 +911,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 					datum = sn.util.copy(row[i]);
 					datum.date = self.addNormalizedDuration(datum.date);
 					datum[plotPropName] = null;
+					datum[plotReversePropName] = null;
 					row.splice(i + 1, 0, datum);
 				}
 			}
@@ -1376,6 +1394,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		insertNormalizedDurationIntoLayerData : { value : insertNormalizedDurationIntoLayerData },
 		internalPropName : { value : internalPropName },
 		plotPropertyName : { get : plotPropertyName },
+		plotReversePropertyName : { get : plotReversePropertyName },
 		padding : { value : p },
 		width : { value : w, enumerable : true },
 		height : { value : h, enumerable : true },
