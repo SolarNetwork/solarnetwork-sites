@@ -1189,7 +1189,8 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 
 			// global chart properties
 			aggregate : 'Month',
-			plotProperties : {FiveMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
+			plotProperties : {FiveMinute : 'wattHours', Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'},
+			reverseValueSupport : config.showExport
 		});
 		pieEnergyChartParams = new sn.Configuration({
 			// pie chart properties
@@ -1240,6 +1241,7 @@ function startApp(env) {
 			sourceIds : 'Solar',
 			consumptionSourceIds : 'DB',
 			consumptionDetailedSourceIds : 'DB',
+			showExport : true,
 			barEnergyChartSelector : '#energy-bar-chart',
 			pieEnergyChartSelector : '#energy-pie-chart',
 			outdatedSelector : '#chart-outdated-msg',
