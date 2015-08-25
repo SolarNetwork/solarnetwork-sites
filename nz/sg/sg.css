@@ -156,9 +156,34 @@ li + li {
 
 #help-howto-modal {
 	position: absolute;
-	top: 50px;
-	left: 50px;
-	width: 420px;
+	top: 20px;
+	left: 20px;
+	width: 480px;
+	font-size: 13px;
+}
+
+#help-howto-modal h4 {
+	margin-bottom: 8px;
+}
+
+#help-howto-modal ul {
+	padding-left: 20px;
+}
+
+#help-howto-modal span.generation,
+#help-howto-modal span.consumption {
+	padding: 0 2px 0 2px;
+	border-radius: 4px;
+	font-weight: 700;
+	color: white;
+}
+
+#help-howto-modal span.generation {
+	background-color: #ffc600;
+}
+
+#help-howto-modal span.consumption {
+	background-color: #f47f23;
 }
 
 .snroot .info-col {
