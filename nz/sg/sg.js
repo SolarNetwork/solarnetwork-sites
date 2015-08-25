@@ -1167,6 +1167,10 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			howtoVisible = false;
 			modal.style('display', 'none');
 		});
+		if ( sn.hasTouchSupport ) {
+			d3.selectAll('.touch').style('display', 'inherit');
+			d3.selectAll('.mouse').style('display', 'none');
+		}
 	}
 	
 	function setupDownloadCsvButton() {

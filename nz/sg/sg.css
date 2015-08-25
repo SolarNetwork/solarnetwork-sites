@@ -154,6 +154,10 @@ li + li {
 	float: right;
 }
 
+.touch {
+	display: none;
+}
+
 #help-howto-modal {
 	position: absolute;
 	top: 20px;
