@@ -96,8 +96,9 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 	var lifetimeGenerationCounter,
 		lifetimeConsumptionCounter;
 
-	var decimalValueFormat = d3.format(',.1f'),
+	var decimalValueFormat = d3.format(',.2r'),
 		integerValueFormat = d3.format(',d'),
+		percentValueFormat = d3.format('.2p'),
 		kiloValueFormat = function valueFormat(v) {
 			v /= 1000; // convert to k
 			if ( Math.abs(v) > 100 ) {
@@ -1074,7 +1075,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			
 		tooltip.select('h3').text(sourceDisplay);
 		tooltip.select('.swatch').style('background-color', color);
-		descCell.select('.percent').text(data.percentDisplay);
+		descCell.select('.percent').text(percentValueFormat(data.percent));
 		descCell.select('.energy').text(kiloValueFormat(data.value));
 		co2Cell.select('.co2').text(function() { return kiloValueFormat(data.value * co2GramsPerWattHour); });
 		tooltip.select('tr.total').style('color', chartSourceGroupColorMap[netTotal < 0 ? 'Consumption' : 'Generation'])
