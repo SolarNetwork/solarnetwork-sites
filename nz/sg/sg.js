@@ -1239,8 +1239,10 @@ function startApp(env) {
 			numYears : 1,
 			fixedDisplayFactor : 1000,
 			sourceIds : 'Solar',
+			scaleFactor : 1,
 			consumptionSourceIds : 'DB',
 			consumptionDetailedSourceIds : 'DB',
+			consumptionScaleFactor : 1,
 			showExport : true,
 			barEnergyChartSelector : '#energy-bar-chart',
 			pieEnergyChartSelector : '#energy-pie-chart',
@@ -1266,8 +1268,10 @@ function startApp(env) {
 
 	app = sgSchoolApp(urlHelper, env)
 		.generationSourceIds(env.sourceIds)
+		.generationDataScaleFactor(env.scaleFactor)
 		.consumptionSourceIds(env.consumptionSourceIds)
 		.consumptionDetailedSourceIds(env.consumptionDetailedSourceIds)
+		.consumptionDataScaleFactor(env.consumptionScaleFactor)
 		.numHours(env.numHours)
 		.numDays(env.numDays)
 		.numMonths(env.numMonths)
