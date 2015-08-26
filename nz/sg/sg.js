@@ -633,7 +633,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 				var totalWh;
 				chartInfo.chart.load(results[i], sourceSet.dataType);
 				if ( chartInfo.chart === barEnergyChart ) {
-					totalWh = d3.sum(results[i], function(d) { return d.wattHours; });
+					totalWh = d3.sum(results[i], function(d) { return d.wattHours; }) * chartInfo.chart.scaleFactor(sourceSet.dataType);
 					if ( totalWhs[sourceSet.dataType] === undefined ) {
 						totalWhs[sourceSet.dataType] = 0;
 					}
