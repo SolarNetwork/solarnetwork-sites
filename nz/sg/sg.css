@@ -160,7 +160,7 @@ li + li {
 
 #help-howto-modal {
 	position: absolute;
-	top: 20px;
+	top: 10px;
 	left: 20px;
 	width: 480px;
 	font-size: 13px;
@@ -168,6 +168,7 @@ li + li {
 
 #help-howto-modal h4 {
 	margin-bottom: 8px;
+	margin-top: 8px;
 }
 
 #help-howto-modal ul {
