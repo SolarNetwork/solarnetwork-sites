@@ -42,9 +42,9 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	// an ordinal x-axis scale, to render precise bars with
 	var xBar = d3.scale.ordinal();
 
-	var svgVertRuleGroup = parent.svgRoot.append("g")
-		.attr("class", "vertrule")
-		.attr("transform", "translate(" + parent.padding[3] + "," + parent.padding[0] + ")");
+	var svgVertRuleGroup = parent.svgRoot.insert('g', '.annot-root')
+		.attr('class', 'vertrule')
+		.attr('transform', 'translate(' + parent.padding[3] + ',' + parent.padding[0] + ')');
 
 	function groupFillFn(d, i) {
 		return parent.fillColor.call(this, d[0][parent.internalPropName].groupId, d[0], i);
@@ -59,6 +59,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 			aggregateType = parent.aggregate(),
 			xDomain = x.domain(),
 			buckets,
+			step = 1,
 			end = xDomain[1]; // d3.time.X.range has an exclusive end date, so we must add 1
 		if ( aggregateType === 'Month' ) {
 			end = d3.time.month.utc.offset(end, 1); 
@@ -66,12 +67,24 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		} else if ( aggregateType === 'Day' ) {
 			end = d3.time.day.utc.offset(end, 1); 
 			buckets = d3.time.days.utc;
+		} else if ( aggregateType === 'FiveMinute' ) {
+			step = 5;
+			end = d3.time.minute.utc.offset(end, step);
+			buckets = d3.time.minutes.utc;
+		} else if ( aggregateType === 'TenMinute' ) {
+			step = 10;
+			end = d3.time.minute.utc.offset(end, step);
+			buckets = d3.time.minutes.utc;
+		} else if ( aggregateType === 'FifteenMinute' ) {
+			step = 15;
+			end = d3.time.minute.utc.offset(end, step);
+			buckets = d3.time.minutes.utc;
 		} else {
 			// assume 'Hour'
 			end = d3.time.hour.utc.offset(end, 1); 
 			buckets = d3.time.hours.utc;
 		}
-		buckets = buckets(xDomain[0], end);
+		buckets = buckets(xDomain[0], end, step);
 		xBar.domain(buckets).rangeRoundBands(x.range(), 0.2); 
 	}
 
@@ -124,9 +137,17 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	
 	function axisXTickCount() {
 		var count = parent.config.value('tickCountX');
-		return (count || 12);
+		return (count || (parent.width > 600 ? 12 : 5));
 	}
 	
+	function axisXTicks() {
+		var barTicks = xBar.domain();
+		if ( barTicks.length < 7 ) {
+			return barTicks;
+		}
+		return parent.x.ticks(axisXTickCount());
+	}
+
 	/**
 	 * Get the number of pixels used for padding between bars.
 	 *
@@ -136,7 +157,7 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		var domain = xBar.domain();
 		var barSpacing = (domain.length > 1 
 			? (xBar(domain[1]) - xBar(domain[0])) 
-			: barWidth);
+			: xBar.rangeBand());
 		var barPadding = (barSpacing - xBar.rangeBand());
 		return barPadding;
 	}
@@ -162,27 +183,29 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 		}
 		return (start === 0 ? array : array.slice(start));
 	}
-
+	
+	function xAxisTickFormatter() {
+		var fxDefault = parent.x.tickFormat(axisXTickCount()),
+			callback = parent.xAxisTickCallback();
+		return function(d, i) {
+			if ( callback ) {
+				return callback.call(parent.me, d, i, parent.x, fxDefault);
+			} else {
+				return fxDefault(d, i);
+			}
+		};
+	}
+	
 	function drawAxisX() {
-		var numTicks = axisXTickCount(),
-			fxDefault = parent.x.tickFormat(numTicks),
-			ticks = parent.x.ticks(numTicks),
+		var ticks = axisXTicks(),
 			transitionMs = parent.transitionMs(),
-			fx,
+			fx = xAxisTickFormatter(),
 			labels;
 			
 		// we may have generated ticks for which we don't have bars... so filter those out
 		ticks = ticks.filter(function(d) { 
 			return xBar(d) !== undefined;
 		});
-
-		fx = function(d, i) {
-			if ( parent.xAxisTickCallback() ) {
-				return parent.xAxisTickCallback().call(parent.me, d, i, parent.x, fxDefault);
-			} else {
-				return fxDefault(d, i);
-			}
-		};
 
 		// Generate x-ticks, centered within bars
 		labels = parent.svgTickGroupX.selectAll('text').data(ticks, Object)
@@ -270,11 +293,53 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	/**
+	 * Render a "highlight bar" over a set of bars.
+	 * 
+	 * @param {array} dataArray An array of data elements for which to render highlight bars over.
+	 *                          Pass an empty array to remove all bars.
+	 */
+	function drawHoverHighlightBars(dataArray) {
+		var hoverBar = parent.svgHoverRoot.selectAll('rect.highlightbar').data(dataArray);
+		hoverBar.attr('x', valueX)
+				.attr('width', xBar.rangeBand());
+		hoverBar.enter().append('rect')
+				.attr('x', valueX)
+				.attr('y', 0)
+				.attr('height', parent.height)
+				.attr('width', xBar.rangeBand())
+				.classed('highlightbar clickable', true);
+		hoverBar.exit().remove();
+	}
+
+	/**
+	 * Render a "selection" rect over a set of bars.
+	 * 
+	 * @param {array} dataArray An array of data elements for which to render a selection over.
+	 *                          Pass an empty array to remove the selection.
+	 */
+	function drawSelection(dataArray) {
+		var firstItem = (dataArray && dataArray.length > 0 ? dataArray.slice(0, 1) : []),
+			firstItemX = (dataArray && dataArray.length > 0 ? valueX(dataArray[0]) : 0),
+			lastItemX = (dataArray && dataArray.length > 0 ? valueX(dataArray[dataArray.length - 1]) : 0),
+			width = (lastItemX - firstItemX) + xBar.rangeBand();
+		var selectBar = parent.svgHoverRoot.selectAll('rect.selectionbar').data(firstItem);
+		selectBar.attr('x', firstItemX)
+				.attr('width', width);
+		selectBar.enter().append('rect')
+				.attr('x', firstItemX)
+				.attr('y', 0)
+				.attr('height', parent.height)
+				.attr('width', width)
+				.classed('selectionbar clickable', true);
+		selectBar.exit().remove();
+	}
+
+	/**
 	 * Scale a date for the x-axis. The values returned are centered within bars.
 	 * 
 	 * @param {Date} the Date to scale
 	 * @return {Number} the scaled value
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedStackBarChart
 	 */
 	self.scaleDate = function(date) {
 		var barRange = xBar.range(),
@@ -302,6 +367,8 @@ sn.chart.baseGroupedStackBarChart = function(containerSelector, chartConfig) {
 	
 		drawAxisXRules : { value : drawAxisXRules },
 		drawBarsForSources : { value : drawBarsForSources },
+		drawHoverHighlightBars : { value : drawHoverHighlightBars },
+		drawSelection : { value : drawSelection }
 	});
 	
 	parent.drawAxisX = drawAxisX;

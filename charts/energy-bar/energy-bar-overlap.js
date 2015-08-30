@@ -8,22 +8,20 @@
 sn.config.debug = true;
 sn.runtime.excludeSources = new sn.Configuration();
 
-//adjust display units as needed (between W and kW, etc)
-function adjustChartDisplayUnits(chartKey, baseUnit, scale, unitKind) {
-	var unit = (scale === 1000000000 ? 'G' : scale === 1000000 ? 'M' : scale === 1000 ? 'k' : '') + baseUnit;
-	d3.selectAll(chartKey +' .unit').text(unit);
-	if ( unitKind !== undefined ) {
-		d3.selectAll(chartKey + ' .unit-kind').text(unitKind);
+function regenerateChart() {
+	var chart = sn.runtime.energyBarOverlapChart,
+		container = sn.runtime.energyBarOverlapContainer;
+	if ( chart === undefined ) {
+		return;
 	}
+	chart.regenerate();
+	sn.adjustDisplayUnits(container, 'Wh', chart.yScale(), 'energy');
 }
 
 //handle clicks on legend handler
 function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.source);
-	if ( sn.runtime.energyBarOverlapChart !== undefined ) {
-		sn.runtime.energyBarOverlapChart.regenerate();
-		adjustChartDisplayUnits('.energy-bar-chart', 'Wh',  sn.runtime.energyBarOverlapChart.yScale(), 'energy');
-	}
+	regenerateChart();
 }
 
 function sourceExcludeCallback(dataType, sourceId) {
@@ -84,11 +82,10 @@ function energyBarOverlapChartSetup(endDate, chart, parameters) {
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
 		chart.reset()
 			.load(results[0], 'Consumption')
-			.load(results[1], 'Generation')
-			.regenerate();
+			.load(results[1], 'Generation');
+		regenerateChart();
 		sn.log("Energy Bar chart watt range: {0}", chart.yDomain());
 		sn.log("Energy Bar chart time range: {0}", chart.xDomain());
-		adjustChartDisplayUnits('.energy-bar-chart', 'Wh',  chart.yScale(), 'energy');
 	}).load();
 }
 
@@ -177,6 +174,14 @@ function setupUI() {
 				getAvailable = true;
 			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
 				getAvailable = true;
+			} else if ( propName === 'scale' ) {
+				sn.runtime.energyBarOverlapChart.scaleFactor('Generation', Number(sn.env[propName]));
+				regenerateChart();
+				return;
+			} else if ( propName === 'consumptionScale' ) {
+				sn.runtime.energyBarOverlapChart.scaleFactor('Consumption', Number(sn.env[propName]));
+				regenerateChart();
+				return;
 			}
 			if ( getAvailable ) {
 				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
@@ -216,8 +221,10 @@ function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 108,
 		sourceIds : 'Main',
+		scale : 1,
 		consumptionNodeId : 108,
 		consumptionSourceIds : 'A,B,C',
+		consumptionScale : 1,
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
@@ -236,8 +243,9 @@ function onDocumentReady() {
 		wiggle : (sn.env.wiggle === 'true'),
 		plotProperties : {Hour : 'wattHours', Day : 'wattHours', Month : 'wattHours'}
 	});
-	
+	sn.runtime.energyBarOverlapContainer = d3.select(d3.select('#energy-bar-chart').node().parentNode);
 	sn.runtime.energyBarOverlapChart = sn.chart.energyBarOverlapChart('#energy-bar-chart', sn.runtime.energyBarOverlapParameters)
+		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);

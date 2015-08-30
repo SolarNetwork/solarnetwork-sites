@@ -47,10 +47,16 @@
 					<input type="number" name="nodeId" value=""/><br />
 					<label for="sourceIds" class="generation">Sources</label>
 					<input type="text" name="sourceIds" value="Main"/><br />
+					<label for="scale" class="generation">Scale</label>
+					<input type="number" name="scale" value="1"/><br />
+
 					<label for="consumptionNodeId" class="consumption">Node</label>
 					<input type="number" name="consumptionNodeId" value=""/><br />
 					<label for="consumptionSourceIds" class="consumption">Sources</label>
 					<input type="text" name="consumptionSourceIds" value="Main"/><br />
+					<label for="consumptionScale" class="consumption">Scale</label>
+					<input type="number" name="consumptionScale" value="1"/><br />
+
 					<div class="range hour">
 						<label for="days">Days</label>
 						<input type="number" name="numDays" value="7" min="1" max="21"/>
@@ -71,6 +77,23 @@
 					<i id="donut-toggle" class="fa fa-circle-o button"></i>
 				</div>
 			</div>
+		</div>
+	</div>
+	<div id="pie-chart-tooltip" style="display: none;" class="tooltip">
+		<h3>Hi.</h3>
+		<div id="source-labels-tooltip">
+			<table>
+				<tbody>
+					<tr>
+						<td class="swatch"></td>
+						<td class="desc"><span class="percent">0%</span> = <span class="energy">0</span> <span class="unit">(kWh)</span></td>
+					</tr>
+					<tr class="total">
+						<td colspan="2"><span class="label">Net:</span> <span class="energy">0</span> <span class="unit">(kWh)</span></td>
+					</tr>
+				</tbody>
+				
+			</table>
 		</div>
 	</div>
 </body>

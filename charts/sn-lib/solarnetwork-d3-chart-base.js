@@ -43,12 +43,19 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 	// the d3 stack offset method, or function
 	var stackOffset = undefined;
 	
+	// toggle on/off the reverse plot property support
+	var negativeOffsetFromReversePlotProperty = true;
+	
 	// our computed layer data
 	var groupLayers = {};
+	
+	// useful to change to true for line-based charts
+	var normalizeDataTimeGaps = false;
 
 	function parseConfiguration() {
 		superParseConfiguration();
 		stackOffset = (self.config.value('wiggle') === true ? 'wiggle' : 'zero');
+		negativeOffsetFromReversePlotProperty = (self.config.value('reverseValueSupport') === true ? true : false);
 	}
 	
 	// get the opacity level for a given group
@@ -57,12 +64,46 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return (1 - (i * grade));
 	}
 	
+	function internalStackOffsetFn(layerData) {
+		var plotReversePropName = self.plotReversePropertyName,
+			fn;
+		if ( stackOffset !== 'zero' ) {
+			fn = d3.layout.stack().offset(stackOffset).offset();
+		} else {
+			fn = function negativeAccumulationOffset(data) {
+				// data is 3d array: 1) layers 2) time 3) [x,y];
+				// we return 2d array based on time dimension of overall layer offset
+				var i, 
+					iLen = data[0].length, 
+					j, jLen = data.length,
+					sum, val, valR,
+					y0 = [];
+				for ( i  = 0; i < iLen; i += 1 ) {
+					sum = 0;
+					for ( j = 0; j < jLen; j += 1 ) {
+						val = data[j][i][1];
+						valR = (negativeOffsetFromReversePlotProperty ? layerData[j].values[i][plotReversePropName] : 0);
+						if ( val < 0 ) {
+							sum += val;
+							data[j][i][1] = -val; // flip the height of the stack back to positive
+						} else if ( valR ) {
+							sum -= valR; // shift column; height already adjusted in stack.y function
+						}
+					}
+					y0[i] = sum;
+				}
+				return y0;
+			};
+		}
+		return fn;
+	}
+	
 	function setup() {
-		var plotPropName = self.plotPropertyName;
+		var plotPropName = self.plotPropertyName,
+			plotReversePropName = self.plotReversePropertyName;
 		var minX, maxX;
-		var maxY;
+		var minY, maxY;
 		var stack = d3.layout.stack()
-			.offset(stackOffset)
 			.values(function(d) { 
 				return d.values;
 			})
@@ -70,11 +111,15 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 				return d.date; 
 			})
 			.y(function(d) { 
-				var y = d[plotPropName];
-				if ( y === undefined || y < 0 || y === null ) {
+				var y = d[plotPropName],
+					yR = 0,
+					scale = parent.scaleFactor(d[parent.internalPropName].groupId);
+				if ( y === undefined || y === null || (stackOffset !== 'zero' && y < 0) ) {
 					y = 0;
+				} else if ( negativeOffsetFromReversePlotProperty && stackOffset === 'zero' && d[plotReversePropName] !== undefined ) {
+					yR = d[plotReversePropName];
 				}
-				return y;
+				return ((y + yR) * scale);
 			});
 		groupLayers = {};
 		self.groupIds.forEach(function(groupId) {
@@ -124,6 +169,11 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			dummy[self.internalPropName] = {groupId : groupId};
 			sn.nestedStackDataNormalizeByDate(layerData, dummy);
 			
+			if ( normalizeDataTimeGaps === true ) {
+				// now look to fill in "zero" values to make interpolation look better
+				parent.insertNormalizedDurationIntoLayerData(layerData);
+			}
+			
 			if ( self.layerPostProcessCallback() ) {
 				layerData = self.layerPostProcessCallback().call(self.me, groupId, layerData);
 			}
@@ -135,9 +185,14 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 			if ( maxX === undefined || rangeX[1].getTime() > maxX.getTime() ) {
 				maxX = rangeX[1];
 			}
+			stack.offset(internalStackOffsetFn(layerData)); // pass layer data to offset, to calculate reverse and negative shifts
 			var layers = stack(layerData);
 			groupLayers[groupId] = layers;
-			var rangeY = [0, d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
+			var rangeY = [d3.min(layers[0].values, function(d) { return d.y0; }), 
+							d3.max(layers[layers.length - 1].values, function(d) { return d.y0 + d.y; })];
+			if ( minY === undefined || rangeY[0] < minY ) {
+				minY = rangeY[0];
+			}
 			if ( maxY === undefined || rangeY[1] > maxY ) {
 				maxY = rangeY[1];
 			}
@@ -149,8 +204,8 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		}
 		
 		// setup Y domain
-		if ( maxY !== undefined ) {
-			self.y.domain([0, maxY]).nice();
+		if ( minY !== undefined && maxY !== undefined ) {
+			self.y.domain([minY, maxY]).nice();
 		}
 		
 		self.computeUnitsY();
@@ -188,7 +243,7 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		stackOffset = value;
 		return self.me;
 	};
-
+	
 	/**
 	 * Get or set the "wiggle" stack offset method.
 	 * 
@@ -205,7 +260,90 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 		return self.stackOffset(value === true ? 'wiggle' : 'zero');
 	};
 	
+	/**
+	 * Get or set the flag to normalize the data for time gaps.
+	 * Defaults to <b>false</b>.
+	 * 
+	 * @param {function} [value] the flag value
+	 * @return when used as a getter, the current flag value, otherwise this object
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.normalizeDataTimeGaps = function(value) {
+		if ( !arguments.length ) return normalizeDataTimeGaps;
+		normalizeDataTimeGaps = (value === true);
+		return self.me;
+	};
+	
+	/**
+	 * Iterate over the time values in the chart's data, calling a function for each date.
+	 * The callback function will be passed an object with source IDs for keys with corresponding
+	 * data value objects as values. If a source does not have a value for a given date, that key
+	 * will not be defined. The callback function will be passed a second Date argument representing
+	 * the date of the associated data. The callback's <code>this</code> object will be set to this chart object.
+	 * 
+	 * @param {function} callback - The callback function to invoke.
+	 * @return This object.
+	 * @memberOf sn.chart.baseGroupedStackChart
+	 */
+	self.enumerateDataOverTime = function(callback) {
+		if ( typeof callback !== 'function' ) {
+			return self.me;
+		}
+		var groupIds = self.groupIds,
+			layerContext = {},
+			callbackData,
+			date = self.xDomain()[0];
+		if ( !groupIds || groupIds.length < 1 ) {
+			return self.me;
+		}
+		// there can be holes in the data, and each group can have different data array lengths, 
+		// so our iteration over time is a bit more complicated than simply iterating over array elements 
+		while ( true ) {
+			callbackData = { date : date, data : {} };
+			groupIds.forEach(function(groupId) {
+				var groupArray = groupLayers[groupId];
+				if ( layerContext[groupId] === undefined ) {
+					layerContext[groupId] = { index : 0 };
+				}
+				if ( !groupArray || groupArray.length < 1 || groupArray[0].values.length <= layerContext[groupId].index ) {
+					return;
+				}
+				if ( layerContext[groupId].date === undefined ) {
+					layerContext[groupId].date = groupArray[0].values[0].date;
+				}
+				if ( groupArray[0].values[layerContext[groupId].index].date.getTime() === date.getTime() ) {
+					groupArray.forEach(function sourceIterator(sourceLayer) {
+						callbackData.data[sourceLayer.key] = sourceLayer.values[layerContext[groupId].index];
+					});
+					layerContext[groupId].index += 1;
+					layerContext[groupId].date = (layerContext[groupId].index < groupArray[0].values.length 
+						? groupArray[0].values[layerContext[groupId].index].date 
+						: null);
+				}
+			});
+			callback.call(self.me, callbackData.data, date);
+			
+			// move to the next available date, which is the smallest in our layer context or null if no more data
+			date = layerContext[groupIds.reduce(function(l, r) {
+				var lDate = layerContext[l].date,
+					rDate = layerContext[r].date;
+				if ( !lDate ) {
+					return r;
+				}
+				if ( !rDate ) {
+					return l;
+				}
+				return (lDate < rDate ? l : r);
+			})].date;
+			if ( !date ) {
+				break;
+			}
+		}
+		return self.me;
+	};
+
 	Object.defineProperties(self, {
+		negativeOffsetFromReversePlotProperty : { get : function() { return negativeOffsetFromReversePlotProperty; }, set : function(v) { negativeOffsetFromReversePlotProperty = v; } },
 		groupOpacityFn : { value : groupOpacityFn },
 		discardId : { value : discardId },
 		groupLayers : { get : function() { return groupLayers; } }
@@ -259,12 +397,17 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	
 	// raw data, by groupId
 	var originalData = {};
+	
+	// a numeric scale factor, by groupId
+	var scaleFactors = {};
 
 	var svgRoot,
 		svgTickGroupX,
 		svgDataRoot,
 		svgRuleRoot,
-		svgAnnotRoot;
+		svgAnnotRoot,
+		svgHoverRoot,
+		svgPointerCapture;
 	
 	var dataCallback = undefined;
 	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
@@ -273,6 +416,22 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	var layerPostProcessCallback = undefined; // function accepts (groupId, result of d3.nest()) and should return same structure
 	var drawAnnotationsCallback = undefined; // function accepts (svgAnnotRoot)
 	var xAxisTickCallback = undefined; // function accepts (d, i, x, numTicks)
+
+	var hoverEnterCallback = undefined,
+		hoverMoveCallback = undefined,
+		hoverLeaveCallback = undefined,
+		rangeSelectionCallback = undefined,
+		doubleClickCallback = undefined;
+
+	// keep track of callback handlers attached to specific events
+	var userInteractionHandlerCount = (function() {
+		var counts = {};
+		Object.keys(sn.tapEventNames).forEach(function(n) {
+			counts[sn.tapEventNames[n]] = 0;
+		});
+		return counts;
+	}());
+	var lastUserInteractionInfo = { time : 0 };
 	
 	// our computed layer data
 	var groupIds = [];
@@ -284,6 +443,99 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 
 	var xAxisTickCount = 12;
 	var yAxisTickCount = 5;
+	
+	var draw = function() {	
+		// extending classes should do something here...
+		drawAxisX();
+		drawAxisY();
+	};
+	
+	var handleHoverEnter = function() {
+		if ( !hoverEnterCallback ) {
+			return;
+		}
+        hoverEnterCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
+	};
+	
+	var handleHoverMove = function() {
+		if ( !hoverMoveCallback ) {
+			return;
+		}
+        hoverMoveCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
+	};
+	
+	var handleHoverLeave = function() {
+		if ( !hoverLeaveCallback ) {
+			return;
+		}
+        hoverLeaveCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
+	};
+	
+	var handleClick = function() {
+		if ( !clickCallback ) {
+			return;
+		}
+        clickCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
+	};
+	
+	var handleDoubleClick = function() {
+		if ( !doubleClickCallback ) {
+			return;
+		}
+        doubleClickCallback.call(me, svgHoverRoot, sn.tapCoordinates(this));
+	};
+	
+	function registerUserInteractionHandler(tapEventName, container, handler) {
+		var eventName = sn.tapEventNames[tapEventName];
+		if ( !eventName ) {
+			return;
+		}
+		if ( !container.on(eventName) ) {
+			container.on(eventName, handler);
+		}
+		userInteractionHandlerCount[eventName] += 1;
+	}
+	
+	function unregsiterUserInteractionHandler(tapEventName, container, handler) {
+		var eventName = sn.tapEventNames[tapEventName];
+		if ( !eventName ) {
+			return;
+		}
+		userInteractionHandlerCount[eventName] -= 1;
+		if ( userInteractionHandlerCount[eventName] < 1 ) {
+			container.on(eventName, null);
+		}
+	}
+		
+	function handleClickInternal() {
+		var event = d3.event,
+			time = new Date().getTime(),
+			dt = time - lastUserInteractionInfo.time,
+			that = this;
+		lastUserInteractionInfo.time = time;
+		if ( event.type === 'dblclick' || (sn.hasTouchSupport && dt < 500) ) {
+			// double click
+			if ( lastUserInteractionInfo.timer ) {
+				clearTimeout(lastUserInteractionInfo.timer);
+				delete lastUserInteractionInfo.timer;
+			}
+			handleDoubleClick.call(that);
+		} else if ( sn.hasTouchSupport ) {
+			// set timeout for single click
+			lastUserInteractionInfo.timer = setTimeout(function() {
+				var prevEvent = d3.event;
+				try {
+					d3.event = event;
+					handleClick.call(that);
+				} finally {
+					d3.event = prevEvent;
+				}
+			}, 500);
+			event.preventDefault();
+		} else {
+			handleClick.call(that);
+		}
+	}
 	
 	function parseConfiguration() {
 		self.aggregate(config.aggregate);
@@ -354,6 +606,10 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		return plotProperties[aggregateType];
 	}
 
+	function plotReversePropertyName() {
+		return plotProperties[aggregateType] + 'Reverse';
+	}
+
 	function setup() {
 		// extending classes should do something here...
 				
@@ -385,13 +641,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 			|| (aggregateType === 'Hour' && d.getUTCHours() === 0)
 			|| (aggregateType === 'Day' && d.getUTCDate() === 1)
 			|| (aggregateType === 'Month' && d.getUTCMonth() === 0);
-	}
-	
-	function draw() {	
-		// extending classes should do something here...
-		
-		drawAxisX();
-		drawAxisY();
 	}
 	
 	function xAxisTicks() {
@@ -489,7 +738,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {Date} the Date to scale
 	 * @return {Number} the scaled value
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.scaleDate = function(date) { return x(date); };
 
@@ -498,7 +747,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {Number} the value to scale
 	 * @return {Number} the scaled value
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.scaleValue = function(value) { return y(value); };
 	
@@ -506,7 +755,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * Get the x-axis domain (minimum and maximum dates).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.xDomain = function() { return x.domain(); };
 
@@ -514,7 +763,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * Get the y-axis domain (minimum and maximum values).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.yDomain = function() { return y.domain(); };
 	
@@ -525,9 +774,9 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * chart ended up using.
 	 *  
 	 * @return the y-axis scale factor
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
-	self.yScale = function() { return displayFactor; };
+	self.yScale = function() { return (displayFactorCallback ? displayFactorCallback() : displayFactor); };
 
 	/**
 	 * Get the current {@code aggregate} value in use.
@@ -535,7 +784,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * @param {number} [value] the number of consumption sources to use
 	 * @returns when used as a getter, the count number, otherwise this object
 	 * @returns the {@code aggregate} value
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.aggregate = function(value) { 
 		if ( !arguments.length ) return aggregateType;
@@ -545,15 +794,144 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 	
 	/**
-	 * Clear out all data associated with this chart. Does not redraw.
+	 * Get the expected normalized duration, in milliseconds, based on the configured aggregate level.
+	 * 
+	 * @returns The expected normalized millisecond duration for the configured aggregate level.
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.aggregateNormalizedDuration = function() {
+		if ( aggregateType === 'FiveMinute' ) {
+			return (1000 * 60 * 5);
+		}
+		if ( aggregateType === 'TenMinute' ) {
+			return (1000 * 60 * 10);
+		}
+		if ( aggregateType === 'FifteenMinute' ) {
+			return (1000 * 60 * 15);
+		}
+		if ( aggregateType === 'Hour' || aggregateType === 'HourOfDay' || aggregateType === 'SeasonalHourOfDay' ) {
+			return (1000 * 60 * 60);
+		}
+		if ( aggregateType === 'Day' || aggregateType === 'DayOfWeek' || aggregateType === 'SeasonalDayOfWeek' ) {
+			return (1000 * 60 * 60 * 24);
+		}
+		if ( aggregateType === 'Month' ) {
+			return (1000 * 60 * 60 * 24 * 30); // NOTE: this is approximate!
+		}
+		return (1000 * 60); // otherwise, default to minute duration
+	};
+	
+	/**
+	 * Test if two dates are the expected aggregate normalized duration apart.
+	 *
+	 * @returns True if the two dates are exactly one normalized aggregate duration apart.
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.isNormalizedDuration = function(d1, d2) {
+		var diff, 
+			expectedDiff = self.aggregateNormalizedDuration(),
+			v1,
+			v2;
+		if ( !(d1 && d2) ) {
+			return false;
+		}
+		diff = Math.abs(d2.getTime() - d1.getTime());
+		if ( diff === expectedDiff ) {
+			return true;
+		}
+		
+		// make sure d1 < d2
+		if ( d2.getTime() < d1.getTime() ) {
+				v1 = d1;
+				d1 = d2;
+				d2 = v1;
+		}
+		
+		if ( aggregateType === 'Month' ) {
+			// test if months are only 1 apart
+			return (d3.time.month.utc.offset(d1, 1).getTime() === d2.getTime());
+		}
+		
+		if ( aggregateType === 'SeasonalHourOfDay' ) {
+			// test just if hour only 1 apart
+			v1 = d1.getUTCHours() + 1;
+			if ( v1 > 23 ) {
+				v1 = 0;
+			}
+			return (d2.getUTCHours() === v1 && d1.getTime() !== d2.getTime());
+		}
+		
+		if ( aggregateType === 'SeasonalDayOfWeek' ) {
+			// test just if DOW only 1 apart
+			v1 = d1.getUTCDay() + 1;
+			if ( v1 > 6 ) {
+				v1 = 0;
+			}
+			return (d2.getUTCDay() === v1 && d1.getTime() !== d2.getTime());
+		}
+		
+		return false;
+	};
+	
+	/**
+	 * Add an aggregate normalized time duration to a given date.
+	 *
+	 * @param date The date to add to.
+	 * @returns A new Date object.
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.addNormalizedDuration = function(date) {
+		if ( !date ) {
+			return undefined;
+		}
+		if ( aggregateType === 'Month' ) {
+			return d3.time.month.utc.offset(date, 1);
+		}
+		return new Date(date.getTime() + self.aggregateNormalizedDuration());
+	};
+	
+	/**
+	 * Insert aggregate time normalized elements into all layer data arrays.
+	 * The <code>layerData</code> object must be an array of objects, each object
+	 * having a <code>values</code> array of data objects. This method will
+	 * clone data objects and insert them into the <code>values</code> array in-place,
+	 * in order to create a time-normalized series of elements.
+	 * 
+	 * @param layerData The array of layer (data group) objects.
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	function insertNormalizedDurationIntoLayerData(layerData) {
+		var i, j, row, datum,
+			plotPropName = plotPropertyName(),
+			plotReversePropName = plotReversePropertyName();
+		for ( j = 0; j < layerData.length; j += 1 ) {
+			row = layerData[j].values;
+			for ( i = 0; i < row.length - 1; i += 1 ) {
+				if ( self.isNormalizedDuration(row[i].date, row[i+1].date) !== true ) {
+					datum = sn.util.copy(row[i]);
+					datum.date = self.addNormalizedDuration(datum.date);
+					datum[plotPropName] = null;
+					datum[plotReversePropName] = null;
+					row.splice(i + 1, 0, datum);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Clear out all data associated with this chart. Does not redraw. If 
+	 * {@link hoverLeaveCallback} is defined, it will be called with no arguments.
 	 * 
 	 * @return this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.reset = function() {
 		originalData = {};
 		groupIds = [];
 		otherData = {};
+		if ( svgHoverRoot ) {
+			handleHoverLeave();
+		}
 		return me;
 	};
 	
@@ -565,7 +943,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * @param {Array} rawData - the raw chart data to load
 	 * @param {String} groupId - the ID to associate with the data; each stack group must have its own ID
 	 * @returns this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.load = function(rawData, groupId) {
 		if ( originalData[groupId] === undefined ) {
@@ -582,7 +960,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param {String} groupId - the group ID of the data to get
 	 * @returns the data, or <code>undefined</code>
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.data = function(groupId) {
 		return originalData[groupId];
@@ -598,7 +976,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * @param {String} groupId - the group ID to associate with the data
 	 * @param {Boolean} replace - If <em>true</em> then do not append to existing data, replace it instead.
 	 * @returns this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.stash = function(rawData, groupId, replace) {
 		if ( otherData[groupId] === undefined || replace === true ) {
@@ -614,7 +992,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param {String} groupId - the group ID of the data to get
 	 * @returns the data, or <code>undefined</code>
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.stashedData = function(groupId) {
 		return otherData[groupId];
@@ -625,7 +1003,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * source 
 	 * 
 	 * @returns this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.regenerate = function() {
 		if ( originalData === undefined ) {
@@ -642,11 +1020,43 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 	
 	/**
+	 * Get or set the scale factor for specific group IDs. If called without any arguments,
+	 * all configured scale factors will be returned as an object, with group IDs as property
+	 * names with corresponding scale factor values. If called with a single Object argument
+	 * then set all scale factors using group IDs as object property names with corresponding 
+	 * number values for the scale factor.
+	 *
+	 * @param {String} groupId - The group ID of the scale factor to set.
+	 * @param {Number} value - The scale factor to set.
+	 * @returns If called without any arguments, all configured scale factors as an object.
+	 *          If called with a single String <code>groupId</code> argument, the scale factor for the given group ID,
+	 *          or <code>1</code> if not defined.
+	 *          If called with a single Object <code>groupId</code> argument, set
+	 *          Otherwise, this object.
+	 */
+	self.scaleFactor = function(groupId, value) {
+		var v;
+		if ( !arguments.length ) return scaleFactors;
+		if ( arguments.length === 1 ) {
+			if ( typeof groupId === 'string' ) {
+				v = scaleFactors[groupId];
+				return (v === undefined ? 1 : v);
+			}
+			
+			// for a single Object argument, reset all scaleFactors
+			scaleFactors = groupId;
+		} else if ( arguments.length == 2 ) {
+			scaleFactors[groupId] = value;
+		}
+		return me;
+	};
+	
+	/**
 	 * Get or set the animation transition time, in milliseconds.
 	 * 
 	 * @param {number} [value] the number of milliseconds to use
 	 * @return when used as a getter, the millisecond value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
@@ -677,7 +1087,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {object} [value] the aggregate property names to use
 	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.plotProperties = function(value) {
 		if ( !arguments.length ) return plotProperties;
@@ -696,12 +1106,14 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the data callback
 	 * @return when used as a getter, the current data callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.dataCallback = function(value) {
 		if ( !arguments.length ) return dataCallback;
 		if ( typeof value === 'function' ) {
 			dataCallback = value;
+		} else {
+			dataCallback = undefined;
 		}
 		return me;
 	};
@@ -712,12 +1124,14 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the color callback
 	 * @return when used as a getter, the current color callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.colorCallback = function(value) {
 		if ( !arguments.length ) return colorCallback;
 		if ( typeof value === 'function' ) {
 			colorCallback = value;
+		} else {
+			colorCallback = undefined;
 		}
 		return me;
 	};
@@ -729,12 +1143,14 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the source exclude callback
 	 * @return when used as a getter, the current source exclude callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.sourceExcludeCallback = function(value) {
 		if ( !arguments.length ) return sourceExcludeCallback;
 		if ( typeof value === 'function' ) {
 			sourceExcludeCallback = value;
+		} else {
+			sourceExcludeCallback = undefined;
 		}
 		return me;
 	};
@@ -746,12 +1162,14 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the display factor exclude callback
 	 * @return when used as a getter, the current display factor callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.displayFactorCallback = function(value) {
 		if ( !arguments.length ) return displayFactorCallback;
 		if ( typeof value === 'function' ) {
 			displayFactorCallback = value;
+		} else {
+			displayFactorCallback = undefined;
 		}
 		return me;
 	};
@@ -763,12 +1181,14 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the layer post-process callback
 	 * @return when used as a getter, the current layer post-process callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.layerPostProcessCallback = function(value) {
 		if ( !arguments.length ) return layerPostProcessCallback;
 		if ( typeof value === 'function' ) {
 			layerPostProcessCallback = value;
+		} else {
+			layerPostProcessCallback = undefined;
 		}
 		return me;
 	};
@@ -780,12 +1200,136 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current draw callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.drawAnnotationsCallback = function(value) {
 		if ( !arguments.length ) return drawAnnotationsCallback;
 		if ( typeof value === 'function' ) {
 			drawAnnotationsCallback = value;
+		} else {
+			drawAnnotationsCallback = undefined;
+		}
+		return me;
+	};
+	
+	function getOrCreateHoverRoot() {
+		if ( !svgHoverRoot ) {
+			svgHoverRoot = svgRoot.append('g')
+				.attr('class', 'hover-root')
+				.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+			svgPointerCapture = svgRoot.append('rect')
+				.attr('width', w)
+				.attr('height', h)
+				.attr('fill', 'none')
+				.attr('pointer-events', 'all')
+				.attr('class', 'pointer-capture')
+				.attr('transform', 'translate(' + p[3] +',' +p[0] +')');
+		}
+		return svgPointerCapture;
+	}
+	
+	/**
+	 * Get or set a mouseover callback function, which is called in response to mouse entering
+	 * the data area of the chart.
+	 * 
+	 * @param {function} [value] the mouse enter callback
+	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.hoverEnterCallback = function(value) {
+		if ( !arguments.length ) return hoverEnterCallback;
+		var root = getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			hoverEnterCallback = value;
+			root.on('mouseover', handleHoverEnter);
+		} else {
+			hoverEnterCallback = undefined;
+			root.on('mouseover', null);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set a mousemove callback function, which is called in response to mouse movement
+	 * over the data area of the chart.
+	 * 
+	 * @param {function} [value] the hover callback
+	 * @return when used as a getter, the current hover callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.hoverMoveCallback = function(value) {
+		if ( !arguments.length ) return hoverMoveCallback;
+		var root = getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			getOrCreateHoverRoot();
+			hoverMoveCallback = value;
+			root.on('mousemove', handleHoverMove);
+		} else {
+			hoverMoveCallback = undefined;
+			root.on('mousemove', null);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set a mouseout callback function, which is called in response to mouse leaving
+	 * the data area of the chart.
+	 * 
+	 * @param {function} [value] the mouse enter callback
+	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.hoverLeaveCallback = function(value) {
+		if ( !arguments.length ) return hoverLeaveCallback;
+		var root = getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			hoverLeaveCallback = value;
+			root.on('mouseout', handleHoverLeave);
+		} else {
+			hoverLeaveCallback = undefined;
+			root.on('mouseout', null);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set a dblclick callback function, which is called in response to mouse double click
+	 * events on the data area of the chart.
+	 * 
+	 * @param {function} [value] the double click callback
+	 * @return when used as a getter, the current double click callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.doubleClickCallback = function(value) {
+		if ( !arguments.length ) return doubleClickCallback;
+		var root = getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			doubleClickCallback = value;
+			registerUserInteractionHandler('dblclick', root, handleClickInternal);
+		} else {
+			doubleClickCallback = undefined;
+			unregisterUserInteractionHandler('dblclick', root, handleClickInternal);
+		}
+		return me;
+	};
+	
+	/**
+	 * Get or set a range selection callback function, which is called in response to mouse click or touch start
+	 * events on the data area of the chart.
+	 * 
+	 * @param {function} [value] the range selection callback
+	 * @return when used as a getter, the current range selection callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.rangeSelectionCallback = function(value) {
+		if ( !arguments.length ) return rangeSelectionCallback;
+		var root = getOrCreateHoverRoot();
+		if ( typeof value === 'function' ) {
+			rangeSelectionCallback = value;
+			registerUserInteractionHandler('click', root, handleClickInternal);
+		} else {
+			rangeSelectionCallback = undefined;
+			unregisterUserInteractionHandler('click', root, handleClickInternal);
 		}
 		return me;
 	};
@@ -797,7 +1341,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current x-axis tick callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.xAxisTickCallback = function(value) {
 		if ( !arguments.length ) return xAxisTickCallback;
@@ -813,7 +1357,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current axis rule opacity value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.ruleOpacity = function(value) {
 		if ( !arguments.length ) return ruleOpacity;
@@ -827,7 +1371,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current vertical axis rule opacity value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedStackChart
+	 * @memberOf sn.chart.baseGroupedChart
 	 */
 	self.vertRuleOpacity = function(value) {
 		if ( !arguments.length ) return vertRuleOpacity;
@@ -847,8 +1391,10 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
 		config : { value : config },
 		fillColor : { value : fillColor },
+		insertNormalizedDurationIntoLayerData : { value : insertNormalizedDurationIntoLayerData },
 		internalPropName : { value : internalPropName },
 		plotPropertyName : { get : plotPropertyName },
+		plotReversePropertyName : { get : plotReversePropertyName },
 		padding : { value : p },
 		width : { value : w, enumerable : true },
 		height : { value : h, enumerable : true },
@@ -856,6 +1402,15 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		svgDataRoot : { value : svgDataRoot },
 		svgRuleRoot : { value : svgRuleRoot },
 		svgTickGroupX : { value : svgTickGroupX },
+		
+		// interactive support
+		svgHoverRoot : { get : function() { return svgHoverRoot; } },
+		handleHoverEnter : { get : function() { return handleHoverEnter; }, set : function(v) { handleHoverEnter = v; } },
+		handleHoverMove : { get : function() { return handleHoverMove; }, set : function(v) { handleHoverMove = v; } },
+		handleHoverLeave : { get : function() { return handleHoverLeave; }, set : function(v) { handleHoverLeave = v; } },
+		handleClick : { get : function() { return handleClick; }, set : function(v) { handleClick = v; } },
+		handleDoubleClick : { get : function() { return handleDoubleClick; }, set : function(v) { handleDoubleClick = v; } },
+
 		groupIds : { get : function() { return groupIds; } },
 		computeUnitsY : { value : computeUnitsY },
 		drawAxisX : { get : function() { return drawAxisX; }, set : function(v) { drawAxisX = v; } },

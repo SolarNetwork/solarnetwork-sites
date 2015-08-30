@@ -49,12 +49,12 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	}
 	
 	var parent = sn.chart.baseGroupedStackBarChart(containerSelector, chartConfig);
-	var that = (function() {
+	var self = (function() {
 		var	me = sn.util.copy(parent);
 		Object.defineProperty(me, 'version', {value : '1.0.0', enumerable : true, configurable : true});
 		return me;
 	}());
-	parent.me = that;
+	parent.me = self;
 
 	// Boolean, true for northern hemisphere seasons, false for southern.
 	var northernHemisphere = undefined;
@@ -79,7 +79,12 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	var svgAggGroup = parent.svgDataRoot.append('g')
 		.attr('class', 'agg-gen')
 		.attr('transform', 'translate(0,' + (10 - parent.padding[0]) + ')');
+		
+	var chartDrawData = undefined,
+		selectedBarData = undefined,
+		selectionBarData = [];
 	
+	var bisectDate = d3.bisector(function(d) { return d.date; }).left;
 	
 	function seasonColorFn(d) {
 		var seasonColors = (parent.config.seasonColors || ['#5c8726', '#e9a712', '#762123', '#80a3b7']);
@@ -120,17 +125,18 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	function nestRollupAggregateSum(array) {
 		// Note: we don't use d3.sum here because we want to end up with a null value for "holes"
 		var sum = null, plus = null, minus = null, 
-			d, v, i, len = array.length, groupId, negate = false;
+			d, v, i, len = array.length, groupId, scale, negate = false;
 		for ( i = 0; i < len; i += 1 ) {
 			d = array[i];
 			v = d[parent.plotPropertyName];
 			if ( v !== undefined ) {
 				groupId = d[parent.internalPropName].groupId;
+				scale = parent.scaleFactor(groupId);
 				negate = negativeGroupMap[groupId] === true;
 				if ( negate ) {
-					minus += v;
+					minus += v * scale;
 				} else {
-					plus += v;
+					plus += v * scale;
 				}
 			}
 		}
@@ -145,6 +151,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			groupIds = parent.groupIds,
 			maxPositiveY = 0,
 			maxNegativeY = 0,
+			aggregateType = parent.aggregate(),
 			sumLineData,
 			timeAggregateData;
 
@@ -185,8 +192,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			});
 			
 		timeAggregateData = d3.nest()
-			.key(function(d) {
-				var aggregateType = parent.aggregate();
+			.key(function timeAggregateKey(d) {
 				var date;
 				if ( aggregateType === 'Day' ) {
 					// rollup to month
@@ -230,6 +236,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		parent.computeDomainX();
 		
 		drawData = setupDrawData();
+		chartDrawData = drawData;
 
 		// adjust Y domain to include "negative" range
 		yDomain[0] = -drawData.maxNegativeY;
@@ -334,7 +341,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		var barWidth = xBar.rangeBand();
 		var barPadding = parent.xBarPadding() / 2;
 		var aggBands = svgAggBandGroup.selectAll("line").data(bandTicks, parent.keyX);
-		var bandPosition = function(s) {
+		var bandPosition = function setupBandPosition(s) {
 				s.attr("x1", function(d) {
 					var date = d.date;
 					if ( date.getTime() < xDomain[0].getTime() ) {
@@ -349,7 +356,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 						return xBar(bandTicks[i+1].date) - barPadding;
 					}
 					// for last band, set to end of last bar
-					if ( bandTicks.length > 1 ) {
+					if ( bandTicks.length > 0 ) {
 						return (xBar(xDomain[1]) + barWidth + barPadding);
 					}
 					return xBar(d.date) + barPadding;
@@ -450,6 +457,241 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			.remove();
 	}
 
+	function calculateHoverData(point) {
+		if ( !chartDrawData ) {
+			return;
+		}
+		var barRange = parent.xBar.range(),
+			barBisection = d3.bisectLeft(barRange, point[0]),
+			barIndex = (barBisection < 1 ? 0 : barBisection - 1),
+			barDate = parent.xBar.domain()[barIndex],
+			allData = [],
+			hoverData = [],
+			callbackData = { data : hoverData, yRange : [parent.y(0), parent.y(0)], allData : allData, groups : {} };
+		chartDrawData.groupedData.forEach(function(groupArray, idx) {
+			var groupHoverData = { 
+					groupId : parent.groupIds[idx], 
+					data : [],
+					negate : (negativeGroupMap[parent.groupIds[idx]] === true) 
+				},
+				scale = parent.scaleFactor(groupHoverData.groupId),
+				dataValue, totalValue = 0, i;
+			if ( groupArray.length > 0 && groupArray[0].length > 0) {
+				i = bisectDate(groupArray[0], barDate);
+				if ( i >= groupArray[0].length ) {
+					i -= 1;
+				}
+				groupHoverData.index = i;
+				groupArray.forEach(function(dataArray) {
+					// only count the data if the date is the same as our bar date... the bisectDate() function retunrs
+					// the *closest* date, but if there are holes in the data we might not have the *exact* date
+					if ( dataArray[i].date.getTime() === barDate.getTime() ) {
+						dataValue = dataArray[i][parent.plotPropertyName] * scale;
+						if ( callbackData.dateUTC === undefined && dataArray[i].created ) {
+							callbackData.dateUTC = dataArray[i].created;
+							callbackData.utcDate = sn.timestampFormat.parse(callbackData.dateUTC);
+						}
+					} else {
+						dataValue = null; // null to flag as missing
+					}
+					totalValue += dataValue;
+					groupHoverData.data.push(dataValue);
+					allData.push(dataValue);
+				});
+				groupHoverData.total = totalValue;
+				groupHoverData.y = parent.y(totalValue);
+				if ( groupHoverData.y < callbackData.yRange[0] ) {
+					callbackData.yRange[0] = groupHoverData.y;
+				}
+				if ( groupHoverData.y > callbackData.yRange[1] ) {
+					callbackData.yRange[1] = groupHoverData.y;
+				}
+			}
+			hoverData.push(groupHoverData);
+			callbackData.groups[groupHoverData.groupId] = groupHoverData;
+		});
+		callbackData.date = barDate;
+		callbackData.x = parent.valueXMidBar({date:barDate});
+		callbackData.index = barIndex;
+		if ( callbackData.utcDate === undefined ) {
+			// find the UTC date based on the offset of some bar's known UTC date value
+			chartDrawData.groupedData.some(function(groupArray) {
+				return groupArray.some(function(dataArray) {
+					var d = (dataArray.length > 0 ? dataArray[0] : undefined),
+						i = -1,
+						dateUTC,
+						time = d3.time.month,
+						step = 1,
+						agg = parent.aggregate();
+					if ( d && d.date && d.created ) {
+						parent.xBar.domain().some(function(date, dateIndex) {
+							if ( date.getTime() === d.date.getTime() ) {
+								i = dateIndex;
+								return true;
+							}
+							return false;
+						});
+						if ( i >= 0 ) {
+							dateUTC = sn.timestampFormat.parse(d.created);
+							if ( agg === 'Day' ) {
+								time = d3.time.day;
+							} else if ( agg === 'Hour' ) {
+								time = d3.time.hour;
+							} else if ( agg === 'FiveMinute' ) {
+								time = d3.time.minute;
+								step = 5;
+							} else if ( agg === 'TenMinute' ) {
+								time = d3.time.minute;
+								step = 10;
+							} else if ( agg === 'FifteenMinute' ) {
+								time = d3.time.minute;
+								step = 15;
+							} // else we've defaulted to Month already
+							callbackData.utcDate = time.offset(dateUTC, step * (barIndex - i));
+							return true;
+						}
+					}
+					return false;
+				});
+			});
+		}
+		return callbackData;
+	}
+
+	function handleHoverEnter() {
+		var callback = parent.hoverEnterCallback();
+		if ( !callback ) {
+			return;
+		}
+		var point = sn.tapCoordinates(this),
+			callbackData = calculateHoverData(point);
+		
+		if ( !callbackData ) {
+			selectedBarData = undefined;
+			return;
+		}
+		
+		parent.drawHoverHighlightBars(callbackData && callbackData.dateUTC ? [callbackData] : []);
+				
+		selectedBarData = callbackData;
+		
+        callback.call(parent.me, this, point, callbackData);
+	}
+
+	function handleHoverMove() {
+		var callback = parent.hoverMoveCallback();
+		if ( !callback ) {
+			return;
+		}
+		var point = sn.tapCoordinates(this),
+			callbackData = calculateHoverData(point);
+			
+		if ( !callbackData ) {
+			selectedBarData = undefined;
+			return;
+		}
+		
+		parent.drawHoverHighlightBars(callbackData && callbackData.dateUTC ? [callbackData] : []);
+
+		selectedBarData = callbackData;
+
+		// draw selection as we move, if a selection started
+		if ( selectionBarData.length > 0 ) {
+			if ( callbackData.date > selectionBarData[0].date ) {
+				parent.drawSelection(selectionBarData.concat(callbackData));
+			} else {
+				parent.drawSelection([callbackData, selectionBarData[0]]);
+			}
+		}
+		
+        callback.call(parent.me, this, point, callbackData);
+	}
+
+	function handleHoverLeave() {
+		var callback = parent.hoverLeaveCallback();
+		if ( !callback ) {
+			return;
+		}
+		var args = [];
+			
+		// `this` may not be defined here, if reset is called
+		if ( this ) {
+			args.push(this);
+			args.push(sn.tapCoordinates(this));
+		}
+		
+		parent.drawHoverHighlightBars([]);
+		
+		selectedBarData = undefined;
+		
+        callback.apply(parent.me, args);
+	}
+	
+	function handleDoubleClick() {
+		var callback = parent.doubleClickCallback();
+		if ( !callback ) {
+			return;
+		}
+		var point = sn.tapCoordinates(this);
+		var callbackData = selectedBarData;
+		if ( !callbackData ) {
+			callbackData = calculateHoverData(point);
+		}
+
+		if ( selectionBarData.length > 0 ) {
+			// clear the selection after selection
+			selectionBarData.length = 0;
+			parent.drawSelection(selectionBarData);
+		}
+		
+		d3.event.preventDefault();
+		callback.call(parent.me, this, point, callbackData);
+	}
+
+	function handleClick() {
+		var rangeCallback = parent.rangeSelectionCallback();
+		if ( !rangeCallback ) {
+			return;
+		}
+		var point = sn.tapCoordinates(this);
+		var callbackData = selectedBarData,
+			selectionCallbackData;
+		
+		if ( !callbackData ) {
+			callbackData = calculateHoverData(point);
+		}
+		if ( !callbackData ) {
+			return;
+		}
+		
+		if ( (sn.hasTouchSupport || d3.event.shiftKey) && selectionBarData.length > 0 ) {
+			// preserve ascending order
+			if ( callbackData.date > selectionBarData[0].date ) {
+				selectionBarData.push(callbackData);
+			} else {
+				selectionBarData.splice(0, 0, callbackData);
+			}
+		} else if ( selectionBarData.length > 0 ) {
+			// clear the selection
+			selectionBarData.length = 0;
+		} else {
+			// first bar, add to array
+			selectionBarData.push(callbackData);
+		}
+		
+		selectionCallbackData = selectionBarData;
+		if ( selectionBarData.length > 1 ) {
+			// clear the selection after selection
+			selectionCallbackData = selectionBarData.slice(0, selectionBarData.length);
+			selectionBarData.length = 0;
+		}
+		
+		parent.drawSelection(selectionBarData);
+		
+		d3.event.preventDefault();
+		rangeCallback.call(parent.me, this, point, selectionCallbackData);
+	}
+
 	/**
 	 * Toggle showing the sum line, or get the current setting.
 	 * 
@@ -457,7 +699,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	 * @returns when used as a getter, the current setting
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
-	that.showSumLine = function(value) {
+	self.showSumLine = function(value) {
 		if ( !arguments.length ) return !svgSumLineGroup.classed('off');
 		var transitionMs = parent.transitionMs();
 		svgSumLineGroup
@@ -471,7 +713,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 					.style("opacity", null)
 					.classed('off', !value);
 			});
-		return that;
+		return parent.me;
 	};
 	
 	/**
@@ -481,7 +723,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	 * @returns when used as a getter, the current setting
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
-	that.northernHemisphere = function(value) {
+	self.northernHemisphere = function(value) {
 		if ( !arguments.length ) return northernHemisphere;
 		if ( value === northernHemisphere ) {
 			return;
@@ -492,7 +734,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 			.style('stroke', seasonColorFn);
 		svgAggGroup.selectAll("text").transition().duration(transitionMs)
 			.style("fill", labelSeasonColors);
-		return that;
+		return parent.me;
 	};
 	
 	/**
@@ -503,7 +745,7 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 	 * @return {Array} when used as a getter, the list of group IDs currently used, otherwise this object
 	 * @memberOf sn.chart.energyIOBarChart
 	 */
-	that.negativeGroupIds = function(value) {
+	self.negativeGroupIds = function(value) {
 		if ( !arguments.length ) {
 			return (function() {
 				var prop,
@@ -520,13 +762,18 @@ sn.chart.energyIOBarChart = function(containerSelector, chartConfig) {
 		value.forEach(function(e) {
 			negativeGroupMap[e] = true;
 		});
-		return that;
+		return parent.me;
 	};
 
-	// define our drawing function
+	// define our custom drawing functions
 	parent.draw = draw;
+	parent.handleHoverEnter = handleHoverEnter;
+	parent.handleHoverMove = handleHoverMove;
+	parent.handleHoverLeave = handleHoverLeave;
+	parent.handleClick = handleClick;
+	parent.handleDoubleClick = handleDoubleClick;
 	
-	return that;
+	return self;
 };
 
 }());

@@ -45,10 +45,10 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 		.x(function(d) { 
 			return parent.x(d.date);
 		})
-		.y0(function(d) { 
+		.y0(function(d) {
 			return parent.y(d.y0);
 		})
-		.y1(function(d) { 
+		.y1(function(d) {
 			return parent.y(d.y0 + d.y);
 		});
 
@@ -112,6 +112,8 @@ sn.chart.powerAreaOverlapChart = function(containerSelector, chartConfig) {
 	
 	// define our drawing function
 	parent.draw = draw;
+	
+	parent.normalizeDataTimeGaps(true); // turn this on be default
 	
 	return that;
 };

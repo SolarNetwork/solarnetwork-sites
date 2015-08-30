@@ -18,19 +18,21 @@ function adjustChartDisplayUnits(chartKey, baseUnit, scale, unitKind) {
 	}
 }
 
+function regenerateChart(chart) {
+	if ( chart === undefined ) {
+		return;
+	}
+	chart.regenerate();
+	adjustChartDisplayUnits('.power-area-chart', 
+			(chart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
+			chart.yScale(),
+			(chart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
+}
+
 //handle clicks on legend handler
 function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.source);
-	if ( sn.runtime.powerAreaChart !== undefined ) {
-		// use a slight delay, otherwise transitions can be jittery
-		setTimeout(function() {
-			sn.runtime.powerAreaChart.regenerate();
-			adjustChartDisplayUnits('.power-area-chart', 
-					(sn.runtime.powerAreaChart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
-					sn.runtime.powerAreaChart.yScale(),
-					(sn.runtime.powerAreaChart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
-		}, sn.runtime.powerAreaChart.transitionMs() * 0.5);
-	}
+	regenerateChart(sn.runtime.powerAreaChart);
 }
 
 //show/hide the proper range selection based on the current aggregate level
@@ -84,14 +86,10 @@ function powerAreaChartSetup(endDate, chart, parameters) {
 		// note the order we call load dictates the layer order of the chart... each call starts a new layer on top of previous layers
 		chart.reset()
 			.load(results[0], 'Consumption')
-			.load(results[1], 'Generation')
-			.regenerate();
+			.load(results[1], 'Generation');
+		regenerateChart(chart);
 		sn.log("Power Area chart watt range: {0}", chart.yDomain());
 		sn.log("Power Area chart time range: {0}", chart.xDomain());
-		adjustChartDisplayUnits('.power-area-chart', 
-				(chart.aggregate() === 'TenMinute' ? 'W' : 'Wh'), 
-				chart.yScale(),
-				(chart.aggregate() === 'TenMinute' ? 'power' : 'energy'));
 	}).load();
 }
 
@@ -172,7 +170,15 @@ function setupUI() {
 				getAvailable = true;
 			} else if ( propName === 'wiggle' ) {
 				sn.runtime.powerAreaParameters.value(propName, sn.env[propName]);
-				sn.runtime.powerAreaChart.regenerate();
+				regenerateChart(sn.runtime.powerAreaChart);
+				return;
+			} else if ( propName === 'scale' ) {
+				sn.runtime.powerAreaChart.scaleFactor('Generation', Number(sn.env[propName]));
+				regenerateChart(sn.runtime.powerAreaChart);
+				return;
+			} else if ( propName === 'consumptionScale' ) {
+				sn.runtime.powerAreaChart.scaleFactor('Consumption', Number(sn.env[propName]));
+				regenerateChart(sn.runtime.powerAreaChart);
 				return;
 			}
 			if ( getAvailable ) {
@@ -213,8 +219,10 @@ function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 30,
 		sourceIds : 'Power',
+		scale : 1,
 		consumptionNodeId : 108,
 		consumptionSourceIds : 'A,B,C',
+		consumptionScale : 1,
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,
@@ -235,6 +243,7 @@ function onDocumentReady() {
 	});
 	
 	sn.runtime.powerAreaChart = sn.chart.powerAreaChart('#power-area-chart', sn.runtime.powerAreaParameters)
+		.scaleFactor({ 'Generation' : sn.env.scale, 'Consumption' : sn.env.consumptionScale })
 		.dataCallback(chartDataCallback)
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);

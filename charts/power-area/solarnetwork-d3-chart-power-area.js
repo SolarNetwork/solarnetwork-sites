@@ -72,11 +72,12 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 				return d.date; 
 			})
 			.y(function(d) { 
-				var y = d[plotPropName];
+				var y = d[plotPropName],
+					scaleFactor = parent.scaleFactor(d[parent.internalPropName].groupId);
 				if ( y === undefined || y < 0 || y === null ) {
 					y = 0;
 				}
-				return y;
+				return (y * scaleFactor);
 			});
 		parent.groupIds.forEach(function(groupId) {
 			var rawGroupData = self.data(groupId),
@@ -127,6 +128,9 @@ sn.chart.powerAreaChart = function(containerSelector, chartConfig) {
 			dummy[parent.internalPropName] = { groupId : key.slice(0, idx) };
 			dummy.sourceId = key.slice(idx + 1);
 		});
+		
+		// now look to fill in "zero" values to make interpolation look better
+		parent.insertNormalizedDurationIntoLayerData(layerData);
 		
 		if ( parent.me.layerPostProcessCallback() ) {
 			// we have to perform this call once per group, so we split this into multiple calls

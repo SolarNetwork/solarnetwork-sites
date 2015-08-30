@@ -1,0 +1,589 @@
+html.standalone {
+	background-color: rgba(34,175,176,1.0);
+	background: -webkit-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: -moz-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: -o-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: linear-gradient(to bottom, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
+}
+
+body {
+	font-family:  "Helvetica Neue", Helvetica, Arial, sans-serif;
+	margin: 10px;
+	background: none;
+	padding: 0;
+}
+
+body.embedded {
+	margin: 0;
+	padding: 10px;
+	background-color: #fbf5e2;
+	width: 530px;
+}
+
+h1 {
+	text-align: center;
+	font-size: 28px;
+	line-height: 28px;
+	font-weight: 400;
+	margin: 24px 0;
+	color: rgb(247,200,25);
+	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
+    text-rendering: optimizelegibility;
+}
+
+/* Structural */
+
+div.snroot {
+	position: relative;
+	width : 530px;
+	background-color: #fbf5e2;
+	border-radius: 8px;
+	padding: 10px;
+	box-sizing: content-box;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.snroot div.hbox {
+	display: -webkit-box;
+	-webkit-box-orient: horizontal;
+	display: -moz-box;
+	-moz-box-orient: horizontal;
+	display: -ms-flexbox;
+	-ms-flex-direction: row;
+	display: flex;
+	flex-direction: row;
+}
+
+.snroot div.hbox > * {
+	display: block;
+}
+
+.snroot div.vbox {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	display: -moz-box;
+	-moz-box-orient: vertical;
+	display: -ms-flexbox;
+	-ms-flex-direction: column;
+	display: flex;
+	flex-direction: column;
+}
+
+.snroot div.vbox > * {
+	display: block;
+}
+
+.snroot .energy-bar-chart {
+	margin-bottom: 10px;
+}
+
+.snroot .energy-bar-chart .y-axis-label {
+	width: 20px;
+}
+
+.snroot .energy-bar-chart .y-axis-label .label {
+	-moz-transform: translate(-145px, 150px) rotate(-90deg);
+	-ms-transform: translate(-145px, 150px) rotate(-90deg);
+	-o-transform: translate(-145px, 150px) rotate(-90deg);
+	-webkit-transform: translate(-145px, 150px) rotate(-90deg);
+	transform: translate(-145px, 150px) rotate(-90deg);
+	width: 300px;
+	text-align: center;
+}
+
+.snroot .energy-bar-chart .chart-container {
+	width: 510px;
+}
+
+.snroot .pie-chart {
+	width: 250px;
+	text-align: center;
+}
+
+#energy-pie-chart {
+	width: 250px;
+	height: 250px;
+}
+
+.snroot button {
+	border-radius: 4px;
+	border: 2px solid #f47f23;
+	background-color: #f5d1b5;
+	color: #603913;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.snroot button:active {
+	color: #b66c22;
+}
+
+#time-range-view-today {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+}
+
+#time-range-view-lifetime {
+	position: absolute;
+	top: 10px;
+	left: 10px;
+}
+
+.modal {
+	padding: 10px;
+	border-radius: 4px;
+	border: 1px solid #603913;
+	background-color: #f8f5eb;
+	font-size: 14px;
+	-webkit-box-shadow: 0px 4px 10px 1px rgba(0,0,0,0.55);
+	-moz-box-shadow: 0px 4px 10px 1px rgba(0,0,0,0.55);
+	box-shadow: 0px 4px 10px 1px rgba(0,0,0,0.55);
+}
+
+li + li {
+	margin-top: 6px;
+}
+
+.modal .close {
+	float: right;
+}
+
+.touch {
+	display: none;
+}
+
+#help-howto-modal {
+	position: absolute;
+	top: 10px;
+	left: 20px;
+	width: 480px;
+	font-size: 13px;
+}
+
+#help-howto-modal h4 {
+	margin-bottom: 8px;
+	margin-top: 8px;
+}
+
+#help-howto-modal ul {
+	padding-left: 20px;
+}
+
+#help-howto-modal span.generation,
+#help-howto-modal span.consumption {
+	padding: 0 2px 0 2px;
+	border-radius: 4px;
+	font-weight: 700;
+	color: white;
+}
+
+#help-howto-modal span.generation {
+	background-color: #ffc600;
+}
+
+#help-howto-modal span.consumption {
+	background-color: #f47f23;
+}
+
+.snroot .info-col {
+	padding: 10px;
+	width: 140px;
+	box-sizing: border-box;
+}
+
+.snroot .info-col:first-of-type {
+	padding-left: 0;
+	text-align: left;
+}
+
+.snroot .info-col:last-of-type {
+	padding-right: 0;
+	text-align: right;
+}
+
+.snroot .info-col > button {
+	margin-top: 12px;
+	margin-bottom: 12px;
+}
+
+.snroot .info-col.vbox {
+	-webkit-box-pack: justify;
+	-ms-flex-pack: justify;
+	justify-content: justify;
+}
+
+.snroot .msg {
+	display: none;
+	color: #aaa;
+	font-size: 10px;
+	font-style: italic;
+	margin-top: 12px;
+}
+
+.snroot .totals {
+	font-size: 16px;
+	line-height: 21px;
+}
+
+.snroot > .totals {
+	margin-top: 12px;
+	margin-bottom: 12px;
+}
+
+.snroot .totals .label {
+	font-weight: 700;
+	color: white;
+}
+
+.snroot .totals .generation.label {
+	background-color: #ffc600;
+}
+
+.snroot .totals .consumption.label {
+	background-color: #f47f23;
+}
+
+.snroot .totals .hbox {
+	margin-bottom: 6px;
+	-webkit-box-pack: center;
+	-ms-flex-pack: center;
+	justify-content: center;
+}
+
+.snroot .totals .hbox > .count + .label {
+	margin-left: 24px;
+}
+
+.snroot .totals .label {
+	padding: 2px 8px 0 8px;
+	border-radius: 4px;
+	border-bottom-right-radius: 0;
+}
+
+.snroot .totals.shown .label {
+	width: 46px;
+}
+
+.snroot .totals .hbox .count {
+	width: 100px;
+	text-align: right;
+	margin-left: -2px;
+	padding: 2px 0 0 0;
+}
+
+.snroot .totals .hbox.generation > *,
+.snroot .totals .count.generation {
+	border-bottom: 2px solid #ffc600;
+}
+
+.snroot .totals .hbox.consumption > *,
+.snroot .totals .count.consumption {
+	border-bottom: 2px solid #f47f23;
+}
+
+.snroot .totals .vbox {
+	height: 170px;
+	-webkit-box-pack: center;
+	-ms-flex-pack: center;
+	justify-content: center;
+}
+
+.snroot .totals .vbox .label {
+	padding: 2px 0 1px 0;
+	border-radius: 4px;
+	text-align: center;
+}
+
+.snroot .totals .vbox.generation .label {
+	border-bottom-left-radius: 0;
+}
+
+.snroot .totals .vbox.generation .count {
+	text-align: left;
+	padding: 2px 2px 2px 16px;
+	border-left: 3px solid #ffc600;
+}
+
+.snroot .totals .vbox.consumption .label {
+	border-bottom-right-radius: 0;
+}
+
+.snroot .totals .vbox.consumption .count {
+	text-align: right;
+	padding: 2px 16px 2px 2px;
+	border-right: 3px solid #f47f23;
+}
+
+.snroot .totals .alt {
+	color: gray;
+	font-weight: 300;
+}
+
+.snroot h2, h3 {
+    color: inherit;
+    font-family: inherit;
+    text-rendering: optimizelegibility;
+}
+
+.snroot h2 {
+	font-size: 18px;
+	font-weight: 500px;
+	margin-top: 0;
+	margin-bottom: 12px;
+	text-align: center;
+}
+
+.snroot h2 .alt {
+	color: gray;
+}
+
+.snroot h2 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+.snroot h2 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+.snroot h3 {
+	font-size: 14px;
+	line-height: 14px;
+	font-weight: 500;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+}
+
+.snroot h3 .alt {
+	color: gray;
+}
+
+.snroot h3 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+.snroot h3 sub {
+	line-height: 0;
+	font-size: 10px;
+	vertical-align: baseline;
+	position: relative;
+	top: 2px;
+}
+
+.snroot label {
+	font-weight: 700;
+}
+
+.snroot .literal {
+	text-transform: none;
+}
+
+.snroot .clickable {
+	cursor: pointer !important;
+}
+
+/* Tooltip support */
+
+.snroot .tooltip {
+	position: absolute;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 10px;
+	background-color: #fdfdfd;
+	-webkit-box-shadow: 0px 2px 5px 1px rgba(0,0,0,0.65);
+	-moz-box-shadow: 0px 2px 5px 1px rgba(0,0,0,0.65);
+	box-shadow: 0px 2px 5px 1px rgba(0,0,0,0.65);
+}
+
+.snroot .tooltip h4 {
+	text-align: center;
+	font-size: 10px;
+	font-weight: 700;
+	margin: 0 0 4px 0;
+	white-space: nowrap;
+}
+
+.snroot .tooltip table {
+	border-collapse: separate;
+	width: 100%;
+}
+
+.snroot .tooltip td.swatch {
+	width: 10px;
+	height: 10px;
+}
+
+.snroot .tooltip td {
+	font-size: 10px;
+	line-height: 10px;
+	text-align: right;
+	margin: 2px;
+	white-space: nowrap;
+	border-bottom: 2px solid #fdfdfd;
+}
+
+.snroot .tooltip td.desc {
+	padding-left: 8px;
+}
+
+.snroot .tooltip td.co2 {
+	padding-left: 8px;
+}
+
+.snroot .tooltip .subtotal td {
+	border-top: 1px dotted #ccc;
+	padding-bottom: 4px;
+	font-style: italic;
+}
+
+.snroot .tooltip .total td {
+	font-weight: 700;
+	padding-top: 4px;
+}
+
+/* General overrides for Schoolgen */
+
+.snroot .tooltip tr.total {
+	display: none;
+}
+
+
+#energy-bar-chart g.agg-band,
+#energy-bar-chart g.agg-band-ticks,
+#energy-bar-chart g.agg-gen {
+	display: none;
+}
+
+/* Base chart elements */
+
+.snroot .chart {
+	font-size: 10px;
+}
+
+.noselect,
+.noselect * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.snroot .crisp {
+	shape-rendering: crispEdges;
+}
+
+.snroot .chart rect {
+	fill-opacity: 0.8;
+}
+
+.snroot .chart text {
+	fill: #333;
+}
+
+.snroot .chart g.ticks text {
+	text-anchor: middle;
+}
+
+.snroot .chart g.ticks text.agg {
+	fill: black;
+	font-weight: bold;
+}
+
+.snroot .chart g.ticks text.agg.neg {
+	fill: #DF3038;
+}
+
+.snroot .chart g.agg text,
+.snroot .chart g.ticks text.major {
+	font-weight: 600;
+}
+
+.snroot .chart g.agg-gen text {
+	text-anchor: middle;
+	font-weight: bold;
+	fill: #1B7D30;
+}
+
+.snroot .chart g.rule,
+.snroot .chart g.vertrule {
+	shape-rendering: crispEdges;
+}
+
+.snroot .chart g.rule line,
+.snroot .chart g.vertrule line {
+	stroke: black;
+	opacity: 0.1;
+}
+
+.snroot .chart g.vertrule line {
+	opacity: 0.05;
+	stroke-dasharray: 2 1;
+}
+
+.snroot .chart g.rule line.origin,
+.snroot .chart g.vertrule line.origin {
+	stroke: black !important;
+	opacity: 1 !important;
+}
+
+.snroot .chart g.rule text {
+	text-anchor: end;
+	alignment-baseline: middle;
+}
+
+.snroot .chart g.agg-band line {
+	stroke: black;
+	stroke-width: 15px;
+}
+
+.snroot .chart g.agg-band-ticks text {
+	fill: white;
+	text-anchor: middle;
+	font-weight: bold;
+}
+
+.snroot .chart g.agg-sum path {
+	stroke-width: 1px;
+	stroke: #C42F2F;
+	fill: none;
+}
+
+.snroot .chart .off {
+	display: none;
+}
+
+.snroot .chart path.area {
+	fill-opacity: 1;
+}
+
+.snroot .chart path.line {
+  fill: none;
+}
+
+.snroot .chart line.axis {
+	stroke: black;
+}
+
+.snroot .chart rect.highlightbar {
+	stroke: none;
+	fill: rgba(255, 238, 71, 0.5);
+}
+
+.snroot .chart rect.selectionbar {
+	stroke: none;
+	fill: rgba(232, 113, 113, 0.3);
+}

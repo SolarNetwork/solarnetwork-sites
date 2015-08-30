@@ -1,5 +1,5 @@
 /*global colorbrewer,console,d3,queue */
-(function() {
+(function(window, console) {
 'use strict';
 /**
  * @namespace the SolarNetwork namespace
@@ -7,7 +7,7 @@
  * @require queue 1.0
  */
 var sn = {
-	version : '0.0.7',
+	version : '0.2.0',
 	
 	/**
 	 * @namespace the SolarNetwork chart namespace.
@@ -172,7 +172,69 @@ var sn = {
 		return sn.runtime.colorData.reduce(function(c, obj) {
 			return (obj.source === d.source ? obj.color : c);
 		}, sn.runtime.colorData[0].color);
+	},
+
+	/**
+	 * Flag indicating if the client supports touch events.
+	 * 
+	 * @returns {Boolean} <em>true</em> if have touch support
+	 */
+	hasTouchSupport : (function() {
+		if ( !(window && window.document) ) {
+			return false;
+		}
+		if ( 'createTouch' in window.document ) { // True on the iPhone
+			return true;
+		}
+		try {
+			var event = window.document.createEvent('TouchEvent');
+			return !!event.initTouchEvent;
+		} catch( error ) {
+			return false;
+		}
+	}()),
+};
+
+/**
+ * Names to use for user-interaction events.
+ * 
+ * <p>On non-touch devices these equate to <em>mousedown</em>, 
+ * <em>mouseup</em>, etc. On touch-enabled devices these equate to
+ * <em>touchstart</em>, <em>touchend</em>, etc.</p>
+ *
+ * @retunrs {Object} Mapping of start, move, end, cancel keys to associated event names.
+ */
+sn.tapEventNames = (function() {
+	return (sn.hasTouchSupport ? {
+			start: "touchstart",
+			move: "touchmove",
+			end: "touchend",
+			cancel: "touchcancel",
+			click: "touchstart",
+			dblclick: "touchstart"
+		} : {
+			start: "mousedown",
+			move: "mousemove",
+			end: "mouseup",
+			cancel: "touchcancel",
+			click: "click",
+			dblclick: "dblclick"
+		});
+}());
+
+/**
+ * Get the first user-interaction x,y coordinates relative to a given container element.
+ *
+ * @param {Node} container - A DOM container node to get the relative coordinates for.
+ * @returns {Array} An array like <code>[x, y]</code> or <code>undefined</code> if not known.
+ */
+sn.tapCoordinates = function(container) {
+	var coordinates;
+	if ( sn.hasTouchSupport ) {
+		coordinates = d3.touches(container);
+		return (coordinates && coordinates.length > 0 ? coordinates[0] : undefined);
 	}
+	return d3.mouse(container);
 };
 
 /**
@@ -492,8 +554,10 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 			intervalObj.eLocalDate = sn.dateTimeFormatLocal.parse(intervalObj.endDate);
 		}
 
-		var evt = document.createEvent('Event');
-		evt.initEvent('snAvailableDataRange', true, true);
+		var evt = (window && window.document ? window.document.createEvent('Event') : {});
+		if ( evt.initEvent !== undefined) {
+			evt.initEvent('snAvailableDataRange', true, true);
+		}
 		evt.data = {
 				reportableInterval : intervalObj,
 				availableSourcesMap : {} // mapping of data type -> sources
@@ -525,7 +589,7 @@ sn.availableDataRange = function(helper, dataTypes, callback) {
 		}
 		if ( typeof callback === 'function' ) {
 			callback(evt.data);
-		} else {
+		} else if ( window && window.document ) {
 			document.dispatchEvent(evt);
 		}
 	});
@@ -1011,6 +1075,11 @@ sn.powerPerSourceStackedLayerGenerator = function(keyValueSet, valueProperty) {
  *             Main : 'Power / Main'
  *         }
  *     },
+ *     displaySourceObjects : {
+ *         'Consumption / Main' : { dataType : 'Consumption', source : 'Main' },
+ *         'Consumption / Shed' : { dataType : 'Consumption', source : 'Shed' },
+ *         'Power / Main' : { dataType : 'Power', source : 'Main' }
+ *     },
  *     reverseDisplaySourceMap : {
  *         Consumption : {
  *             'Consumption / Main' : 'Main',
@@ -1046,6 +1115,9 @@ sn.sourceColorMapping = function(sourceMap, params) {
 	var displayDataTypeFn;
 	var displaySourceFn;
 	var displayColorFn;
+	
+	var displayToSourceObjects = {}; // map of 'dType / source' -> { dataType : dType, source : source }
+	
 	if ( typeof p.displayDataType === 'function' ) {
 		displayDataTypeFn = p.displayDataType;
 	} else {
@@ -1082,6 +1154,7 @@ sn.sourceColorMapping = function(sourceMap, params) {
 			}
 			typeSourceList.push(mappedSource);
 			sourceList.push(mappedSource);
+			displayToSourceObjects[mappedSource] = { dataType : dtype, source : el, display : mappedSource };
 		});
 	}
 	for ( dataType in sourceMap ) {
@@ -1130,6 +1203,7 @@ sn.sourceColorMapping = function(sourceMap, params) {
 	result.displaySourceMap = chartSourceMap;
 	result.reverseDisplaySourceMap = reverseDisplaySourceMap;
 	result.colorMap = sn.colorMap(sourceColors, sourceList);
+	result.displaySourceObjects = displayToSourceObjects;
 	return result;
 };
 
@@ -1853,6 +1927,37 @@ sn.util.copyAll = function(obj1, obj2) {
 	return obj2;
 };
 
+/**
+ * Compare two arrays for equality, that is they have the same length and same values
+ * using strict quality.
+ *
+ * @param {Array} a1 The first array to compare.
+ * @param {Array} a2 The second array to compare.
+ * @return {Boolean} True if the arrays are equal.
+ * @since 0.2.0
+ */
+sn.util.arraysAreEqual = function arraysAreEqual(a1, a2) {
+	var i, len;
+	if ( !(Array.isArray(a1) && Array.isArray(a2)) ) {
+		return false;
+	}
+
+	// compare lengths first
+	if ( a1.length !== a2.length) {
+		return false;
+	}
+
+	for ( i = 0, len = a1.length; i < len; i += 1 ) {
+		// support nested arrays
+		if ( Array.isArray(a1[i]) && Array.isArray(a2[i]) && arraysAreEqual(a1[i], a2[i]) !== true ) {
+			return false;
+		} else if ( a1[i] !== a2[i] ) {
+			return false;
+		}
+	}
+	return true;
+};
+
 // parse URL parameters into sn.env, e.g. ?nodeId=11 puts sn.env.nodeId === '11'
 if ( window !== undefined && window.location.search !== undefined ) {
 	sn.env = sn.parseURLQueryTerms(window.location.search);
@@ -1861,7 +1966,7 @@ if (typeof define === "function" && define.amd) {
 	define(sn);
 } else if (typeof module === "object" && module.exports) {
 	module.exports = sn;
-} else {
+} else if ( window ) {
 	window.sn = sn;
 }
-}());
+}(window, console));
