@@ -43,10 +43,23 @@
 					<label for="nodeId">Node</label>
 					<input type="number" name="nodeId" value=""/><br />
 					<label for="sourceIds">Sources</label>
-					<input type="text" name="sourceIds" value="Main"/><br />
+					<input type="text" name="sourceIds" value=""/><br />
+
+					<div class="range hour">
+						<label for="days">Days</label>
+						<input type="number" name="numDays" value="1" min="1" max="11"/>
+					</div>
+					<div class="range day">
+						<label for="months">Months</label>
+						<input type="number" name="numMonths" value="4" min="1" max="8"/>
+					</div>
+					<div class="range month">
+						<label for="years">Years</label>
+						<input type="number" name="numYears" value="2" min="1" max="5"/>
+					</div>
 				</form>
 				<div class="actions">
-
+					<i id="range-toggle" class="fa fa-wrench button"></i>
 				</div>
 			</div>
 			<div class="pane" id="source-labels">

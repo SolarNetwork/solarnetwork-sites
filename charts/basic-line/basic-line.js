@@ -8,6 +8,13 @@ sn.config.debug = true;
 sn.config.host = 'data.solarnetwork.net';
 sn.runtime.excludeSources = new sn.Configuration();
 
+// show/hide the proper range selection based on the current aggregate level
+function updateRangeSelection() {
+	d3.selectAll('#details div.range').style('display', function() {
+		return (d3.select(this).classed(sn.runtime.basicChartInfo.parameters.aggregate.toLowerCase()) ? 'block' : 'none');
+	});
+}
+
 function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.key);
 	d3.select(this).classed('disabled', sn.runtime.excludeSources.enabled(d.key));
@@ -23,9 +30,11 @@ function sourceExcludeCallback(lineId) {
 
 function setupBasicLineChart(container, chart, parameters, endDate, sourceMap) {
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
-	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
-	
+	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);	
 	var ignoreProps = { 'nodeId' : true };
+	
+	container.selectAll('.time-count').text(queryRange.timeCount);
+	container.selectAll('.time-unit').text(queryRange.timeUnit);
 	
 	sn.datum.loader(sourceMap['Basic'], sn.runtime.urlHelper,  queryRange.start, queryRange.end, parameters.aggregate)
 			.callback(function datumLoaderCallback(error, results) {
@@ -110,6 +119,7 @@ function sourceSets(regenerate) {
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	setupBasicLineChartForDate(sn.runtime.reportableEndDate);
+	updateRangeSelection();
 }
 
 function setupUI() {
@@ -151,12 +161,29 @@ function setupUI() {
 				}
 			}
 		});
+
+	// toggle between supported aggregate levels
+	d3.select('#range-toggle').classed('clickable', true).on('click', function(d, i) {
+		var me = d3.select(this);
+		me.classed('hit', true);
+		var currAgg = sn.runtime.basicChartInfo.chart.aggregate();
+		sn.runtime.basicChartInfo.parameters.aggregate = (currAgg === 'Hour' ? 'Day' : currAgg === 'Day' ? 'Month' : 'Hour');
+		setupBasicLineChartForDate(sn.runtime.reportableEndDate);
+		setTimeout(function() {
+			me.classed('hit', false);
+		}, 500);
+		updateRangeSelection();
+	});
+	
 }
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
 		nodeId : 175,
-		sourceIds : 'DB'
+		sourceIds : 'DB',
+		numDays : 1,
+		numMonths : 4,
+		numYears : 2
 	});
 	sn.runtime.chartRefreshMs = 10 * 60 * 1000;
 
