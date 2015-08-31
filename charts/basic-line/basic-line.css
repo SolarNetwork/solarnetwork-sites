@@ -134,6 +134,11 @@ a {
 	margin-left: -4px;
 }
 
+#source-labels tr.disabled {
+	color: gray;
+	font-style: italic;
+}
+
 #source-labels td.swatch {
 	margin: 2px;
 	width: 10px;

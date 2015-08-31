@@ -1,6 +1,7 @@
 /**
  * @require d3 3.0
  * @require solarnetwork-d3 0.2.0
+ * @require colorbrewer
  */
 (function() {
 'use strict';
@@ -38,6 +39,9 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		return me;
 	}());
 	parent.me = self;
+	
+	// properties
+	var sourceExcludeCallback;
 	
 	var originalData = {}, // line ID -> raw data array
 		lineIds = [], // ordered array of line IDs
@@ -84,9 +88,28 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		} else if ( linePlotProperties[lineId] ) {
 			delete linePlotProperties[lineId];
 		}
-		return self.me;
+		return self;
 	};
 	
+	/**
+	 * Get or set the source exclude callback function. The callback will be passed the line ID 
+	 * as an argument. It should true <em>true</em> if the data set for the given argument
+	 * should be excluded from the chart.
+	 * 
+	 * @param {function} [value] the source exclude callback
+	 * @return when used as a getter, the current source exclude callback function, otherwise this object
+	 * @memberOf sn.chart.basicLineChart
+	 */
+	self.sourceExcludeCallback = function(value) {
+		if ( !arguments.length ) return sourceExcludeCallback;
+		if ( typeof value === 'function' ) {
+			sourceExcludeCallback = value;
+		} else {
+			sourceExcludeCallback = undefined;
+		}
+		return self;
+	};
+
 	/**
 	 * Get or set a range of colors to display. The order of the the data passed to the {@link load()}
 	 * function will determine the color used from the configured {@code colorArray}.
@@ -98,7 +121,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 	self.colors = function(colorArray) {
 		if ( !arguments.length ) return colors.range();
 		colors.range(colorArray);
-		return self.me;
+		return self;
 	};
 	
 	/**
@@ -121,7 +144,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		lineIds.length = 0;
 		linePlotProperties = {};
 		lineDrawData.length = 0;
-		return self.me;
+		return self;
 	};
 
 	function setup() {
@@ -135,7 +158,7 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 			var rawLineData = self.data(lineId),
 				range,
 				lineData;
-			
+				
 			if ( rawLineData ) {			
 				rawLineData.forEach(function(d) {
 					var y;
@@ -145,23 +168,25 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 						// automatically create Date
 						d.date = sn.datum.datumDate(d);
 					}
-					
-					// adjust X axis range
-					if ( rangeX[0] === null || d.date < rangeX[0] ) {
-						rangeX[0] = d.date;
-					}
-					if ( rangeX[1] === null || d.date > rangeX[1] ) {
-						rangeX[1] = d.date;
-					}
-					
-					// adjust Y axis range
-					y = d[linePlotProperties[lineId] ? linePlotProperties[lineId] : plotPropertyName];
-					if ( y !== undefined ) {
-						if ( rangeY[0] === null || y < rangeY[0] ) {
-							rangeY[0] = y;
+
+					if ( !sourceExcludeCallback || !sourceExcludeCallback.call(this, lineId) ) {
+						// adjust X axis range
+						if ( rangeX[0] === null || d.date < rangeX[0] ) {
+							rangeX[0] = d.date;
 						}
-						if ( rangeY[1] === null || y > rangeY[1] ) {
-							rangeY[1] = y;
+						if ( rangeX[1] === null || d.date > rangeX[1] ) {
+							rangeX[1] = d.date;
+						}
+					
+						// adjust Y axis range
+						y = d[linePlotProperties[lineId] ? linePlotProperties[lineId] : plotPropertyName];
+						if ( y !== undefined ) {
+							if ( rangeY[0] === null || y < rangeY[0] ) {
+								rangeY[0] = y;
+							}
+							if ( rangeY[1] === null || y > rangeY[1] ) {
+								rangeY[1] = y;
+							}
 						}
 					}
 				});
@@ -192,6 +217,18 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		return colors(i);
 	}
 	
+	function lineOpacity(d, i) {
+		var hidden = (sourceExcludeCallback ? sourceExcludeCallback.call(this, lineIds[i]) : false);
+		return (hidden ? 1e-6 : 1);
+	}
+	
+	function lineCommonProperties(selection) {
+		selection
+				.style('opacity', lineOpacity)
+				.attr('stroke', lineStroke)
+				.attr('d', linePathGenerator);
+	}
+	
 	function draw() {
 		var transitionMs = parent.transitionMs(),
 			lines,
@@ -203,13 +240,11 @@ sn.chart.basicLineChart = function(containerSelector, chartConfig) {
 		
 		lines.attr('class', lineClass)
 			.transition().duration(transitionMs)
-				.attr('stroke', lineStroke)
-				.attr('d', linePathGenerator);
+				.call(lineCommonProperties);
 		
 		lines.enter().append('path')
 				.attr('class', lineClass)
-				.attr('stroke', lineStroke)
-				.attr('d', linePathGenerator);
+				.call(lineCommonProperties);
 		
 		lines.exit().transition().duration(transitionMs)
 			.style('opacity', 1e-6)

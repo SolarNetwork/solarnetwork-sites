@@ -9,13 +9,16 @@ sn.config.host = 'data.solarnetwork.net';
 sn.runtime.excludeSources = new sn.Configuration();
 
 function legendClickHandler(d, i) {
-	sn.runtime.excludeSources.toggle(d.source);
-	/* TODO
-	if ( sn.runtime.energyHourChart !== undefined ) {
-		sn.runtime.energyHourChart.regenerate();
-		sn.adjustDisplayUnits(sn.runtime.energyHourContainer, 'Wh', sn.runtime.energyHourChart.yScale());
+	sn.runtime.excludeSources.toggle(d.key);
+	d3.select(this).classed('disabled', sn.runtime.excludeSources.enabled(d.key));
+	if ( sn.runtime.basicChartInfo !== undefined ) {
+		sn.runtime.basicChartInfo.chart.regenerate();
+		sn.adjustDisplayUnits(sn.runtime.basicChartInfo.container, '', sn.runtime.basicChartInfo.chart.yScale());
 	}
-	*/
+}
+
+function sourceExcludeCallback(lineId) {
+	return sn.runtime.excludeSources.enabled(lineId);
 }
 
 function setupBasicLineChart(container, chart, parameters, endDate, sourceMap) {
@@ -63,7 +66,11 @@ function setupBasicLineChart(container, chart, parameters, endDate, sourceMap) {
 		
 		var colors = chart.colorScale();
 		var colorData = loadedLineIds.map(function(d, i) {
-			return { color : colors(i), source : d.split('-', 2).join(' ') };
+			return { 
+				color : colors(i), 
+				key : d,
+				source : d.split('-', 2).join(' ')
+			};
 		});
 		
 		sn.colorDataLegendTable('#source-labels', colorData, legendClickHandler);
@@ -160,7 +167,8 @@ function onDocumentReady() {
 					}),
 		container : d3.select(d3.select('#basic-line-chart').node().parentNode)
 	};
-	sn.runtime.basicChartInfo.chart = sn.chart.basicLineChart('#basic-line-chart', sn.runtime.basicChartInfo.parameters);
+	sn.runtime.basicChartInfo.chart = sn.chart.basicLineChart('#basic-line-chart', sn.runtime.basicChartInfo.parameters)
+		.sourceExcludeCallback(sourceExcludeCallback);
 	
 	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
 	
