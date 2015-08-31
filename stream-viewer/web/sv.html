@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html class="standalone">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=570">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<title>SolarNode Stream Viewer</title>
+	<link type="text/css" rel="stylesheet" href="sv.css">
+</head>
+<body>
+	<h1>SolarNode <span class="node-id"></span> Stream Viewer</h1>
+	<div id="charts-root" class="chart-grid"></div>
+	
+	<script type="text/javascript" src="js-lib/d3-3.4.8.min.js"></script>
+	<script type="text/javascript" src="js-lib/colorbrewer.js"></script>
+	<script type="text/javascript" src="js-lib/queue-1.0.7.min.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-datum.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-base.js"></script>
+	<script type="text/javascript" src="js-lib/solarnetwork-d3-chart-basic-line.js"></script>
+	<script type="text/javascript" src="sv.js"></script>
+	<script type="text/javascript">
+	function startApp() {
+		if ( sn && sn.runtime && sn.runtime.svApp ) {
+			sn.runtime.svApp();
+		}
+	}
+	if ( !window.isLoaded ) {
+		window.addEventListener("load", function() {
+			startApp();
+		}, false);
+	} else {
+		startApp();
+	}
+	</script>
+</body>
+</html>

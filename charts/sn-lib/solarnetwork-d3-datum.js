@@ -120,7 +120,7 @@ sn.datum.nodeUrlHelper = function(node, configuration) {
 		if ( agg ) {
 			url += '&aggregate=' + encodeURIComponent(agg);
 		}
-		if ( Array.isArray(sourceIds) ) {
+		if ( Array.isArray(sourceIds) && sourceIds.length > 0 ) {
 			url += '&' + sourceIds.map(function(e) { return 'sourceIds='+encodeURIComponent(e); }).join('&')
 		}
 		if ( pagination !== undefined ) {
