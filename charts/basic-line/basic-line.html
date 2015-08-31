@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=1024" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<title>SolarNetwork Chart - Basic Line</title>
+	
+	<link type="text/css" rel="stylesheet" href="../css/font-awesome.min.css">
+	<link type="text/css" rel="stylesheet" href="basic-line.css" />
+	
+	<script type="text/javascript" src="../js-lib/d3-3.js"></script>
+	<script type="text/javascript" src="../js-lib/colorbrewer.js"></script>
+	<script type="text/javascript" src="../js-lib/queue-1.min.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-datum.js"></script>
+	<script type="text/javascript" src="../sn-lib/solarnetwork-d3-chart-base.js"></script>
+	<script type="text/javascript" src="solarnetwork-d3-chart-basic-line.js"></script>
+	<script type="text/javascript" src="basic-line.js"></script>
+	<script type="text/javascript">
+		if ( !window.isLoaded ) {
+			window.addEventListener("load", function() {
+				onDocumentReady();
+			}, false);
+		} else {
+			onDocumentReady();
+		}
+	</script>
+</head>
+<body>
+	<h1>SolarNetwork Chart - Basic Line</h1>
+	<div class="hbox">
+		<div class="vbox main">
+			<div class="pane basic-line-chart">
+				<h2>Basic line</h2>
+				<div id="basic-line-chart" class="chart-container line-chart"></div>
+			</div>
+		</div>
+		<div class="vbox sub">
+			<div class="pane">
+				<form id="details">
+					<label for="nodeId">Node</label>
+					<input type="number" name="nodeId" value=""/><br />
+					<label for="sourceIds">Sources</label>
+					<input type="text" name="sourceIds" value="Main"/><br />
+				</form>
+				<div class="actions">
+
+				</div>
+			</div>
+			<div class="pane" id="source-labels">
+				
+			</div>
+		</div>
+	</div>
+</body>
+</html>
