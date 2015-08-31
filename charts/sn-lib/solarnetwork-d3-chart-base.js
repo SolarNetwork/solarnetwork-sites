@@ -968,7 +968,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {Date} the Date to scale
 	 * @return {Number} the scaled value
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.scaleDate = function(date) { return x(date); };
 
@@ -977,7 +977,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {Number} the value to scale
 	 * @return {Number} the scaled value
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.scaleValue = function(value) { return y(value); };
 	
@@ -985,7 +985,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * Get the x-axis domain (minimum and maximum dates).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.xDomain = function() { return x.domain(); };
 
@@ -993,7 +993,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * Get the y-axis domain (minimum and maximum values).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.yDomain = function() { return y.domain(); };
 	
@@ -1004,7 +1004,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * chart ended up using.
 	 *  
 	 * @return the y-axis scale factor
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.yScale = function() { return (displayFactorCallback ? displayFactorCallback() : displayFactor); };
 
@@ -1014,7 +1014,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * @param {number} [value] the number of consumption sources to use
 	 * @returns when used as a getter, the count number, otherwise this object
 	 * @returns the {@code aggregate} value
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.aggregate = function(value) { 
 		if ( !arguments.length ) return aggregateType;
@@ -1027,7 +1027,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * Get the expected normalized duration, in milliseconds, based on the configured aggregate level.
 	 * 
 	 * @returns The expected normalized millisecond duration for the configured aggregate level.
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.aggregateNormalizedDuration = function() {
 		if ( aggregateType === 'FiveMinute' ) {
@@ -1055,7 +1055,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * Test if two dates are the expected aggregate normalized duration apart.
 	 *
 	 * @returns True if the two dates are exactly one normalized aggregate duration apart.
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.isNormalizedDuration = function(d1, d2) {
 		var diff, 
@@ -1108,7 +1108,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param date The date to add to.
 	 * @returns A new Date object.
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.addNormalizedDuration = function(date) {
 		if ( !date ) {
@@ -1125,7 +1125,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * {@link hoverLeaveCallback} is defined, it will be called with no arguments.
 	 * 
 	 * @return this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.reset = function() {
 		if ( svgHoverRoot ) {
@@ -1138,7 +1138,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * Regenerate the chart, using the current data.
 	 * 
 	 * @returns this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.regenerate = function() {
 		parseConfiguration();
@@ -1155,7 +1155,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {number} [value] the number of milliseconds to use
 	 * @return when used as a getter, the millisecond value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
@@ -1186,7 +1186,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {object} [value] the aggregate property names to use
 	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.plotProperties = function(value) {
 		if ( !arguments.length ) return plotProperties;
@@ -1205,7 +1205,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the display factor exclude callback
 	 * @return when used as a getter, the current display factor callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.displayFactorCallback = function(value) {
 		if ( !arguments.length ) return displayFactorCallback;
@@ -1224,7 +1224,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current draw callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.drawAnnotationsCallback = function(value) {
 		if ( !arguments.length ) return drawAnnotationsCallback;
@@ -1258,7 +1258,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.hoverEnterCallback = function(value) {
 		if ( !arguments.length ) return hoverEnterCallback;
@@ -1279,7 +1279,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the hover callback
 	 * @return when used as a getter, the current hover callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.hoverMoveCallback = function(value) {
 		if ( !arguments.length ) return hoverMoveCallback;
@@ -1301,7 +1301,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.hoverLeaveCallback = function(value) {
 		if ( !arguments.length ) return hoverLeaveCallback;
@@ -1322,7 +1322,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the double click callback
 	 * @return when used as a getter, the current double click callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.doubleClickCallback = function(value) {
 		if ( !arguments.length ) return doubleClickCallback;
@@ -1343,7 +1343,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the range selection callback
 	 * @return when used as a getter, the current range selection callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.rangeSelectionCallback = function(value) {
 		if ( !arguments.length ) return rangeSelectionCallback;
@@ -1365,7 +1365,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current x-axis tick callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.xAxisTickCallback = function(value) {
 		if ( !arguments.length ) return xAxisTickCallback;
@@ -1381,7 +1381,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current axis rule opacity value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.ruleOpacity = function(value) {
 		if ( !arguments.length ) return ruleOpacity;
@@ -1395,7 +1395,7 @@ sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current vertical axis rule opacity value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.vertRuleOpacity = function(value) {
 		if ( !arguments.length ) return vertRuleOpacity;
