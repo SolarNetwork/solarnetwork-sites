@@ -38,6 +38,19 @@ h1, h2, h3 {
 	stroke: rgb(247,200,25) !important;
 }
 
+a {
+	color: #BEE6F0;
+	text-decoration: none;
+}
+
+footer {
+	clear: both;
+	color: white;
+	font-size: 10px;
+	text-align: right;
+	margin: 10px 20px;
+}
+
 /* Chart SVG styles */
 
 svg {
