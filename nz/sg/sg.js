@@ -1053,6 +1053,12 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 	
 	/* === Pie Energy Chart Support === */
 	
+	function pieEnergyKeyCallback(groupId, d, i) {
+		return (showSources 
+			? (groupId + '-' + d.sourceId).replace(/\W/, '-')
+			: groupId);
+	}
+	
 	function pieEnergyHoverEnter() {
 		pieEnergyChartTooltip.style('display', 'block');
 	}
@@ -1119,6 +1125,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			.colorCallback(chartColorForDataTypeSource)
 			.scaleFactor(dataScaleFactors)
 			.displayFactorCallback(forcedDisplayFactorFn())
+			.layerKeyCallback(pieEnergyKeyCallback)
 			.hoverEnterCallback(pieEnergyHoverEnter)
 			.hoverMoveCallback(pieEnergyHoverMove)
 			.hoverLeaveCallback(pieEnergyHoverLeave);			
