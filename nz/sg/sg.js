@@ -46,6 +46,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		consumptionDetailedSources = [],
 		generationSources = [],
 		generationDetailedSources = [],
+		showSources = false,
 		forcedDisplayFactor = 1000,
 		hours = 24,
 		days = 7,
@@ -189,6 +190,19 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		// we want to maintain our original array instance, so just repopulate with new values
 		generationDetailedSources.length = 0;
 		Array.prototype.push.apply(generationDetailedSources, array);
+		return self;
+	}
+	
+	/**
+	 * Get or set the flag to show individual sources or combine them into a single source.
+	 * 
+	 * @param {boolean} [value] the show source flag value to set
+	 * @return when used as a getter, the show source flag, otherwise this object
+	 * @memberOf sgSchoolApp
+	 */
+	function showSourceIds(value) {
+		if ( !arguments.length ) return showSources;
+		showSources = !!value;
 		return self;
 	}
 	
@@ -758,6 +772,17 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 	}
 	
 	/* === Bar Energy Chart Support === */
+
+	function barChartLayerPostProcessCallback(dataType, layerData) {
+		if ( showSources || chartSourceGroupMap[dataType].length < 2 ) {
+			return layerData;
+		}
+		var combinedSourceId = chartSourceGroupMap[dataType][0];
+		return sn.aggregateNestedDataLayers(layerData, combinedSourceId, 
+			['date', 'created', '__internal__'], // need 'created' for dateUTC support on tooltips
+			['wattHours','wattHoursReverse'], 
+			{sourceId : combinedSourceId});
+	}
 	
 	function barEnergyChartCreate() {
 		var chart = sn.chart.energyIOBarChart(config.barEnergyChartSelector, barEnergyChartParams)
@@ -771,7 +796,9 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			.hoverMoveCallback(barEnergyHoverMove)
 			.hoverLeaveCallback(barEnergyHoverLeave)
 			.rangeSelectionCallback(barEnergyRangeSelectionCallback)
-			.doubleClickCallback(barEnergyDoubleClick);
+			.doubleClickCallback(barEnergyDoubleClick)
+			.layerPostProcessCallback(barChartLayerPostProcessCallback);
+
 		return chart;
 	}
 	
@@ -1220,6 +1247,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			generationDetailedSourceIds 	: { value : generationDetailedSourceIds },
 			consumptionDataScaleFactor 		: { value : consumptionDataScaleFactor },
 			generationDataScaleFactor 		: { value : generationDataScaleFactor },
+			showSourceIds					: { value : showSourceIds },
 			numHours						: { value : numHours },
 			numDays							: { value : numDays },
 			numMonths						: { value : numMonths },
@@ -1250,6 +1278,7 @@ function startApp(env) {
 			consumptionDetailedSourceIds : 'DB',
 			consumptionScaleFactor : 1,
 			showExport : true,
+			showSources : false,
 			barEnergyChartSelector : '#energy-bar-chart',
 			pieEnergyChartSelector : '#energy-pie-chart',
 			outdatedSelector : '#chart-outdated-msg',
@@ -1278,6 +1307,7 @@ function startApp(env) {
 		.consumptionSourceIds(env.consumptionSourceIds)
 		.consumptionDetailedSourceIds(env.consumptionDetailedSourceIds)
 		.consumptionDataScaleFactor(env.consumptionScaleFactor)
+		.showSourceIds(env.showSources)
 		.numHours(env.numHours)
 		.numDays(env.numDays)
 		.numMonths(env.numMonths)
