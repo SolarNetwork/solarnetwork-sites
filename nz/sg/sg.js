@@ -779,7 +779,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		}
 		var combinedSourceId = chartSourceGroupMap[dataType][0];
 		return sn.aggregateNestedDataLayers(layerData, combinedSourceId, 
-			['date', 'created', '__internal__'], // need 'created' for dateUTC support on tooltips
+			['date', 'created', 'localDate', 'localTime', '__internal__'], // need 'created' for dateUTC support on tooltips, local* for CSV
 			['wattHours','wattHoursReverse'], 
 			{sourceId : combinedSourceId});
 	}
