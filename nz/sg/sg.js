@@ -820,6 +820,9 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		rows = tbody.selectAll('tr');
 		barEnergyChartDataTypeOrder.forEach(function(dataType) {
 			var dataTypeSources = sourceGroupMap[dataType];
+			if ( !showSources ) {
+				dataTypeSources = dataTypeSources.slice(0,1);
+			}
 			var row, cell;
 			index += dataTypeSources.length;
 			// insert a sub-total row
@@ -846,6 +849,10 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		// note we put generation first here, as we want this order explicitly to match the I/O bar chart
 		barEnergyChartDataTypeOrder.forEach(function(dataType) {
 			var dataTypeSources = sourceGroupMap[dataType];
+			if ( !showSources ) {
+				// take just the first source
+				dataTypeSources = dataTypeSources.slice(0,1);
+			}
 			if ( dataType === 'Generation' ) {
 				// reverse the order, to match the chart
 				dataTypeSources = dataTypeSources.slice().reverse();
