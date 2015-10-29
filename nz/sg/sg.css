@@ -192,7 +192,6 @@ li + li {
 }
 
 .snroot .info-col {
-	padding: 10px;
 	width: 140px;
 	box-sizing: border-box;
 }
@@ -210,6 +209,13 @@ li + li {
 .snroot .info-col > button {
 	margin-top: 12px;
 	margin-bottom: 12px;
+}
+
+.snroot .info-col > .totals {
+	-webkit-box-flex: 1;
+	-webkit-flex: 1;
+	-moz-box-flex: 1;
+	flex: 1;
 }
 
 .snroot .info-col.vbox {
@@ -392,6 +398,11 @@ li + li {
 
 .snroot .clickable {
 	cursor: pointer !important;
+}
+
+.snroot .caption {
+	font-size: 10px;
+	color: #666;
 }
 
 /* Tooltip support */
