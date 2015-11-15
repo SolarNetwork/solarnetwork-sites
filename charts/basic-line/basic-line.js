@@ -30,13 +30,13 @@ function sourceExcludeCallback(lineId) {
 
 function setupBasicLineChart(container, chart, parameters, endDate, sourceMap) {
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
-	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);	
+	var queryRange = sn.api.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);	
 	var ignoreProps = { 'nodeId' : true };
 	
 	container.selectAll('.time-count').text(queryRange.timeCount);
 	container.selectAll('.time-unit').text(queryRange.timeUnit);
 	
-	sn.datum.loader(sourceMap['Basic'], sn.runtime.urlHelper,  queryRange.start, queryRange.end, parameters.aggregate)
+	sn.api.datum.loader(sourceMap['Basic'], sn.runtime.urlHelper,  queryRange.start, queryRange.end, parameters.aggregate)
 			.callback(function datumLoaderCallback(error, results) {
 		if ( !Array.isArray(results) ) {
 			sn.log("Unable to load data for Basic Line chart: {0}", error);
@@ -71,7 +71,7 @@ function setupBasicLineChart(container, chart, parameters, endDate, sourceMap) {
 		
 		sn.log("Basic Line chart range: {0}", chart.yDomain());
 		sn.log("Basic Line chart time range: {0}", chart.xDomain());
-		sn.adjustDisplayUnits(container, '', chart.yScale());
+		sn.ui.adjustDisplayUnits(container, '', chart.yScale());
 		
 		var colors = chart.colorScale();
 		var colorData = loadedLineIds.map(function(d, i) {
@@ -82,7 +82,7 @@ function setupBasicLineChart(container, chart, parameters, endDate, sourceMap) {
 			};
 		});
 		
-		sn.colorDataLegendTable('#source-labels', colorData, legendClickHandler);
+		sn.ui.colorDataLegendTable('#source-labels', colorData, legendClickHandler);
 	}).load();
 }
 
@@ -137,13 +137,13 @@ function setupUI() {
 				sn.env[propName] = me.property('value');
 			}
 			if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'sourceIds' ) {
 				getAvailable = true;
 			}
 			if ( getAvailable ) {
-				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+				sn.api.node.availableDataRange(sourceSets(true), function(reportableInterval) {
 					delete sn.runtime.sourceColorMap; // to regenerate
 					setup(reportableInterval);
 				});
@@ -197,10 +197,10 @@ function onDocumentReady() {
 	sn.runtime.basicChartInfo.chart = sn.chart.basicLineChart('#basic-line-chart', sn.runtime.basicChartInfo.parameters)
 		.sourceExcludeCallback(sourceExcludeCallback);
 	
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
 	
 	setupUI();
-	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+	sn.api.node.availableDataRange(sourceSets(), function(reportableInterval) {
 		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
