@@ -15,7 +15,7 @@ var app;
 /**
  * SolarNode stream viewer app. Displays a set of charts related to a single node.
  * 
- * @param {object} nodeUrlHelper - A {@link sn.datum.nodeUrlHelper} configured with the school's SolarNetwork node ID.
+ * @param {object} nodeUrlHelper - A {@link sn.api.node.nodeUrlHelper} configured with the school's SolarNetwork node ID.
  * @param {object} options - An options object.
  * @param {Array|String} options.sourceIds - An array, or comma delimited string, of source IDs to display. If not
  *                                           provided then all available sources will be shown.
@@ -55,7 +55,7 @@ var svApp = function(nodeUrlHelper, options) {
 		dataBySource.lengt = 0;
 		dataByLine.length = 0;
 		
-		sn.datum.loader(sources, urlHelper, startDate, endDate, 'Hour').callback(function(error, results) {
+		sn.api.datum.loader(sources, urlHelper, startDate, endDate, 'Hour').callback(function(error, results) {
 			if ( !results || !Array.isArray(results) ) {
 				sn.log("Unable to load data: {1}", error);
 				return;
@@ -270,7 +270,7 @@ function startApp(env) {
 	
 	setupUI(env);
 	
-	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
+	urlHelper = sn.api.node.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
 	app = svApp(urlHelper, env)
 		.numHours(env.numHours)
