@@ -1,1 +1,0 @@
-../../../charts/energy-io/solarnetwork-d3-chart-energy-io.js

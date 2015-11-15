@@ -1,1 +1,1 @@
-../../../charts/sn-lib/solarnetwork-d3.js
+../../../charts/js-lib/solarnetwork-d3.js

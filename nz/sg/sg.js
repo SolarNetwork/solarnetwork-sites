@@ -17,7 +17,7 @@ var app;
 /**
  * Schoolgen school app. Displays a set of charts and data related to a single school.
  * 
- * @param {object} nodeUrlHelper - A {@link sn.datum.nodeUrlHelper} configured with the school's SolarNetwork node ID.
+ * @param {object} nodeUrlHelper - A {@link sn.api.node.nodeUrlHelper} configured with the school's SolarNetwork node ID.
  * @param {object} options - An options object.
  * @param {string} options.barEnergyChartSelector - A CSS selector to display the energy bar chart within.
  * @param {string} options.pieEnergyChartSelector - A CSS selector to display the energy pie chart within.
@@ -354,7 +354,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 	
 	function setupCounters() {
 		if ( !lifetimeGenerationCounter && config.lifetimeGenerationSelector ) {
-			lifetimeGenerationCounter = sn.util.sumCounter(urlHelper)
+			lifetimeGenerationCounter = sn.api.datum.sumCounter(urlHelper)
 				.sourceIds(generationSources)
 				.callback(function(sum) {
 					sn.log('{0} total generation kWh', (sum/1000));
@@ -364,7 +364,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		}
 
 		if ( !lifetimeConsumptionCounter && config.lifetimeConsumptionSelector ) {
-			lifetimeConsumptionCounter = sn.util.sumCounter(urlHelper)
+			lifetimeConsumptionCounter = sn.api.datum.sumCounter(urlHelper)
 				.sourceIds(consumptionSources)
 				.callback(function(sum) {
 					sn.log('{0} total consumption kWh', (sum/1000));
@@ -428,7 +428,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			chartSetupOutdatedMessage();
 		} else {
 			needsRedraw = (needsRedraw || (endDate === undefined));
-			sn.datum.availableDataRange(sourceSets, function(repInterval) {
+			sn.api.node.availableDataRange(sourceSets, function(repInterval) {
 				var jsonEndDate = repInterval.eDate;
 				if ( needsRedraw || jsonEndDate > endDate ) {
 					endDate = jsonEndDate;
@@ -488,7 +488,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			return chartSourceColorMap;
 		}
 		sourceGroupMap = chartSetupSourceGroupMap();
-		chartSourceColorMap = sn.sourceColorMapping(sourceGroupMap, { displayColor : chartDataTypeDisplayColorSet });
+		chartSourceColorMap = sn.color.sourceColorMapping(sourceGroupMap, { displayColor : chartDataTypeDisplayColorSet });
 		
 		Object.keys(sourceGroupMap).forEach(function(dataType) {
 			// assign the data type the color of the first available source within that data type group
@@ -521,13 +521,13 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 	
 	function chartDataCallback(dataType, datum) {
 		// create date property
-		datum.date = sn.datum.datumDate(datum);
+		datum.date = sn.api.datum.datumDate(datum);
 	}
 	
 	function chartQueryRange() {
 		var range = displayRange;
 		if ( !range ) {
-			range = sn.datum.loaderQueryRange(barEnergyChartParams.aggregate, 
+			range = sn.api.datum.loaderQueryRange(barEnergyChartParams.aggregate, 
 				{ numHours : hours, numDays : days, numMonths : months, numYears : years}, 
 				(endDate ? endDate : new Date()));
 		}
@@ -541,9 +541,9 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		}
 		chart.regenerate();
 		scale = (chart.yScale ? chart.yScale() : chart.scale());
-		sn.adjustDisplayUnits(container, 'Wh', scale, 'energy');
+		sn.ui.adjustDisplayUnits(container, 'Wh', scale, 'energy');
 		if ( tooltipContainer ) {
-			sn.adjustDisplayUnits(tooltipContainer, 'Wh', scale, 'energy');
+			sn.ui.adjustDisplayUnits(tooltipContainer, 'Wh', scale, 'energy');
 		}
 	}
 	
@@ -678,9 +678,9 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		var aggregate = barEnergyChartParams.aggregate;
 		var plotPropName = barEnergyChartParams.plotProperties[aggregate];
 		var loadSets = sourceSets.map(function(sourceSet) {
-			return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, aggregate);
+			return sn.api.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, aggregate);
 		});
-		sn.datum.multiLoader(loadSets).callback(function handleDataResults(error, results) {
+		sn.api.datum.multiLoader(loadSets).callback(function handleDataResults(error, results) {
 			if ( !(Array.isArray(results) && results.length === 2) ) {
 				sn.log("Unable to load data for charts: {0}", error);
 				return;
@@ -778,7 +778,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			return layerData;
 		}
 		var combinedSourceId = chartSourceGroupMap[dataType][0];
-		return sn.aggregateNestedDataLayers(layerData, combinedSourceId, 
+		return sn.api.datum.aggregateNestedDataLayers(layerData, combinedSourceId, 
 			['date', 'created', 'localDate', 'localTime', '__internal__'], // need 'created' for dateUTC support on tooltips, local* for CSV
 			['wattHours','wattHoursReverse'], 
 			{sourceId : combinedSourceId});
@@ -809,7 +809,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			table = d3.select(tableContainerSelector);
 		
 		table.html(null);
-		sn.colorDataLegendTable(tableContainerSelector, sourceColors, undefined, function(s) {
+		sn.ui.colorDataLegendTable(tableContainerSelector, sourceColors, undefined, function(s) {
 			s.html(function(d) {
 				var sourceGroup = sourceColorMap.displaySourceObjects[d];
 				sn.log('Got data type {0} source {1}', sourceGroup.dataType, sourceGroup.source);
@@ -1313,7 +1313,7 @@ function startApp(env) {
 	// make detailed items initially hidden
 	d3.selectAll('.detailed').style('display', 'none');
 	
-	urlHelper = sn.datum.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
+	urlHelper = sn.api.node.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
 	app = sgSchoolApp(urlHelper, env)
 		.generationSourceIds(env.sourceIds)
