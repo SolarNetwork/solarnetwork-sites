@@ -12,10 +12,10 @@ function setupSeasonalDayOfWeekChart(container, chart, parameters, endDate, sour
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	var urlParams = { dataPath : 'a.wattHours' };
 	
-	sn.datum.multiLoader([
-		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+	sn.api.datum.multiLoader([
+		sn.api.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
 			null, null, parameters.aggregate).urlParameters(urlParams),
-		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+		sn.api.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
 			null, null, parameters.aggregate).urlParameters(urlParams)
 	]).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 2) ) {
@@ -89,16 +89,16 @@ function setupUI() {
 				sn.env[propName] = me.property('value');
 			}
 			if ( propName === 'consumptionNodeId' ) {
-				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
 				getAvailable = true;
 			}
 			if ( getAvailable ) {
-				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+				sn.api.node.availableDataRange(sourceSets(true), function(reportableInterval) {
 					delete sn.runtime.sourceColorMap; // to regenerate
 					setup(reportableInterval);
 				});
@@ -144,16 +144,16 @@ function onDocumentReady() {
 	sn.runtime.seasonalDayOfWeekContainer = d3.select(d3.select('#seasonal-dow-chart').node().parentNode);
 	sn.runtime.seasonalDayOfWeekChart = sn.chart.seasonalDayOfWeekLineChart('#seasonal-dow-chart', sn.runtime.seasonalDayOfWeekParameters);
 	
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId);
 	
 	setupUI();
-	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+	sn.api.node.availableDataRange(sourceSets(), function(reportableInterval) {
 		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+				sn.api.node.availableDataRange(sourceSets(), function(repInterval) {
 					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 						setup(repInterval);
