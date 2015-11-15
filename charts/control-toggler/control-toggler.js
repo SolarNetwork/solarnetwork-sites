@@ -11,19 +11,19 @@ sn.config.debug = true;
 function setupToggler() {
 	var toggle = $('#toggle-toggle');
 	var progress = $('#toggle-progress');
-	if ( sn.runtime.toggler === undefined && sn.sec.hasTokenCredentials() ) {
+	if ( sn.runtime.toggler === undefined && sn.net.sec.hasTokenCredentials() ) {
 		// NOTE: we show the switch as ON when the PCM is allowing 100% output, 
 		//       and OFF when the PCM is limiting the output at 0%; this is
 		//       then opposite the control value, where 1 === PCM at 0% and
 		//       0 === 100% output
-		sn.runtime.toggler = sn.util.controlToggler(sn.runtime.urlHelper)
+		sn.runtime.toggler = sn.api.control.toggler(sn.runtime.urlHelper)
 			.controlID(sn.env.controlId)
 			.callback(function(error) {
 				if ( error ) {
 					if ( error.status ) {
 						if ( error.status === 401 || error.status === 403 ) {
 							alert('Unauthorized.');
-							sn.sec.clearSecret();
+							sn.net.sec.clearSecret();
 							if ( sn.runtime.toggler ) {
 								sn.runtime.toggler.stop();
 							}
@@ -82,7 +82,7 @@ function setupUI() {
 	d3.select('#toggle-toggle label').text(sn.env.controlDisplayName);
 
 	d3.select('#toggle-toggle').on('click', function() {
-		if ( !(sn.sec.token() && sn.sec.hasSecret()) ) {
+		if ( !(sn.net.sec.token() && sn.net.sec.hasSecret()) ) {
 			// we need to ask for credentials
 			$('#credentals-modal').modal('show');	
 		}
@@ -92,13 +92,13 @@ function setupUI() {
 		if ( val.length === 0 ) {
 			val = undefined;
 		}
-		sn.sec.token(val);
+		sn.net.sec.token(val);
 
 		val = d3.select('#cred-secret').property('value');
 		if ( val.length === 0 ) {
 			val = undefined;
 		}
-		sn.sec.secret(val);
+		sn.net.sec.secret(val);
 		
 		// clear the secret
 		d3.select('#cred-secret').property('value', '');
@@ -121,7 +121,7 @@ function onDocumentReady() {
 		controlId : '/power/switch/1',
 		controlDisplayName : 'Switch'
 	});
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
 	setupUI();
 	setupToggler();
 }
