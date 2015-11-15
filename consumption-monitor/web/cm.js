@@ -12,11 +12,11 @@ function legendClickHandler(d, i) {
 	sn.runtime.excludeSources.toggle(d.source);
 	if ( sn.runtime.powerMinuteChart !== undefined ) {
 		sn.runtime.powerMinuteChart.regenerate();
-		sn.adjustDisplayUnits(sn.runtime.powerMinuteContainer, 'W', sn.runtime.powerMinuteChart.yScale());
+		sn.ui.adjustDisplayUnits(sn.runtime.powerMinuteContainer, 'W', sn.runtime.powerMinuteChart.yScale());
 	}
 	if ( sn.runtime.energyHourChart !== undefined ) {
 		sn.runtime.energyHourChart.regenerate();
-		sn.adjustDisplayUnits(sn.runtime.energyHourContainer, 'Wh', sn.runtime.energyHourChart.yScale());
+		sn.ui.adjustDisplayUnits(sn.runtime.energyHourContainer, 'Wh', sn.runtime.energyHourChart.yScale());
 	}
 }
 
@@ -41,7 +41,7 @@ function datumDate(datum) {
 		return datum.date;
 	}
 	if ( datum.localDate ) {
-		return sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
+		return sn.format.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
 	}
 	if ( datum.created ) {
 		return sn.timestampFormat.parse(datum.created);
@@ -94,7 +94,7 @@ function xAxisTickAggregateCallback(d, i, x, fmt) {
 		dayAgg, dayGroup;
 	if ( d.getUTCHours() === 12 ) {
 		dayAgg = chart.stashedData('dayAgg');
-		dayGroup = (dayAgg ? dayAgg[sn.dateFormat(d)] : undefined);
+		dayGroup = (dayAgg ? dayAgg[sn.format.dateFormat(d)] : undefined);
 		// only show the aggregate value for days we have complete data for
 		if ( dayGroup !== undefined && d3.time.day.utc.floor(d).getTime() >= x.domain()[0].getTime() ) {
 			return String(d3.round(dayGroup.sum / chart.yScale(), 2));
@@ -105,14 +105,14 @@ function xAxisTickAggregateCallback(d, i, x, fmt) {
 
 // Watt stacked area chart
 function setupGroupedLayerChart(container, chart, parameters, endDate, sourceMap) {
-	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
+	var queryRange = sn.api.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	
 	container.selectAll('.time-count').text(queryRange.timeCount);
 	container.selectAll('.time-unit').text(queryRange.timeUnit);
 	
-	sn.datum.multiLoader([
-		sn.datum.loader(sourceMap[sn.env.dataType], sn.runtime.urlHelper, 
+	sn.api.datum.multiLoader([
+		sn.api.datum.loader(sourceMap[sn.env.dataType], sn.runtime.urlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate)
 	]).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 1) ) {
@@ -125,7 +125,7 @@ function setupGroupedLayerChart(container, chart, parameters, endDate, sourceMap
 			.stash({}, 'dayAgg')
 			.load(results[0], sn.env.dataType)
 			.regenerate();
-		sn.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
+		sn.ui.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
 	}).load();
 }
 
@@ -164,13 +164,13 @@ function updateReadings() {
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
-		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
+		sn.runtime.sourceColorMap = sn.color.sourceColorMapping(sn.runtime.sourceGroupMap);
 	
 		// we make use of sn.colorFn, so stash the required color map where expected
 		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
 
 		// create copy of color data for reverse ordering so labels vertically match chart layers
-		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+		sn.ui.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -260,7 +260,7 @@ function onDocumentReady() {
 		.xAxisTickCallback(xAxisTickAggregateCallback)
 		.sourceExcludeCallback(sourceExcludeCallback);
 
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
 
 	setupUI();
 	
@@ -270,12 +270,12 @@ function onDocumentReady() {
 			return;
 		}
 		sn.env.sourceIds = sourceIds;
-		sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+		sn.api.node.availableDataRange(sourceSets(), function(reportableInterval) {
 			setup(reportableInterval);
 			if ( sn.runtime.refreshTimer === undefined ) {
 				// refresh chart data on interval
 				sn.runtime.refreshTimer = setInterval(function() {
-					sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+					sn.api.node.availableDataRange(sourceSets(), function(repInterval) {
 						var jsonEndDate = repInterval.eDate;
 						if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 							setup(repInterval);

@@ -1,1 +1,0 @@
-../../../charts/power-area/solarnetwork-d3-chart-power-area.js

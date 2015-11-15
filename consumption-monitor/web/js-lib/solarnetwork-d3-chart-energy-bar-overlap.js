@@ -1,1 +1,0 @@
-../../../charts/energy-bar/solarnetwork-d3-chart-energy-bar-overlap.js
