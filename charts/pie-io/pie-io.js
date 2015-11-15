@@ -16,8 +16,8 @@ function regenerateChart() {
 		return;
 	}
 	chart.regenerate();
-	sn.adjustDisplayUnits(container, 'Wh', chart.scale(), 'energy');
-	sn.adjustDisplayUnits(sn.runtime.pieTooltip, 'Wh', chart.scale());
+	sn.ui.adjustDisplayUnits(container, 'Wh', chart.scale(), 'energy');
+	sn.ui.adjustDisplayUnits(sn.runtime.pieTooltip, 'Wh', chart.scale());
 }
 
 //handle clicks on legend handler

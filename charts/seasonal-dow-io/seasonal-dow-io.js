@@ -29,7 +29,7 @@ function setupSeasonalDayOfWeekChart(container, chart, parameters, endDate, sour
 			.regenerate();
 		sn.log("Seasonal DOW IO chart watt range: {0}", chart.yDomain());
 		sn.log("Seasonal DOW IO chart time range: {0}", chart.xDomain());
-		sn.adjustDisplayUnits(container, 'Wh', chart.yScale());
+		sn.ui.adjustDisplayUnits(container, 'Wh', chart.yScale());
 	}).load();
 }
 

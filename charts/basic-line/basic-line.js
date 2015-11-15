@@ -20,7 +20,7 @@ function legendClickHandler(d, i) {
 	d3.select(this).classed('disabled', sn.runtime.excludeSources.enabled(d.key));
 	if ( sn.runtime.basicChartInfo !== undefined ) {
 		sn.runtime.basicChartInfo.chart.regenerate();
-		sn.adjustDisplayUnits(sn.runtime.basicChartInfo.container, '', sn.runtime.basicChartInfo.chart.yScale());
+		sn.ui.adjustDisplayUnits(sn.runtime.basicChartInfo.container, '', sn.runtime.basicChartInfo.chart.yScale());
 	}
 }
 
