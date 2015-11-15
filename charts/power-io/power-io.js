@@ -57,7 +57,7 @@ function datumDate(datum) {
 		return datum.date;
 	}
 	if ( datum.localDate ) {
-		return sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
+		return sn.format.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
 	}
 	if ( datum.created ) {
 		return sn.timestampFormat.parse(datum.created);
@@ -128,25 +128,25 @@ function powerIOAreaChartSetup(endDate) {
 }
 
 function setupPowerAreaChart(container, chart, parameters, endDate, sourceMap) {
-	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
+	var queryRange = sn.api.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	var loadSets = [
-		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+		sn.api.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate),
-		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+		sn.api.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate)
 	];
 
 	if ( sourceMap['Control'] && sourceMap['Control'].length > 0 ) {
 		// also load the control data, without any aggregate if using TenMinute aggregate to get the raw data
-		loadSets.splice(loadSets.length, 0, sn.datum.loader(sourceMap['Control'], sn.runtime.controlUrlHelper,
+		loadSets.splice(loadSets.length, 0, sn.api.datum.loader(sourceMap['Control'], sn.runtime.controlUrlHelper,
 			queryRange.start, queryRange.end, (parameters.aggregate === 'TenMinute' ? undefined : parameters.aggregate)));
 	}
 	
 	container.selectAll('.time-count').text(queryRange.timeCount);
 	container.selectAll('.time-unit').text(queryRange.timeUnit);
 	
-	sn.datum.multiLoader(loadSets).callback(function(error, results) {
+	sn.api.datum.multiLoader(loadSets).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === loadSets.length) ) {
 			sn.log("Unable to load data for Energy Bar chart: {0}", error);
 			return;
@@ -167,7 +167,7 @@ function setupPowerAreaChart(container, chart, parameters, endDate, sourceMap) {
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
-		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap, {
+		sn.runtime.sourceColorMap = sn.color.sourceColorMapping(sn.runtime.sourceGroupMap, {
 			displayColor : function(dataType) {
 				return (dataType === 'Consumption' ? colorbrewer.Blues : 
 					dataType === 'Generation' ? colorbrewer.Greens 
@@ -188,7 +188,7 @@ function setup(repInterval) {
 					sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Control'][sn.runtime.sourceGroupMap['Control'][0]]]);
 		}
 		// create copy of color data for reverse ordering so labels vertically match chart layers
-		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap, legendClickHandler, function(s) {
+		sn.ui.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap, legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -219,13 +219,13 @@ function setupUI() {
 				sn.env[propName] = me.property('value');
 			}
 			if ( propName === 'consumptionNodeId' ) {
-				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'controlNodeId' ) {
-				sn.runtime.controlUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.controlUrlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' || propName === 'controlSourceIds' ) {
 				getAvailable = true;
@@ -243,7 +243,7 @@ function setupUI() {
 				return;
 			}
 			if ( getAvailable ) {
-				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+				sn.api.node.availableDataRange(sourceSets(true), function(reportableInterval) {
 					delete sn.runtime.sourceColorMap; // to regenerate
 					setup(reportableInterval);
 				});
@@ -351,17 +351,17 @@ function onDocumentReady() {
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 	
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
-	sn.runtime.controlUrlHelper = sn.datum.nodeUrlHelper(sn.env.controlNodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.controlUrlHelper = sn.api.node.nodeUrlHelper(sn.env.controlNodeId);
 
 	setupUI();
-	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+	sn.api.node.availableDataRange(sourceSets(), function(reportableInterval) {
 		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+				sn.api.node.availableDataRange(sourceSets(), function(repInterval) {
 					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 						setup(repInterval);
