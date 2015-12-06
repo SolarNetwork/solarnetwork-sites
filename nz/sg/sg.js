@@ -86,10 +86,10 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 								'5' : [, '#ffd84d', '#ffd026', '#FED854', '#ffc600', '#F3C12E']
 							}
 						};
-		
+
 	// range selection limits, adjust based on width of bar chart
-	var barEnergyRangeLimits = { 'Month' : 4, 'Day' : 9, 'Hour' : 12 };
-		
+	var barEnergyRangeLimits = { 'Month' : 4, 'Day' : 9, 'Hour' : 16 };
+
 	// chart tooltips
 	var barEnergyChartTooltip = d3.select(config.barEnergyChartSelector+'-tooltip'),
 		pieEnergyChartTooltip = d3.select(config.pieEnergyChartSelector+'-tooltip');
