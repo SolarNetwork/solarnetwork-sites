@@ -83,7 +83,8 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 							'Generation' : {
 								// yellows
 								'3' : ['#ffd84d', '#ffd026', '#ffc600'],
-								'5' : [, '#ffd84d', '#ffd026', '#FED854', '#ffc600', '#F3C12E']
+								'5' : ['#ffd84d', '#ffd026', '#FED854', '#ffc600', '#F3C12E'],
+								'6' : ['#ffd84d', '#ffd026', '#FED854', '#ffc600', '#F3C12E', '#eab721']
 							}
 						};
 
