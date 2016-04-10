@@ -6,6 +6,7 @@
 sn.config.debug = true;
 sn.config.defaultTransitionMs = 600;
 sn.config.host = 'data.solarnetwork.net';
+sn.runtime.sourceColorMappingParams = {};
 sn.runtime.excludeSources = new sn.Configuration();
 
 function legendClickHandler(d, i) {
