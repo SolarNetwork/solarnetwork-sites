@@ -33,7 +33,7 @@ var app;
  * @class
  */
 var sgSchoolApp = function(nodeUrlHelper, options) {
-	var self = { version : '1.1.0' };
+	var self = { version : '1.2.0' };
 	var urlHelper = nodeUrlHelper;
 	var config = (options || {});
 
@@ -54,6 +54,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		years = 24,
 		co2GramsPerWattHour = 0.195,
 		detailsShown = false,
+		minimumDate = undefined, // a user-supplied date
 		dataScaleFactors = { 'Consumption' : 1, 'Generation' : 1},
 		endDate, // set to most recently available data date
 		zoomStack = [], // stack of { data : [], range : { ... } } objects to jump back out from zoom-in
@@ -329,6 +330,21 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 	}
 
 	/**
+	 * Get or set a fixed minimum date. If set, then the start date of the available range of data
+	 * is ignored and this value used instead.
+	 *
+	 * @param {Date} [value] the fixed minimum date value to set
+	 * @return when used as a getter, the minimum date (or undefined if not set), otherwise this object
+	 * @memberOf sgSchoolApp
+	 * @since 1.2
+	 */
+	function fixedMinimumDate(value) {
+		if ( !arguments.length ) return minimumDate;
+		minimumDate = value;
+		return self;
+	}
+
+	/**
 	 * Start the application, after configured.
 	 *
 	 * @return this object
@@ -530,7 +546,8 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		if ( !range ) {
 			range = sn.api.datum.loaderQueryRange(barEnergyChartParams.aggregate,
 				{ numHours : hours, numDays : days, numMonths : months, numYears : years},
-				(endDate ? endDate : new Date()));
+				(endDate ? endDate : new Date()),
+				minimumDate);
 		}
 		return range;
 	}
@@ -1186,7 +1203,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 		d3.select(config.viewLifetimeSelector).on('click', function viewLifetime() {
 			var numYears = 30, // hard-coded to 30 for now; when chart supports year aggregates can remove limit
 				end = d3.time.month.utc.ceil(endDate ? endDate : new Date()),
-				start = d3.time.year.utc.offset(end, -numYears),
+				start = (minimumDate ? minimumDate : d3.time.year.utc.offset(end, -numYears)),
 				destDisplayRange = { start : start, end: end, timeCount : (numYears * 12), timeUnit : 'month' };
 			barEnergyChartParams.value('aggregate', 'Month');
 			pieEnergyChartParams.value('aggregate', 'Month');
@@ -1268,6 +1285,7 @@ var sgSchoolApp = function(nodeUrlHelper, options) {
 			numMonths						: { value : numMonths },
 			numYears						: { value : numYears },
 			fixedDisplayFactor				: { value : fixedDisplayFactor },
+			fixedMinimumDate				: { value : fixedMinimumDate },
 			start 							: { value : start }
 		});
 		return self;
@@ -1329,6 +1347,13 @@ function startApp(env) {
 		.numYears(env.numYears)
 		.fixedDisplayFactor(env.fixedDisplayFactor)
 		.start();
+
+	if ( env.minDate ) {
+		app.fixedMinimumDate(sn.format.dateTimeFormat.parse(env.minDate));
+		if ( app.fixedMinimumDate() ) {
+			sn.log('Minimum date fixed to {0}', app.fixedMinimumDate());
+		}
+	}
 
 	return app;
 }
