@@ -14,7 +14,7 @@ var app;
 
 /**
  * SolarNode stream viewer app. Displays a set of charts related to a single node.
- * 
+ *
  * @param {object} nodeUrlHelper - A {@link sn.api.node.nodeUrlHelper} configured with the school's SolarNetwork node ID.
  * @param {object} options - An options object.
  * @param {Array|String} options.sourceIds - An array, or comma delimited string, of source IDs to display. If not
@@ -30,7 +30,7 @@ var svApp = function(nodeUrlHelper, options) {
 	// auto-refresh settings
 	var refreshMs = 300000,
 		refreshTimer;
-	
+
 	// configuration
 	var sources = [],
 		hours = 24,
@@ -50,36 +50,36 @@ var svApp = function(nodeUrlHelper, options) {
 		dataBySource = [], // nest objects: { key : 'sourceId', values : [ ... ] }
 		dataByLine = [], // { key : 'sourceId-propId', source : 'sourceId', prop : 'propId', values : [ ...] }
 		charts = {}; // lineId -> chart
-		
+
 	function chartRefresh() {
 		// get all available data within the last week
 		endDate = new Date();
 		startDate = d3.time.day.offset(endDate, -days);
-		
+
 		dataBySource.lengt = 0;
 		dataByLine.length = 0;
-		
+
 		sn.api.datum.loader(sources, urlHelper, startDate, endDate, 'Hour').callback(function(error, results) {
 			if ( !results || !Array.isArray(results) ) {
 				sn.log("Unable to load data: {1}", error);
 				return;
 			}
-			
+
 			dataBySource = d3.nest()
 				.key(function(d) { return d.sourceId; })
 				.sortKeys(d3.ascending)
 				.entries(results);
-			
+
 			dataBySource.forEach(setupLineDataForSource);
-			
+
 			refreshCharts(dataByLine);
 		}).load();
 	}
-	
+
 	function setupLineDataForSource(sourceData) {
 		// sourceData like { key : 'foo', values : [ ... ] }
 		var templateObj = sourceData.values[0];
-	
+
 		// get properties of first object only
 		var sourcePlotProperties = Object.keys(templateObj).filter(function(key) {
 			return (!ignoreProps[key] && typeof templateObj[key] === 'number');
@@ -90,20 +90,20 @@ var svApp = function(nodeUrlHelper, options) {
 			dataByLine.push(lineData);
 		});
 	}
-	
+
 	function refreshCharts(lineDatas) {
 		if ( !config.chartsContainerSelector ) {
 			return;
 		}
 		var figures = d3.select(config.chartsContainerSelector).selectAll('figure').data(lineDatas, nestedDataKey);
-		
+
 		figures.enter()
 			.append('figure').attr('id', nestedDataKey).each(setupChartForLineData)
 			.append('figcaption').text(lineDataDisplayName);
-		
+
 		figures.selectAll('figure').attr('id', nestedDataKey).each(setupChartForLineData);
 		figures.selectAll('figcaption').text(lineDataDisplayName);
-		
+
 		figures.exit().each(function(d) {
 			delete charts[d.key];
 		}).remove();
@@ -127,18 +127,18 @@ var svApp = function(nodeUrlHelper, options) {
 			.load(d.values, d.key, d.prop)
 			chart.regenerate();
 	}
-	
+
 	function nestedDataKey(d) {
 		return d.key;
 	}
-	
+
 	function lineDataDisplayName(d) {
 		return d.source + ' ' + d.prop;
 	}
 
 	/**
 	 * Get or set the number of hours to display for the TenMinute aggregate level.
-	 * 
+	 *
 	 * @param {number} [value] the number of hours to display
 	 * @return when used as a getter, the number of hours, otherwise this object
 	 * @memberOf svApp
@@ -151,10 +151,10 @@ var svApp = function(nodeUrlHelper, options) {
 		}
 		return self;
 	}
-	
+
 	/**
 	 * Get or set the number of days to display for the Hour aggregate level.
-	 * 
+	 *
 	 * @param {number} [value] the number of days to display
 	 * @return when used as a getter, the number of days, otherwise this object
 	 * @memberOf svApp
@@ -167,10 +167,10 @@ var svApp = function(nodeUrlHelper, options) {
 		}
 		return self;
 	}
-	
+
 	/**
 	 * Get or set the number of months to display for the Day aggregate level.
-	 * 
+	 *
 	 * @param {number} [value] the number of months to display
 	 * @return when used as a getter, the number of months, otherwise this object
 	 * @memberOf svApp
@@ -183,10 +183,10 @@ var svApp = function(nodeUrlHelper, options) {
 		}
 		return self;
 	}
-	
+
 	/**
 	 * Get or set the number of years to display for the Month aggregate level.
-	 * 
+	 *
 	 * @param {number} [value] the number of years to display
 	 * @return when used as a getter, the number of years, otherwise this object
 	 * @memberOf svApp
@@ -202,7 +202,7 @@ var svApp = function(nodeUrlHelper, options) {
 
 	/**
 	 * Start the application, after configured.
-	 * 
+	 *
 	 * @return this object
 	 * @memberOf svApp
 	 */
@@ -213,7 +213,7 @@ var svApp = function(nodeUrlHelper, options) {
 		}
 		return self;
 	}
-	
+
 	/**
 	 * Stop the application, after started.
 	 *
@@ -241,7 +241,7 @@ var svApp = function(nodeUrlHelper, options) {
 		Array.prototype.push.apply(sources, array);
 		return self;
 	}
-	
+
 	function init() {
 		sourceIds(options.sourceIds);
 		Object.defineProperties(self, {
@@ -255,7 +255,7 @@ var svApp = function(nodeUrlHelper, options) {
 		});
 		return self;
 	}
-	
+
 	return init();
 };
 
@@ -265,7 +265,7 @@ function setupUI(env) {
 
 function startApp(env) {
 	var urlHelper;
-	
+
 	if ( !env ) {
 		env = sn.util.copy(sn.env, {
 			nodeId : 175,
@@ -277,9 +277,9 @@ function startApp(env) {
 			chartsContainerSelector : '#charts-root'
 		});
 	}
-	
+
 	setupUI(env);
-	
+
 	urlHelper = sn.api.node.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
 
 	app = svApp(urlHelper, env)
@@ -288,7 +288,7 @@ function startApp(env) {
 		.numMonths(env.numMonths)
 		.numYears(env.numYears)
 		.start();
-	
+
 	return app;
 }
 
