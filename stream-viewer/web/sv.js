@@ -38,8 +38,12 @@ var svApp = function(nodeUrlHelper, options) {
 		months = 4,
 		years = 24,
 		ignoreProps = { 'nodeId' : true },
-		chartConfiguration = new sn.Configuration({ height : 180, aggregate : 'Hour' });
-		
+		chartConfiguration = new sn.Configuration({
+			height : 180,
+			aggregate : 'Hour',
+			padding : [10, 0, 20, 50]
+		});
+
 	// runtime data
 	var startDate = new Date(),
 		endDate = new Date(),
@@ -104,13 +108,19 @@ var svApp = function(nodeUrlHelper, options) {
 			delete charts[d.key];
 		}).remove();
 	}
-	
+
+	// ensure all charts remain un-scaled
+	function forcedDisplayFactorFn() {
+		return 1;
+	}
+
 	function setupChartForLineData(d, i) {
 		var container = this,
 			key = d.key,
 			chart = charts[key];
 		if ( !chart ) {
-			chart = sn.chart.basicLineChart(container, chartConfiguration);
+			chart = sn.chart.basicLineChart(container, chartConfiguration)
+				.displayFactorCallback(forcedDisplayFactorFn);
 			charts[key] = chart;
 		}
 		chart.reset()
