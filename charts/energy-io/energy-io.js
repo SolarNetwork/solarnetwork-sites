@@ -14,8 +14,8 @@ function regenerateChart() {
 		return;
 	}
 	sn.runtime.energyBarIOChart.regenerate();
-	sn.adjustDisplayUnits(sn.runtime.energyBarIOContainer, 'Wh', sn.runtime.energyBarIOChart.yScale());
-	sn.adjustDisplayUnits(sn.runtime.barTooltip, 'Wh', sn.runtime.energyBarIOChart.yScale());
+	sn.ui.adjustDisplayUnits(sn.runtime.energyBarIOContainer, 'Wh', sn.runtime.energyBarIOChart.yScale());
+	sn.ui.adjustDisplayUnits(sn.runtime.barTooltip, 'Wh', sn.runtime.energyBarIOChart.yScale());
 }
 
 // handle clicks on legend handler
@@ -36,7 +36,7 @@ function updateRangeSelection() {
 function chartDataCallback(dataType, datum) {
 	// create date property
 	if ( datum.localDate ) {
-		datum.date = sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
+		datum.date = sn.format.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
 	} else if ( datum.created ) {
 		datum.date = sn.timestampFormat.parse(datum.created);
 	} else {
@@ -56,16 +56,16 @@ function sourceExcludeCallback(dataType, sourceId) {
 
 // Watt stacked area overlap chart
 function setupEnergyIOChart(container, chart, parameters, endDate, sourceSets) {
-	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
+	var queryRange = sn.api.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	var loadSets = sourceSets.map(function(sourceSet) {
-		return sn.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, parameters.aggregate);
+		return sn.api.datum.loader(sourceSet.sourceIds, sourceSet.nodeUrlHelper, queryRange.start, queryRange.end, parameters.aggregate);
 	});
 	
 	container.selectAll('.time-count').text(queryRange.timeCount);
 	container.selectAll('.time-unit').text(queryRange.timeUnit);
 	
-	sn.datum.multiLoader(loadSets).callback(function(error, results) {
+	sn.api.datum.multiLoader(loadSets).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 2) ) {
 			sn.log("Unable to load data for Energy Bar chart: {0}", error);
 			return;
@@ -121,8 +121,8 @@ function sourceSets(regenerate) {
  * Generate an array of source color mappings ordered to match the display order in the chart.
  * 
  * @param {Object} sourceGroupMap - A mapping of data types to associated sources, e.g. { Generation : [A, B, C] },
- *                                  that is passed to {@link sn.sourceColorMapping}.
- * @param {Object} sourceColorMap - An object returned from {@link sn.sourceColorMapping}, e.g.
+ *                                  that is passed to {@link sn.color.sourceColorMapping}.
+ * @param {Object} sourceColorMap - An object returned from {@link sn.color.sourceColorMapping}, e.g.
  *                                  { 
  *                                     displaySourceMap : { Generation : { A : 'Generation / A' } },
  *                                     colorMap : { 'Generation / A' : '#000' }
@@ -146,7 +146,7 @@ function sourceLabelsColorMap(sourceGroupMap, sourceColorMap) {
 
 function setupBarTooltip(sourceGroupMap) {
 	d3.select('#source-labels-tooltip').html(null);
-	sn.colorDataLegendTable('#source-labels-tooltip', sn.runtime.labelColorMap, undefined, function(s) {
+	sn.ui.colorDataLegendTable('#source-labels-tooltip', sn.runtime.labelColorMap, undefined, function(s) {
 		s.html(function(d) {
 			var sourceGroup = sn.runtime.sourceColorMap.displaySourceObjects[d];
 			sn.log('Got data type {0} source {1}', sourceGroup.dataType, sourceGroup.source);
@@ -183,7 +183,7 @@ function setupBarTooltip(sourceGroupMap) {
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
-		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
+		sn.runtime.sourceColorMap = sn.color.sourceColorMapping(sn.runtime.sourceGroupMap);
 	
 		// we make use of sn.colorFn, so stash the required color map where expected
 		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
@@ -201,7 +201,7 @@ function setup(repInterval) {
 		sn.runtime.labelColorMap = sourceLabelsColorMap(sn.runtime.sourceGroupMap, sn.runtime.sourceColorMap);
 		
 		// create clickable legend table
-		sn.colorDataLegendTable('#source-labels', sn.runtime.labelColorMap, legendClickHandler, function(s) {
+		sn.ui.colorDataLegendTable('#source-labels', sn.runtime.labelColorMap, legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -235,10 +235,10 @@ function setupUI() {
 				sn.env[propName] = me.property('value');
 			}
 			if ( propName === 'consumptionNodeId' ) {
-				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
 				getAvailable = true;
@@ -252,7 +252,7 @@ function setupUI() {
 				return;
 			}
 			if ( getAvailable ) {
-				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+				sn.api.node.availableDataRange(sourceSets(true), function(reportableInterval) {
 					delete sn.runtime.sourceColorMap; // to regenerate
 					setup(reportableInterval);
 				});
@@ -326,7 +326,7 @@ function handleHoverMove(svgContainer, point, data) {
 	tooltip.style('left', Math.round(window.pageXOffset + matrix.e - tooltipRect.width / 2) + 'px')
             .style('top', Math.round(window.pageYOffset + matrix.f - tooltipRect.height) + 'px')
             .style('display', null);
-    tooltip.select('h3').text(sn.dateTimeFormat(data.date));
+    tooltip.select('h3').text(sn.format.dateTimeFormat(data.date));
     tooltip.selectAll('td.desc span.energy').data(sn.runtime.labelColorMap).text(function(d, i) {
     	var index = i, sourceMap,
     		groupData = data.groups[d.dataType];
@@ -398,19 +398,19 @@ function onDocumentReady() {
 		.hoverLeaveCallback(handleHoverLeave)
 		.doubleClickCallback(handleDoubleClick);
 	
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId);
 
 	sn.runtime.barTooltip = d3.select('#bar-chart-tooltip');
 	sn.runtime.barTooltipFormat = d3.format(',.1f');
 
 	setupUI();
-	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+	sn.api.node.availableDataRange(sourceSets(), function(reportableInterval) {
 		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+				sn.api.node.availableDataRange(sourceSets(), function(repInterval) {
 					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 						setup(repInterval);

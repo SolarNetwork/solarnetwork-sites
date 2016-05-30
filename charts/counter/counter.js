@@ -29,9 +29,9 @@ function setup() {
 			var getAvailable = false;
 			sn.env[propName] = me.property('value');
 			if ( propName === 'consumptionNodeId' ) {
-				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 			} else if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 			}
 			setupCounters();
 		}).each(function(e) {
@@ -70,7 +70,7 @@ function setupCounters() {
 	if ( sn.runtime.wattHourPowerCounter !== undefined ) {
 		sn.runtime.wattHourPowerCounter.stop();
 	}
-	sn.runtime.wattHourPowerCounter = sn.util.sumCounter(sn.runtime.urlHelper)
+	sn.runtime.wattHourPowerCounter = sn.api.datum.sumCounter(sn.runtime.urlHelper)
 		.sourceIds(sn.env.sourceIds)
 		.callback(function(sum) {
 			var totalKWattHours = sum / 1000;
@@ -83,7 +83,7 @@ function setupCounters() {
 	if ( sn.runtime.wattHourConsumptionCounter !== undefined ) {
 		sn.runtime.wattHourConsumptionCounter.stop();
 	}
-	sn.runtime.wattHourConsumptionCounter = sn.util.sumCounter(sn.runtime.consumptionUrlHelper)
+	sn.runtime.wattHourConsumptionCounter = sn.api.datum.sumCounter(sn.runtime.consumptionUrlHelper)
 		.sourceIds(sn.env.consumptionSourceIds)
 		.callback(function(sum) {
 			var totalKWattHours = sum / 1000;
@@ -100,7 +100,7 @@ function onDocumentReady() {
 		consumptionNodeId : 11,
 		consumptionSourceIds : 'Main'
 	});
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId);
 	setup();
 }

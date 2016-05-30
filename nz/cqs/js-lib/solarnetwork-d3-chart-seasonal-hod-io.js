@@ -1,1 +1,0 @@
-../../../charts/seasonal-hod-io/solarnetwork-d3-chart-seasonal-hod-io.js

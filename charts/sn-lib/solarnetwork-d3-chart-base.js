@@ -363,6 +363,257 @@ sn.chart.baseGroupedStackChart = function(containerSelector, chartConfig) {
 };
 
 sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
+	var parent = sn.chart.baseTimeChart(containerSelector, chartConfig),
+		superReset = parent.reset;
+	var self = sn.util.copyAll(parent);
+	self.me = self;
+	
+	// raw data, by groupId
+	var originalData = {};
+	
+	// a numeric scale factor, by groupId
+	var scaleFactors = {};
+
+	var dataCallback = undefined;
+	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
+	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
+	var layerPostProcessCallback = undefined; // function accepts (groupId, result of d3.nest()) and should return same structure
+
+	// our computed layer data
+	var groupIds = [];
+	var otherData = {};
+
+	function fillColor(groupId, d, i) {
+		if ( colorCallback === undefined ) {
+			return 'black';
+		}
+		return colorCallback(groupId, d.sourceId, i);
+	}
+
+	/**
+	 * Insert aggregate time normalized elements into all layer data arrays.
+	 * The <code>layerData</code> object must be an array of objects, each object
+	 * having a <code>values</code> array of data objects. This method will
+	 * clone data objects and insert them into the <code>values</code> array in-place,
+	 * in order to create a time-normalized series of elements.
+	 * 
+	 * @param layerData The array of layer (data group) objects.
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	function insertNormalizedDurationIntoLayerData(layerData) {
+		var i, j, row, datum,
+			plotPropName = self.plotPropertyName,
+			plotReversePropName = self.plotReversePropertyName;
+		for ( j = 0; j < layerData.length; j += 1 ) {
+			row = layerData[j].values;
+			for ( i = 0; i < row.length - 1; i += 1 ) {
+				if ( self.isNormalizedDuration(row[i].date, row[i+1].date) !== true ) {
+					datum = sn.util.copy(row[i]);
+					datum.date = self.addNormalizedDuration(datum.date);
+					datum[plotPropName] = null;
+					datum[plotReversePropName] = null;
+					row.splice(i + 1, 0, datum);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Clear out all data associated with this chart. Does not redraw. If 
+	 * {@link hoverLeaveCallback} is defined, it will be called with no arguments.
+	 * 
+	 * @return this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.reset = function() {
+		superReset();
+		originalData = {};
+		groupIds = [];
+		otherData = {};
+		return self.me;
+	};
+	
+	/**
+	 * Add data for a single group in the chart. The data is appended if data has 
+	 * already been loaded for the given groupId. This does not redraw the chart. 
+	 * Once all groups have been loaded, call {@link #regenerate()} to redraw.
+	 * 
+	 * @param {Array} rawData - the raw chart data to load
+	 * @param {String} groupId - the ID to associate with the data; each stack group must have its own ID
+	 * @returns this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.load = function(rawData, groupId) {
+		if ( originalData[groupId] === undefined ) {
+			groupIds.push(groupId);
+			originalData[groupId] = rawData;
+		} else {
+			originalData[groupId] = originalData[groupId].concat(rawData);
+		}
+		return self.me;
+	};
+	
+	/**
+	 * Get the data for a specific group ID previously loaded via {@link #load()}.
+	 *
+	 * @param {String} groupId - the group ID of the data to get
+	 * @returns the data, or <code>undefined</code>
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.data = function(groupId) {
+		return originalData[groupId];
+	};
+	
+	/**
+	 * Stash data for a single group in the chart. The data is appended if data has 
+	 * already been stashed for the given groupId. This data is auxiliary data that clients
+	 * may want to associate with the chart and draw later, for example via the 
+	 * {@link #drawAnnotationsCallback()} function.
+	 * 
+	 * @param {Array} rawData - the raw chart data to stash
+	 * @param {String} groupId - the group ID to associate with the data
+	 * @param {Boolean} replace - If <em>true</em> then do not append to existing data, replace it instead.
+	 * @returns this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.stash = function(rawData, groupId, replace) {
+		if ( otherData[groupId] === undefined || replace === true ) {
+			otherData[groupId] = rawData;
+		} else {
+			otherData[groupId] = otherData[groupId].concat(rawData);
+		}
+		return self.me;
+	};
+	
+	/**
+	 * Get the data for a specific group ID previously stashed via {@link #stash()}.
+	 *
+	 * @param {String} groupId - the group ID of the data to get
+	 * @returns the data, or <code>undefined</code>
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.stashedData = function(groupId) {
+		return otherData[groupId];
+	};
+	
+	/**
+	 * Get or set the scale factor for specific group IDs. If called without any arguments,
+	 * all configured scale factors will be returned as an object, with group IDs as property
+	 * names with corresponding scale factor values. If called with a single Object argument
+	 * then set all scale factors using group IDs as object property names with corresponding 
+	 * number values for the scale factor.
+	 *
+	 * @param {String} groupId - The group ID of the scale factor to set.
+	 * @param {Number} value - The scale factor to set.
+	 * @returns If called without any arguments, all configured scale factors as an object.
+	 *          If called with a single String <code>groupId</code> argument, the scale factor for the given group ID,
+	 *          or <code>1</code> if not defined.
+	 *          If called with a single Object <code>groupId</code> argument, set
+	 *          Otherwise, this object.
+	 */
+	self.scaleFactor = function(groupId, value) {
+		var v;
+		if ( !arguments.length ) return scaleFactors;
+		if ( arguments.length === 1 ) {
+			if ( typeof groupId === 'string' ) {
+				v = scaleFactors[groupId];
+				return (v === undefined ? 1 : v);
+			}
+			
+			// for a single Object argument, reset all scaleFactors
+			scaleFactors = groupId;
+		} else if ( arguments.length == 2 ) {
+			scaleFactors[groupId] = value;
+		}
+		return self.me;
+	};
+	
+	/**
+	 * Get or set the data callback function. This function will be called as the
+	 * chart iterates over the raw input data as it performs grouping and normalization
+	 * operations. The callback will be passed the group ID and the data as arguments.
+	 * 
+	 * @param {function} [value] the data callback
+	 * @return when used as a getter, the current data callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.dataCallback = function(value) {
+		if ( !arguments.length ) return dataCallback;
+		if ( typeof value === 'function' ) {
+			dataCallback = value;
+		} else {
+			dataCallback = undefined;
+		}
+		return self.me;
+	};
+
+	/**
+	 * Get or set the color callback function. The callback will be passed the group ID 
+	 * and a source ID as arguments.
+	 * 
+	 * @param {function} [value] the color callback
+	 * @return when used as a getter, the current color callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.colorCallback = function(value) {
+		if ( !arguments.length ) return colorCallback;
+		if ( typeof value === 'function' ) {
+			colorCallback = value;
+		} else {
+			colorCallback = undefined;
+		}
+		return self.me;
+	};
+	
+	/**
+	 * Get or set the source exclude callback function. The callback will be passed the group ID 
+	 * and a source ID as arguments. It should true <em>true</em> if the data set for the given
+	 * group ID and source ID should be excluded from the chart.
+	 * 
+	 * @param {function} [value] the source exclude callback
+	 * @return when used as a getter, the current source exclude callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.sourceExcludeCallback = function(value) {
+		if ( !arguments.length ) return sourceExcludeCallback;
+		if ( typeof value === 'function' ) {
+			sourceExcludeCallback = value;
+		} else {
+			sourceExcludeCallback = undefined;
+		}
+		return self.me;
+	};
+
+	/**
+	 * Get or set the layer post-process callback function. The callback will be passed a 
+	 * group ID and that group's result of the d3.nest() operator, after all layer data 
+	 * arrays have been normalized to contain the same number of elements. 
+	 * 
+	 * @param {function} [value] the layer post-process callback
+	 * @return when used as a getter, the current layer post-process callback function, otherwise this object
+	 * @memberOf sn.chart.baseGroupedChart
+	 */
+	self.layerPostProcessCallback = function(value) {
+		if ( !arguments.length ) return layerPostProcessCallback;
+		if ( typeof value === 'function' ) {
+			layerPostProcessCallback = value;
+		} else {
+			layerPostProcessCallback = undefined;
+		}
+		return self.me;
+	};
+
+	Object.defineProperties(self, {
+		// extending classes should re-define this property so method chaining works
+		fillColor : { value : fillColor },
+		insertNormalizedDurationIntoLayerData : { value : insertNormalizedDurationIntoLayerData },
+		
+		groupIds : { get : function() { return groupIds; } },
+	});
+	return self;
+};
+
+sn.chart.baseTimeChart = function(containerSelector, chartConfig) {
 	var self = {
 		version : '1.0.0'
 	};
@@ -395,12 +646,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	var ruleOpacity; // will default to 0.1
 	var vertRuleOpacity; // will default to 0.05
 	
-	// raw data, by groupId
-	var originalData = {};
-	
-	// a numeric scale factor, by groupId
-	var scaleFactors = {};
-
 	var svgRoot,
 		svgTickGroupX,
 		svgDataRoot,
@@ -409,11 +654,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		svgHoverRoot,
 		svgPointerCapture;
 	
-	var dataCallback = undefined;
-	var colorCallback = undefined; // function accepts (groupId, sourceId) and returns a color
-	var sourceExcludeCallback = undefined; // function accepts (groupId, sourceId) and returns true to exclue group
 	var displayFactorCallback = undefined; // function accepts (maxY) and should return the desired displayFactor
-	var layerPostProcessCallback = undefined; // function accepts (groupId, result of d3.nest()) and should return same structure
 	var drawAnnotationsCallback = undefined; // function accepts (svgAnnotRoot)
 	var xAxisTickCallback = undefined; // function accepts (d, i, x, numTicks)
 
@@ -433,10 +674,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	}());
 	var lastUserInteractionInfo = { time : 0 };
 	
-	// our computed layer data
-	var groupIds = [];
-	var otherData = {};
-
 	// display units in kW if domain range > 1000
 	var displayFactor = 1;
 	var displayFormatter = d3.format(',d');
@@ -616,13 +853,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		computeUnitsY();
 	}
 	
-	function fillColor(groupId, d, i) {
-		if ( colorCallback === undefined ) {
-			return 'black';
-		}
-		return colorCallback(groupId, d.sourceId, i);
-	}
-
 	function axisYTransform(d) {
 		// align to half-pixels, to 1px line is aligned to pixels and crisp
 		return "translate(0," + (Math.round(y(d) + 0.5) - 0.5) + ")"; 
@@ -738,7 +968,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {Date} the Date to scale
 	 * @return {Number} the scaled value
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.scaleDate = function(date) { return x(date); };
 
@@ -747,7 +977,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {Number} the value to scale
 	 * @return {Number} the scaled value
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.scaleValue = function(value) { return y(value); };
 	
@@ -755,7 +985,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * Get the x-axis domain (minimum and maximum dates).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the x-axis of the chart
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.xDomain = function() { return x.domain(); };
 
@@ -763,7 +993,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * Get the y-axis domain (minimum and maximum values).
 	 * 
 	 * @return {number[]} an array with the minimum and maximum values used in the y-axis of the chart
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.yDomain = function() { return y.domain(); };
 	
@@ -774,7 +1004,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * chart ended up using.
 	 *  
 	 * @return the y-axis scale factor
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.yScale = function() { return (displayFactorCallback ? displayFactorCallback() : displayFactor); };
 
@@ -784,7 +1014,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * @param {number} [value] the number of consumption sources to use
 	 * @returns when used as a getter, the count number, otherwise this object
 	 * @returns the {@code aggregate} value
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.aggregate = function(value) { 
 		if ( !arguments.length ) return aggregateType;
@@ -797,7 +1027,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * Get the expected normalized duration, in milliseconds, based on the configured aggregate level.
 	 * 
 	 * @returns The expected normalized millisecond duration for the configured aggregate level.
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.aggregateNormalizedDuration = function() {
 		if ( aggregateType === 'FiveMinute' ) {
@@ -825,7 +1055,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * Test if two dates are the expected aggregate normalized duration apart.
 	 *
 	 * @returns True if the two dates are exactly one normalized aggregate duration apart.
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.isNormalizedDuration = function(d1, d2) {
 		var diff, 
@@ -878,7 +1108,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 *
 	 * @param date The date to add to.
 	 * @returns A new Date object.
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.addNormalizedDuration = function(date) {
 		if ( !date ) {
@@ -891,44 +1121,13 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 	
 	/**
-	 * Insert aggregate time normalized elements into all layer data arrays.
-	 * The <code>layerData</code> object must be an array of objects, each object
-	 * having a <code>values</code> array of data objects. This method will
-	 * clone data objects and insert them into the <code>values</code> array in-place,
-	 * in order to create a time-normalized series of elements.
-	 * 
-	 * @param layerData The array of layer (data group) objects.
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	function insertNormalizedDurationIntoLayerData(layerData) {
-		var i, j, row, datum,
-			plotPropName = plotPropertyName(),
-			plotReversePropName = plotReversePropertyName();
-		for ( j = 0; j < layerData.length; j += 1 ) {
-			row = layerData[j].values;
-			for ( i = 0; i < row.length - 1; i += 1 ) {
-				if ( self.isNormalizedDuration(row[i].date, row[i+1].date) !== true ) {
-					datum = sn.util.copy(row[i]);
-					datum.date = self.addNormalizedDuration(datum.date);
-					datum[plotPropName] = null;
-					datum[plotReversePropName] = null;
-					row.splice(i + 1, 0, datum);
-				}
-			}
-		}
-	}
-	
-	/**
 	 * Clear out all data associated with this chart. Does not redraw. If 
 	 * {@link hoverLeaveCallback} is defined, it will be called with no arguments.
 	 * 
 	 * @return this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.reset = function() {
-		originalData = {};
-		groupIds = [];
-		otherData = {};
 		if ( svgHoverRoot ) {
 			handleHoverLeave();
 		}
@@ -936,80 +1135,12 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 	
 	/**
-	 * Add data for a single group in the chart. The data is appended if data has 
-	 * already been loaded for the given groupId. This does not redraw the chart. 
-	 * Once all groups have been loaded, call {@link #regenerate()} to redraw.
-	 * 
-	 * @param {Array} rawData - the raw chart data to load
-	 * @param {String} groupId - the ID to associate with the data; each stack group must have its own ID
-	 * @returns this object
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	self.load = function(rawData, groupId) {
-		if ( originalData[groupId] === undefined ) {
-			groupIds.push(groupId);
-			originalData[groupId] = rawData;
-		} else {
-			originalData[groupId] = originalData[groupId].concat(rawData);
-		}
-		return me;
-	};
-	
-	/**
-	 * Get the data for a specific group ID previously loaded via {@link #load()}.
-	 *
-	 * @param {String} groupId - the group ID of the data to get
-	 * @returns the data, or <code>undefined</code>
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	self.data = function(groupId) {
-		return originalData[groupId];
-	};
-	
-	/**
-	 * Stash data for a single group in the chart. The data is appended if data has 
-	 * already been stashed for the given groupId. This data is auxiliary data that clients
-	 * may want to associate with the chart and draw later, for example via the 
-	 * {@link #drawAnnotationsCallback()} function.
-	 * 
-	 * @param {Array} rawData - the raw chart data to stash
-	 * @param {String} groupId - the group ID to associate with the data
-	 * @param {Boolean} replace - If <em>true</em> then do not append to existing data, replace it instead.
-	 * @returns this object
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	self.stash = function(rawData, groupId, replace) {
-		if ( otherData[groupId] === undefined || replace === true ) {
-			otherData[groupId] = rawData;
-		} else {
-			otherData[groupId] = otherData[groupId].concat(rawData);
-		}
-		return me;
-	};
-	
-	/**
-	 * Get the data for a specific group ID previously stashed via {@link #stash()}.
-	 *
-	 * @param {String} groupId - the group ID of the data to get
-	 * @returns the data, or <code>undefined</code>
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	self.stashedData = function(groupId) {
-		return otherData[groupId];
-	};
-	
-	/**
-	 * Regenerate the chart, using the current data. This can be called after disabling a
-	 * source 
+	 * Regenerate the chart, using the current data.
 	 * 
 	 * @returns this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.regenerate = function() {
-		if ( originalData === undefined ) {
-			// did you call load() first?
-			return me;
-		}
 		parseConfiguration();
 		self.setup();
 		self.draw();
@@ -1020,43 +1151,11 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 	
 	/**
-	 * Get or set the scale factor for specific group IDs. If called without any arguments,
-	 * all configured scale factors will be returned as an object, with group IDs as property
-	 * names with corresponding scale factor values. If called with a single Object argument
-	 * then set all scale factors using group IDs as object property names with corresponding 
-	 * number values for the scale factor.
-	 *
-	 * @param {String} groupId - The group ID of the scale factor to set.
-	 * @param {Number} value - The scale factor to set.
-	 * @returns If called without any arguments, all configured scale factors as an object.
-	 *          If called with a single String <code>groupId</code> argument, the scale factor for the given group ID,
-	 *          or <code>1</code> if not defined.
-	 *          If called with a single Object <code>groupId</code> argument, set
-	 *          Otherwise, this object.
-	 */
-	self.scaleFactor = function(groupId, value) {
-		var v;
-		if ( !arguments.length ) return scaleFactors;
-		if ( arguments.length === 1 ) {
-			if ( typeof groupId === 'string' ) {
-				v = scaleFactors[groupId];
-				return (v === undefined ? 1 : v);
-			}
-			
-			// for a single Object argument, reset all scaleFactors
-			scaleFactors = groupId;
-		} else if ( arguments.length == 2 ) {
-			scaleFactors[groupId] = value;
-		}
-		return me;
-	};
-	
-	/**
 	 * Get or set the animation transition time, in milliseconds.
 	 * 
 	 * @param {number} [value] the number of milliseconds to use
 	 * @return when used as a getter, the millisecond value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.transitionMs = function(value) {
 		if ( !arguments.length ) return transitionMs;
@@ -1087,7 +1186,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {object} [value] the aggregate property names to use
 	 * @return when used as a getter, the current plot property value mapping object, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.plotProperties = function(value) {
 		if ( !arguments.length ) return plotProperties;
@@ -1100,69 +1199,13 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 
 	/**
-	 * Get or set the data callback function. This function will be called as the
-	 * chart iterates over the raw input data as it performs grouping and normalization
-	 * operations. The callback will be passed the group ID and the data as arguments.
-	 * 
-	 * @param {function} [value] the data callback
-	 * @return when used as a getter, the current data callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	self.dataCallback = function(value) {
-		if ( !arguments.length ) return dataCallback;
-		if ( typeof value === 'function' ) {
-			dataCallback = value;
-		} else {
-			dataCallback = undefined;
-		}
-		return me;
-	};
-
-	/**
-	 * Get or set the color callback function. The callback will be passed the group ID 
-	 * and a source ID as arguments.
-	 * 
-	 * @param {function} [value] the color callback
-	 * @return when used as a getter, the current color callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	self.colorCallback = function(value) {
-		if ( !arguments.length ) return colorCallback;
-		if ( typeof value === 'function' ) {
-			colorCallback = value;
-		} else {
-			colorCallback = undefined;
-		}
-		return me;
-	};
-	
-	/**
-	 * Get or set the source exclude callback function. The callback will be passed the group ID 
-	 * and a source ID as arguments. It should true <em>true</em> if the data set for the given
-	 * group ID and source ID should be excluded from the chart.
-	 * 
-	 * @param {function} [value] the source exclude callback
-	 * @return when used as a getter, the current source exclude callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	self.sourceExcludeCallback = function(value) {
-		if ( !arguments.length ) return sourceExcludeCallback;
-		if ( typeof value === 'function' ) {
-			sourceExcludeCallback = value;
-		} else {
-			sourceExcludeCallback = undefined;
-		}
-		return me;
-	};
-
-	/**
 	 * Get or set the display factor callback function. The callback will be passed the absolute maximum 
 	 * Y domain value as an argument. It should return a number representing the scale factor to use
 	 * in Y-axis labels.
 	 * 
 	 * @param {function} [value] the display factor exclude callback
 	 * @return when used as a getter, the current display factor callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.displayFactorCallback = function(value) {
 		if ( !arguments.length ) return displayFactorCallback;
@@ -1175,32 +1218,13 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	};
 
 	/**
-	 * Get or set the layer post-process callback function. The callback will be passed a 
-	 * group ID and that group's result of the d3.nest() operator, after all layer data 
-	 * arrays have been normalized to contain the same number of elements. 
-	 * 
-	 * @param {function} [value] the layer post-process callback
-	 * @return when used as a getter, the current layer post-process callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
-	 */
-	self.layerPostProcessCallback = function(value) {
-		if ( !arguments.length ) return layerPostProcessCallback;
-		if ( typeof value === 'function' ) {
-			layerPostProcessCallback = value;
-		} else {
-			layerPostProcessCallback = undefined;
-		}
-		return me;
-	};
-
-	/**
 	 * Get or set the draw annotations callback function, which is called after the chart completes drawing.
 	 * The function will be passed a SVG <code>&lt;g class="annot-root"&gt;</code> element that
 	 * represents the drawing area for the chart data.
 	 * 
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current draw callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.drawAnnotationsCallback = function(value) {
 		if ( !arguments.length ) return drawAnnotationsCallback;
@@ -1234,7 +1258,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse enter callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.hoverEnterCallback = function(value) {
 		if ( !arguments.length ) return hoverEnterCallback;
@@ -1255,7 +1279,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the hover callback
 	 * @return when used as a getter, the current hover callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.hoverMoveCallback = function(value) {
 		if ( !arguments.length ) return hoverMoveCallback;
@@ -1277,7 +1301,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the mouse enter callback
 	 * @return when used as a getter, the current mouse leave callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.hoverLeaveCallback = function(value) {
 		if ( !arguments.length ) return hoverLeaveCallback;
@@ -1298,7 +1322,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the double click callback
 	 * @return when used as a getter, the current double click callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.doubleClickCallback = function(value) {
 		if ( !arguments.length ) return doubleClickCallback;
@@ -1319,7 +1343,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the range selection callback
 	 * @return when used as a getter, the current range selection callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.rangeSelectionCallback = function(value) {
 		if ( !arguments.length ) return rangeSelectionCallback;
@@ -1341,7 +1365,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the draw callback
 	 * @return when used as a getter, the current x-axis tick callback function, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.xAxisTickCallback = function(value) {
 		if ( !arguments.length ) return xAxisTickCallback;
@@ -1357,7 +1381,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current axis rule opacity value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.ruleOpacity = function(value) {
 		if ( !arguments.length ) return ruleOpacity;
@@ -1371,7 +1395,7 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 	 * 
 	 * @param {function} [value] the opacity value
 	 * @return when used as a getter, the current vertical axis rule opacity value, otherwise this object
-	 * @memberOf sn.chart.baseGroupedChart
+	 * @memberOf sn.chart.baseTimeChart
 	 */
 	self.vertRuleOpacity = function(value) {
 		if ( !arguments.length ) return vertRuleOpacity;
@@ -1390,8 +1414,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		yAxisTicks : { get : function() { return yAxisTicks; }, set : function(v) { yAxisTicks = v; } },
 		yAxisTickCount : { get : function() { return yAxisTickCount; }, set : function(v) { yAxisTickCount = v; } },
 		config : { value : config },
-		fillColor : { value : fillColor },
-		insertNormalizedDurationIntoLayerData : { value : insertNormalizedDurationIntoLayerData },
 		internalPropName : { value : internalPropName },
 		plotPropertyName : { get : plotPropertyName },
 		plotReversePropertyName : { get : plotReversePropertyName },
@@ -1411,7 +1433,6 @@ sn.chart.baseGroupedChart = function(containerSelector, chartConfig) {
 		handleClick : { get : function() { return handleClick; }, set : function(v) { handleClick = v; } },
 		handleDoubleClick : { get : function() { return handleDoubleClick; }, set : function(v) { handleDoubleClick = v; } },
 
-		groupIds : { get : function() { return groupIds; } },
 		computeUnitsY : { value : computeUnitsY },
 		drawAxisX : { get : function() { return drawAxisX; }, set : function(v) { drawAxisX = v; } },
 		drawAxisY : { get : function() { return drawAxisY; }, set : function(v) { drawAxisY = v; } },

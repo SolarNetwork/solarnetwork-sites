@@ -1,1 +1,0 @@
-../../../charts/sn-lib/solarnetwork-d3-datum.js

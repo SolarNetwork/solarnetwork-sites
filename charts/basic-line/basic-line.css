@@ -1,0 +1,336 @@
+html {
+	background-color: rgba(34,175,176,1.0);
+	background: -webkit-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	background: -moz-linear-gradient(top, rgba(104,144,173,1) 0%,rgba(102,126,153,1) 100%) no-repeat center center fixed; 
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
+}
+
+body {
+	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	margin: 10px;
+	background: none;
+}
+
+h1, h2, h3 {
+    color: inherit;
+    font-family: inherit;
+    text-rendering: optimizelegibility;
+}
+
+h1 {
+	text-align: left;
+	font-size: 42px;
+	line-height: 42px;
+	font-weight: 200;
+	margin: 0;
+	margin-bottom: 12px;
+	color: rgb(247,200,25);
+	text-shadow: 1px 0px 4px rgba(247,200,25,0.45);
+}
+
+h2 {
+	font-size: 24px;
+	line-height: 24px;
+	margin-top: 0;
+	margin-bottom: 4px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+h2 .alt {
+	color: gray;
+}
+
+h2 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+h2 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+.literal {
+	text-transform: none;
+}
+
+div.pane {
+	background-color: rgba(100%,100%,100%,1);
+	border-radius: 8px;
+	box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
+	padding: 10px 10px;
+}
+
+div.main div.pane {
+	padding: 20px 20px;
+}
+
+div.hbox {
+	display: -webkit-flex;
+	display: -ms-flexbox;
+	display: flex;
+	-webkit-flex-direction: row;
+	    -ms-flex-direction: row;
+	        flex-direction: row;
+}
+
+div.vbox {
+	display: -webkit-flex;
+	display: -ms-flexbox;
+	display: flex;
+	-webkit-flex-direction: column;
+	    -ms-flex-direction: column;
+	        flex-direction: column;
+}
+
+div.hbox > .main {
+	width: 800px;
+}
+
+div.hbox > .sub {
+	width: 180px;
+}
+
+div.vbox + div.vbox {
+	margin-left: 10px;
+}
+
+div.vbox > div + div {
+	margin-top: 12px;
+}
+
+a {
+	color: inherit;
+}
+
+.clickable {
+	cursor: pointer !important;
+}
+
+#readings > div {
+	margin-bottom: 2px;
+}
+
+#readings span.unit {
+	color: #666;
+}
+
+/* Source labels */
+
+#source-labels a:visited {
+	color: inherit;
+}
+
+#source-labels table {
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin-left: -4px;
+}
+
+#source-labels tr.disabled {
+	color: gray;
+	font-style: italic;
+}
+
+#source-labels td.swatch {
+	margin: 2px;
+	width: 10px;
+	height: 10px;
+}
+
+#source-labels td.desc {
+	font-size: 10px;
+	line-height: 10px;
+	margin: 2px;
+}
+
+#hemisphere-toggle {
+	-webkit-transition: -webkit-transform 0.5s;
+	   -moz-transition: -moz-transform 0.5s;
+	     -o-transition: -o-transform 0.5s;
+	        transition: transform 0.5s;
+}
+
+#hemisphere-toggle.south {
+  -webkit-transform: rotateZ(180deg);
+     -moz-transform: rotateZ(180deg);
+       -o-transform: rotateZ(180deg);
+          transform: rotateZ(180deg);
+	-webkit-transition: -webkit-transform 0.5s;
+	   -moz-transition: -moz-transform 0.5s;
+	     -o-transition: -o-transform 0.5s;
+	        transition: transform 0.5s;
+}
+
+#range-toggle.hit {
+	-webkit-transform: rotateZ(360deg);
+	-moz-transform: rotateZ(360deg);
+	-o-transform: rotateZ(360deg);
+	transform: rotateZ(360deg);
+    -webkit-transition: -webkit-transform 0.5s; 
+    -moz-transition: -moz-transform 0.5s; 
+    -o-transition: -o-transform 0.5s; 
+    transition: transform 0.5s; 
+}
+
+#details label {
+	font-weight: bold;
+	font-size: 12px;
+	line-height: 24px;
+	margin-right: 4px;
+}
+
+#details input[type=number] {
+	width: 4em;
+	font-size: 12px;
+}
+
+#details input[type=text] {
+	width: 8em;
+	font-size: 12px;
+}
+
+#details .generation {
+	color: rgb(35, 139, 69);
+}
+
+#details .consumption {
+	color: rgb(33, 113, 181);
+}
+
+#details .range {
+	display: none;
+}
+
+#details .range input {
+	width: 3em;
+}
+
+.pane .actions {
+	margin-top: 8px;
+	text-align: center;
+}
+
+.button {
+	font-size: 18px;
+	color: black;
+}
+
+.button + .button {
+	margin-left: 8px;
+}
+
+.button.off {
+	color: #ccc;
+}
+
+.line-chart .data-root path {
+	fill: none;
+}
+
+svg {
+	/*background-color: rgb(242,242,242);*/
+}
+
+.chart {
+	font-size: 10px;
+}
+
+.crisp {
+	shape-rendering: crispEdges;
+}
+
+.chart rect {
+	fill-opacity: 0.8;
+}
+
+.chart text {
+	fill: #333;
+}
+
+.chart g.ticks text {
+	text-anchor: middle;
+}
+
+.chart g.ticks text.agg {
+	fill: black;
+	font-weight: bold;
+}
+
+.chart g.ticks text.agg.neg {
+	fill: #DF3038;
+}
+
+.chart g.agg-gen text {
+	text-anchor: middle;
+	font-weight: bold;
+	fill: #1B7D30;
+}
+
+.chart g.rule,
+.chart g.vertrule {
+	shape-rendering: crispEdges;
+}
+
+.chart g.rule line,
+.chart g.vertrule line {
+	stroke: black;
+	opacity: 0.1;
+}
+
+.chart g.rule line.vert {
+	opacity: 0.05;
+	stroke-dasharray: 2 1;
+}
+
+.chart g.rule line.origin,
+.chart g.vertrule line.origin {
+	stroke: black !important;
+	opacity: 1 !important;
+}
+
+.chart g.rule text {
+	text-anchor: end;
+	alignment-baseline: middle;
+}
+
+.chart g.agg-band line {
+	stroke: black;
+	stroke-width: 15px;
+}
+
+.chart g.agg-band-ticks text {
+	fill: white;
+	text-anchor: middle;
+	font-weight: bold;
+}
+
+.chart g.agg-sum path {
+	stroke-width: 1px;
+	stroke: #C42F2F;
+	fill: none;
+}
+
+.chart .off {
+	display: none;
+}
+
+.chart path.area {
+	fill-opacity: 1;
+}
+
+.chart path.line {
+  fill: none;
+  stroke-width: 1px;
+}
+
+.chart line.axis {
+	stroke: black;
+}

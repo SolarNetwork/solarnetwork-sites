@@ -39,13 +39,13 @@ function layerPostProcessCallback(dataType, layerData) {
 	if ( sn.env.showSources === 'true' ) {
 		return layerData;
 	}
-	return sn.aggregateNestedDataLayers(layerData, dataType, ['date', '__internal__'], ['watts', 'wattHours'], 
+	return sn.api.datum.aggregateNestedDataLayers(layerData, dataType, ['date', '__internal__'], ['watts', 'wattHours'], 
 		{sourceId : displayNameForDataType(dataType)});
 }
 
 function regenerateChart(container, chart, parameters) {
 	chart.regenerate();
-	sn.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
+	sn.ui.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
 }
 
 // handle clicks on legend handler
@@ -72,16 +72,16 @@ function legendClickHandler(d, i) {
 }
 
 function setupGroupedLayerChart(container, chart, parameters, endDate, sourceMap) {
-	var queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
+	var queryRange = sn.api.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	
 	container.selectAll('.time-count').text(queryRange.timeCount);
 	container.selectAll('.time-unit').text(queryRange.timeUnit);
 	
-	sn.datum.multiLoader([
-		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+	sn.api.datum.multiLoader([
+		sn.api.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate),
-		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+		sn.api.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate)
 	]).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 2) ) {
@@ -93,7 +93,7 @@ function setupGroupedLayerChart(container, chart, parameters, endDate, sourceMap
 			.load(results[0], 'Consumption')
 			.load(results[1], 'Generation')
 			.regenerate();
-		sn.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
+		sn.ui.adjustDisplayUnits(container, (parameters.aggregate === 'TenMinute' ? 'W' : 'Wh'), chart.yScale());
 	}).load();
 }
 
@@ -101,10 +101,10 @@ function setupSeasonalEnergyChart(container, chart, parameters, endDate, sourceM
 	var plotPropName = parameters.plotProperties[parameters.aggregate];
 	var urlParams = { dataPath : 'a.wattHours' };
 	
-	sn.datum.multiLoader([
-		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+	sn.api.datum.multiLoader([
+		sn.api.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
 			null, null, parameters.aggregate).urlParameters(urlParams),
-		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+		sn.api.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
 			null, null, parameters.aggregate).urlParameters(urlParams)
 	]).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 2) ) {
@@ -116,7 +116,7 @@ function setupSeasonalEnergyChart(container, chart, parameters, endDate, sourceM
 			.load(results[0], 'Consumption')
 			.load(results[1], 'Generation')
 			.regenerate();
-		sn.adjustDisplayUnits(container, 'Wh', chart.yScale());
+		sn.ui.adjustDisplayUnits(container, 'Wh', chart.yScale());
 	}).load();
 }
 
@@ -407,7 +407,7 @@ function seasonalDayOfWeekChartSetup() {
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
-		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceMap, {
+		sn.runtime.sourceColorMap = sn.color.sourceColorMapping(sn.runtime.sourceMap, {
 			displayDataType : displayNameForDataType
 		});
 	
@@ -415,7 +415,7 @@ function setup(repInterval) {
 		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
 
 		// create copy of color data for reverse ordering so labels vertically match chart layers
-		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+		sn.ui.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -520,7 +520,7 @@ function setupCounters() {
 
 	// Wh counter utility (generation)
 	if ( sn.runtime.wattHourPowerCounter === undefined ) {
-		sn.runtime.wattHourPowerCounter = sn.util.sumCounter(sn.runtime.urlHelper)
+		sn.runtime.wattHourPowerCounter = sn.api.datum.sumCounter(sn.runtime.urlHelper)
 			.sourceIds(sn.env.sourceIds)
 			.callback(function(sum) {
 				var totalKWattHours = sum / 1000;
@@ -532,7 +532,7 @@ function setupCounters() {
 
 	// Wh counter utility (consumption)
 	if ( sn.runtime.wattHourConsumptionCounter === undefined ) {
-		sn.runtime.wattHourConsumptionCounter = sn.util.sumCounter(sn.runtime.consumptionUrlHelper)
+		sn.runtime.wattHourConsumptionCounter = sn.api.datum.sumCounter(sn.runtime.consumptionUrlHelper)
 			.sourceIds(sn.env.consumptionSourceIds)
 			.callback(function(sum) {
 				var totalKWattHours = sum / 1000;
@@ -632,19 +632,19 @@ function onDocumentReady() {
 	sn.runtime.seasonalDayOfWeekChart = sn.chart.seasonalDayOfWeekLineChart('#seasonal-dow-chart', sn.runtime.seasonalDayOfWeekParameters)
 		.sourceExcludeCallback(sourceExcludeCallback);
 
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId);
 
 	sn.env.sourceIds = sn.env.sourceIds.split(/\s*,\s*/);
 	sn.env.consumptionSourceIds = sn.env.consumptionSourceIds.split(/\s*,\s*/);
 
 	setupUI();
-	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+	sn.api.node.availableDataRange(sourceSets(), function(reportableInterval) {
 		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+				sn.api.node.availableDataRange(sourceSets(), function(repInterval) {
 					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 						setup(repInterval);

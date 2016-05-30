@@ -1,0 +1,4 @@
+[submodule "solarnetwork-d3"]
+	path = solarnetwork-d3
+	url = https://github.com/SolarNetwork/solarnetwork-d3.git
+	branch = develop

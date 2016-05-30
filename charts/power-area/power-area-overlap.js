@@ -54,7 +54,7 @@ function colorForDataTypeSource(dataType, sourceId, sourceIndex) {
 function chartDataCallback(dataType, datum) {
 	// create date property
 	if ( datum.localDate ) {
-		datum.date = sn.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
+		datum.date = sn.format.dateTimeFormat.parse(datum.localDate +' ' +datum.localTime);
 	} else if ( datum.created ) {
 		datum.date = sn.timestampFormat.parse(datum.created);
 	} else {
@@ -65,17 +65,17 @@ function chartDataCallback(dataType, datum) {
 // Watt stacked area overlap chart
 function powerAreaOverlapChartSetup(endDate) {
 	var sourceMap = sn.runtime.sourceGroupMap;
-	var queryRange = sn.datum.loaderQueryRange(sn.runtime.powerAreaOverlapParameters.aggregate, sn.env, endDate);
+	var queryRange = sn.api.datum.loaderQueryRange(sn.runtime.powerAreaOverlapParameters.aggregate, sn.env, endDate);
 	
 	d3.select('.power-area-chart .time-count').text(queryRange.timeCount);
 	d3.select('.power-area-chart .time-unit').text(queryRange.timeUnit);
 	
 	var plotPropName = sn.runtime.powerAreaOverlapParameters.plotProperties[sn.runtime.powerAreaOverlapParameters.aggregate];
 	
-	sn.datum.multiLoader([
-		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+	sn.api.datum.multiLoader([
+		sn.api.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
 			queryRange.start, queryRange.end, sn.runtime.powerAreaOverlapParameters.aggregate),
-		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+		sn.api.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
 			queryRange.start, queryRange.end, sn.runtime.powerAreaOverlapParameters.aggregate)
 	]).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 2) ) {
@@ -95,7 +95,7 @@ function powerAreaOverlapChartSetup(endDate) {
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
-		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
+		sn.runtime.sourceColorMap = sn.color.sourceColorMapping(sn.runtime.sourceGroupMap);
 	
 		// we make use of sn.colorFn, so stash the required color map where expected
 		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
@@ -107,7 +107,7 @@ function setup(repInterval) {
 				sn.runtime.sourceColorMap.colorMap[sn.runtime.sourceColorMap.displaySourceMap['Generation'][sn.runtime.sourceGroupMap['Generation'][0]]]);
 
 		// create copy of color data for reverse ordering so labels vertically match chart layers
-		sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
+		sn.ui.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap.slice().reverse(), legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -138,10 +138,10 @@ function setupUI() {
 				sn.env[propName] = me.property('value');
 			}
 			if ( propName === 'consumptionNodeId' ) {
-				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
 				getAvailable = true;
@@ -159,7 +159,7 @@ function setupUI() {
 				return;
 			}
 			if ( getAvailable ) {
-				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+				sn.api.node.availableDataRange(sourceSets(true), function(reportableInterval) {
 					delete sn.runtime.sourceColorMap; // to regenerate
 					setup(reportableInterval);
 				});
@@ -246,16 +246,16 @@ function onDocumentReady() {
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback);
 	
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId);
 
 	setupUI();
-	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+	sn.api.node.availableDataRange(sourceSets(), function(reportableInterval) {
 		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+				sn.api.node.availableDataRange(sourceSets(), function(repInterval) {
 					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 						setup(repInterval);

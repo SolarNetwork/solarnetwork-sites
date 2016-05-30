@@ -16,8 +16,8 @@ function regenerateChart() {
 		return;
 	}
 	chart.regenerate();
-	sn.adjustDisplayUnits(container, 'Wh', chart.scale(), 'energy');
-	sn.adjustDisplayUnits(sn.runtime.pieTooltip, 'Wh', chart.scale());
+	sn.ui.adjustDisplayUnits(container, 'Wh', chart.scale(), 'energy');
+	sn.ui.adjustDisplayUnits(sn.runtime.pieTooltip, 'Wh', chart.scale());
 }
 
 //handle clicks on legend handler
@@ -64,15 +64,15 @@ function energyPieChartSetup(endDate, chart, parameters) {
 		start = d3.time.day.utc.offset(end, -timeCount);
 	}
 
-	queryRange = sn.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
+	queryRange = sn.api.datum.loaderQueryRange(parameters.aggregate, sn.env, endDate);
 	
 	d3.select('.watthour-chart .time-count').text(queryRange.timeCount);
 	d3.select('.watthour-chart .time-unit').text(queryRange.timeUnit);
 	
-	sn.datum.multiLoader([
-		sn.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
+	sn.api.datum.multiLoader([
+		sn.api.datum.loader(sourceMap['Consumption'], sn.runtime.consumptionUrlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate),
-		sn.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
+		sn.api.datum.loader(sourceMap['Generation'], sn.runtime.urlHelper, 
 			queryRange.start, queryRange.end, parameters.aggregate)
 	]).callback(function(error, results) {
 		if ( !(Array.isArray(results) && results.length === 2) ) {
@@ -118,7 +118,7 @@ function sourceSets(regenerate) {
 function setup(repInterval) {
 	sn.runtime.reportableEndDate = repInterval.eDate;
 	if ( sn.runtime.sourceColorMap === undefined ) {
-		sn.runtime.sourceColorMap = sn.sourceColorMapping(sn.runtime.sourceGroupMap);
+		sn.runtime.sourceColorMap = sn.color.sourceColorMapping(sn.runtime.sourceGroupMap);
 	
 		// we make use of sn.colorFn, so stash the required color map where expected
 		sn.runtime.colorData = sn.runtime.sourceColorMap.colorMap;
@@ -132,7 +132,7 @@ function setup(repInterval) {
 		d3.select('#details .consumption').style('color', sn.runtime.groupColorMap['Consumption']);
 		d3.select('#details .generation').style('color', sn.runtime.groupColorMap['Generation']);
 
-        sn.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap, legendClickHandler, function(s) {
+        sn.ui.colorDataLegendTable('#source-labels', sn.runtime.sourceColorMap.colorMap, legendClickHandler, function(s) {
 			if ( sn.env.linkOld === 'true' ) {
 				s.html(function(d) {
 					return '<a href="' +sn.runtime.urlHelper.nodeDashboard(d) +'">' +d +'</a>';
@@ -226,10 +226,10 @@ function setupUI() {
 				sn.env[propName] = me.property('value');
 			}
 			if ( propName === 'consumptionNodeId' ) {
-				sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'nodeId' ) {
-				sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env[propName]);
+				sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env[propName]);
 				getAvailable = true;
 			} else if ( propName === 'sourceIds'|| propName === 'consumptionSourceIds' ) {
 				getAvailable = true;
@@ -243,7 +243,7 @@ function setupUI() {
 				return;
 			}
 			if ( getAvailable ) {
-				sn.datum.availableDataRange(sourceSets(true), function(reportableInterval) {
+				sn.api.node.availableDataRange(sourceSets(true), function(reportableInterval) {
 					delete sn.runtime.sourceColorMap; // to regenerate
 					setup(reportableInterval);
 				});
@@ -347,16 +347,16 @@ function onDocumentReady() {
 	sn.runtime.pieTooltip = d3.select('#pie-chart-tooltip');
 	sn.runtime.pieTooltipFormat = d3.format(',.1f');
 
-	sn.runtime.urlHelper = sn.datum.nodeUrlHelper(sn.env.nodeId);
-	sn.runtime.consumptionUrlHelper = sn.datum.nodeUrlHelper(sn.env.consumptionNodeId);
+	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
+	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId);
 	
 	setupUI();
-	sn.datum.availableDataRange(sourceSets(), function(reportableInterval) {
+	sn.api.node.availableDataRange(sourceSets(), function(reportableInterval) {
 		setup(reportableInterval);
 		if ( sn.runtime.refreshTimer === undefined ) {
 			// refresh chart data on interval
 			sn.runtime.refreshTimer = setInterval(function() {
-				sn.datum.availableDataRange(sourceSets(), function(repInterval) {
+				sn.api.node.availableDataRange(sourceSets(), function(repInterval) {
 					var jsonEndDate = repInterval.eDate;
 					if ( jsonEndDate.getTime() > sn.runtime.reportableEndDate.getTime() ) {
 						setup(repInterval);
