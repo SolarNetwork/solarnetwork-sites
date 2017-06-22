@@ -15,12 +15,25 @@ var devEnv = {
 	host: 'solarnetworkdev.net:8680'
 };
 
+var ansiEscapes = {
+	color: {
+		bright: {
+			green:	'\x1B[32;1m',
+			red:	'\x1B[31;1m',
+			yellow:	'\x1B[33;1m',
+			white:	'\x1B[37;1m'
+		},
+	},
+	reset:	'\x1B[0m',
+};
+
 var app;
 
 var solarSshApp = function(nodeUrlHelper, options) {
 	var self = { version : '0.1.0' };
 	var helper = sn.net.securityHelper();
 	var config = (options || {});
+	var terminal;
 	var session;
 
 	function hostURL() {
@@ -52,6 +65,7 @@ var solarSshApp = function(nodeUrlHelper, options) {
 			undefined,
 			new Date()
 		);
+		terminal.write('Requesting new SSH session... ');
 		return executeWithPreSignedAuthorization('GET', url, authorization)
 			.on('load', handleCreateSession)
 			.on('error', function(xhr) {
@@ -60,12 +74,39 @@ var solarSshApp = function(nodeUrlHelper, options) {
 			});
 	}
 
+	function termWriteBrightGreen(text, newline) {
+		var value = ansiEscapes.color.bright.green +text +ansiEscapes.reset;
+		if ( newline ) {
+			terminal.writeln(value);
+		} else {
+			terminal.write(value);
+		}
+	}
+
+	function termWriteBrightRed(text, newline) {
+		var value = ansiEscapes.color.bright.red +text +ansiEscapes.reset;
+		if ( newline ) {
+			terminal.writeln(value);
+		} else {
+			terminal.write(value);
+		}
+	}
+
+	function termWriteSuccess(withoutNewline) {
+		termWriteBrightGreen('SUCCESS', !withoutNewline);
+	}
+
+	function termWriteFailed(withoutNewline) {
+		termWriteBrightRed('FAILED', !withoutNewline);
+	}
+
 	function handleCreateSession(json) {
 		if ( !(json.success && json.data && json.data.sessionId) ) {
 			console.error('Failed to create session: %s', JSON.stringify(json));
 			enableSubmit(true);
 			return;
 		}
+		termWriteSuccess();
 		console.log('Created session %s', json.data.sessionId);
 		session = json.data;
 		startSession();
@@ -85,6 +126,7 @@ var solarSshApp = function(nodeUrlHelper, options) {
 			'application/x-www-form-urlencoded',
 			new Date()
 		);
+		terminal.write('Requesting SolarNode to connect to remote SSH session... ');
 		return executeWithPreSignedAuthorization('GET', url, authorization)
 			.on('load', handleStartSession)
 			.on('error', function(xhr) {
@@ -99,8 +141,49 @@ var solarSshApp = function(nodeUrlHelper, options) {
 			enableSubmit(true);
 			return;
 		}
+		termWriteSuccess();
 		console.log('Started session %s', json.data.sessionId);
 		session = json.data;
+		waitForStartRemoteSsh();
+	}
+
+	function waitForStartRemoteSsh() {
+		terminal.write('Waiting for SolarNode to connect to remote SSH session...');
+		var url = nodeUrlHelper.viewInstruction(session.startInstructionId);
+		function executeQuery() {
+			helper.json(url)
+				.on('load', function(json) {
+					if ( !(json.success && json.data && json.data.state) ) {
+						console.error('Failed to query StartRemoteSsh instruction %d: %s', session.startInstructionId, JSON.stringify(json));
+						enableSubmit(true);
+						return;
+					}
+					var state = json.data.state;
+					if ( 'Completed' === state ) {
+						// off to the races!
+						terminal.write(' ');
+						termWriteSuccess();
+					} else if ( 'Declined' === state ) {
+						// bummer!
+						terminal.write(' ');
+						termWriteFailed();
+						enableSubmit(true);
+					} else {
+						// still waiting... try again in a little bit
+						terminal.write('.');
+						setTimeout(executeQuery, 15000);
+					}
+				})
+				.on('error', function(xhr) {
+					console.error('Failed to query StartRemoteSsh instruction %d: %s', session.startInstructionId, xhr.responseText);
+					enableSubmit(true);
+					terminal.write(' ');
+					termWriteFailed();
+					termWriteBrightRed('Failed to get SolarNode remote SSH session start status: ' +xhr.responseText, true);
+				})
+				.send('GET');
+		}
+		executeQuery();
 	}
 
 	function executeWithPreSignedAuthorization(method, url, authorization) {
@@ -115,8 +198,9 @@ var solarSshApp = function(nodeUrlHelper, options) {
 	}
 
 	function start() {
-		var term = new Terminal();
-		term.open(document.getElementById('terminal'));
+		terminal = new Terminal();
+		terminal.open(document.getElementById('terminal'), true);
+		terminal.writeln('Hello from \x1B[33;1mSolar\x1B[30;1mSSH\x1B[0m!');
 	}
 
 	function init() {
