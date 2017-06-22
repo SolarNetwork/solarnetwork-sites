@@ -14,15 +14,10 @@ body {
 	background: none;
 }
 
-h1, h2, h3 {
-    color: white;
-    font-family: inherit;
-    font-weight: 500;
-    text-rendering: optimizelegibility;
-}
-
 header {
 	margin: 10px 0;
+	display: flex;
+	flex-direction: row;
 }
 
 footer {
@@ -33,8 +28,40 @@ footer {
 	margin: 10px 20px;
 }
 
+h1 {
+    color: white;
+    font-family: inherit;
+    font-weight: 500;
+	margin: 0.2em 0;
+	font-size: 1.5em;
+    text-rendering: optimizelegibility;
+    flex-grow: 1;
+}
+
 a {
 	color: #BEE6F0;
 	text-decoration: none;
 }
 
+input {
+	border: none;
+	border-bottom: 2px solid #666;
+	background: none;
+	padding-bottom: 2px;
+}
+
+input:focus {
+	border-bottom: 4px solid #fce94f;
+	padding-bottom: 0px;
+}
+
+button {
+	background-color: #fce94f;
+	border: none;
+	min-width: 4em;
+}
+
+button:disabled {
+	background-color: #666;
+	opacity: 0.5;
+}
