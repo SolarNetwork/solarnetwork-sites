@@ -5,11 +5,15 @@
  * @require xterm 2.7
  */
 
-sn.config.debug = true;
-sn.config.host = 'solarnetworkdev.net:8680';
-
 (function(window) {
 'use strict';
+
+var devEnv = {
+	// comment out these for production
+	debug: true,
+	tls: false,
+	host: 'solarnetworkdev.net:8680'
+};
 
 var app;
 
@@ -20,11 +24,11 @@ var solarSshApp = function(nodeUrlHelper, options) {
 	var session;
 
 	function hostURL() {
-		return ('http' +(config.sshTls === true ? 's' : '') +'://' +config.sshHost);
+		return ('http' +(config.solarSshTls === true ? 's' : '') +'://' +config.solarSshHost);
 	}
 
 	function baseURL() {
-		return (hostURL() +config.sshPath +'/api/v1/ssh');
+		return (hostURL() +config.solarSshPath +'/api/v1/ssh');
 	}
 
 	function enableSubmit(value) {
@@ -36,10 +40,7 @@ var solarSshApp = function(nodeUrlHelper, options) {
 		helper.secret(d3.select('input[name=secret]').property('value'));
 		enableSubmit(false);
 		console.log('connect using token %s', helper.token());
-		createSession().on('load', handleCreateSession).on('error', function(xhr) {
-			console.error('Failed to create session: %s', xhr.responseText);
-			enableSubmit(true);
-		});
+		createSession();
 	}
 
 	function createSession() {
@@ -51,7 +52,12 @@ var solarSshApp = function(nodeUrlHelper, options) {
 			undefined,
 			new Date()
 		);
-		return executeWithPreSignedAuthorization('GET', url, authorization);
+		return executeWithPreSignedAuthorization('GET', url, authorization)
+			.on('load', handleCreateSession)
+			.on('error', function(xhr) {
+				console.error('Failed to create session: %s', xhr.responseText);
+				enableSubmit(true);
+			});
 	}
 
 	function handleCreateSession(json) {
@@ -62,27 +68,29 @@ var solarSshApp = function(nodeUrlHelper, options) {
 		}
 		console.log('Created session %s', json.data.sessionId);
 		session = json.data;
-		startSession().on('load', handleStartSession).on('error', function(xhr) {
-			console.error('Failed to start session: %s', xhr.responseText);
-			enableSubmit(true);
-		});
+		startSession();
 	}
 
 	function startSession() {
 		var url = baseURL() + '/session/' +session.sessionId +'/start';
 		var authorization = helper.computeAuthorization(
 			nodeUrlHelper.queueInstructionURL('StartRemoteSsh', [
-				{name: 'host', value: config.host},
+				{name: 'host', value: session.host},
 				{name: 'user', value: session.sessionId},
-				{name: 'port', value: config.sshPort},
-				{name: 'rport', value: session.rport }
+				{name: 'port', value: session.port},
+				{name: 'rport', value: session.reversePort }
 			]),
 			'POST',
 			undefined,
 			'application/x-www-form-urlencoded',
 			new Date()
 		);
-		return executeWithPreSignedAuthorization('POST', url, authorization);
+		return executeWithPreSignedAuthorization('GET', url, authorization)
+			.on('load', handleStartSession)
+			.on('error', function(xhr) {
+				console.error('Failed to start session: %s', xhr.responseText);
+				enableSubmit(true);
+			});
 	}
 
 	function handleStartSession(json) {
@@ -129,17 +137,17 @@ function startApp(env) {
 	var urlHelper;
 
 	if ( !env ) {
-		env = sn.util.copy(sn.env, {
+		env = sn.util.copy(devEnv, sn.util.copy(sn.env, {
 			nodeId : 167,
-			sshHost: 'solarnetworkdev.net:8080',
-			sshPath: '/solarssh',
-			sshTls: false,
-		});
+			solarSshHost: 'solarnetworkdev.net:8080',
+			solarSshPath: '/solarssh',
+			solarSshTls: false,
+		}));
 	}
 
 	setupUI(env);
 
-	urlHelper = sn.api.node.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
+	urlHelper = sn.api.node.nodeUrlHelper(env.nodeId, env);
 
 	app = solarSshApp(urlHelper, env)
 		.start();
