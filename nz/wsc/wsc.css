@@ -1,0 +1,553 @@
+html {
+	background-color: white;
+	-webkit-background-size: cover;
+	-moz-background-size: cover;
+	-o-background-size: cover;
+	background-size: cover;
+}
+
+body {
+	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	margin: 20px 10px;
+	background: none;
+	padding: none;
+	width: 1900px;
+}
+
+h1, h2, h3 {
+    color: inherit;
+    font-family: inherit;
+    text-rendering: optimizelegibility;
+}
+
+h1 {
+	text-align: left;
+	font-size: 36px;
+	line-height: 36px;
+	font-weight: 500;
+	margin: 0;
+	margin-bottom: 12px;
+	color: #00A261;
+	margin-left: 10px;
+}
+
+h2 {
+	font-size: 32px;
+	line-height: 32px;
+	margin-top: 0;
+	margin-bottom: 24px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+h2 .alt {
+	color: gray;
+}
+
+h2 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+h2 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+h3 {
+	font-size: 22px;
+	line-height: 22px;
+	font-weight: 500;
+	margin-top: 0;
+	margin-bottom: 8px;
+	text-transform: uppercase;
+	border-bottom: 1px solid black;
+}
+
+h3 .alt {
+	color: gray;
+}
+
+h3 .unit {
+	text-transform: none;
+	font-weight: 200;
+}
+
+h3 sub {
+	line-height: 0;
+	font-size: 12px;
+	vertical-align: baseline;
+	position: relative;
+	top: 0.3em;
+}
+
+img.header-logo {
+	margin-top: -16px;
+	margin-right: 10px;
+	height: 90px;
+	width: auto;
+	float: left;
+}
+
+.literal {
+	text-transform: none;
+}
+
+div.pane {
+	background-color: rgba(100%,100%,100%,1);
+	border-radius: 8px;
+	box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
+	padding: 8px 12px;
+}
+
+a {
+	color: inherit;
+}
+
+.clickable {
+	cursor: pointer !important;
+}
+
+/* Overview chart */
+
+.overview-chart.pane {
+	position: absolute;
+	right: 0px;
+	left: 0px;
+	bottom: 0px;
+	width: 1920px;
+	height: 100px;
+	padding: 8px 12px;
+	box-sizing: border-box;
+	border-radius: 0;
+	background-color: #ededed;
+	border-top: 1px solid #999;
+}
+
+/* Main charts */
+
+.charts {
+	position: absolute;
+	top: 100px;
+	left: 10px;
+	width: 1560px;
+}
+
+.pane {
+	box-shadow: none !important
+}
+
+.charts > .pane {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 1536px; /* .charts.width - 24 */
+}
+
+.charts > .pane > .actions {
+	float: right;
+	margin-right: 4px;
+	text-align: center;
+	font-size: 18px;
+}
+
+.charts > .pane > .actions .fa + .fa {
+	margin-left: 12px;
+}
+
+.charts > .pane > .actions .fa {
+	color: black;
+}
+
+.charts > .pane > .actions .fa-compress,
+.charts > .pane > .actions .fa-expand {
+	-webkit-transform: rotate(45deg); 
+	-moz-transform: rotate(45deg); 
+	-o-transform: rotate(45deg); 
+	transform: rotate(45deg); 
+}
+
+.charts > .pane > .actions .fa.disabled {
+	color: #ccc;
+}
+
+/* Readings column */
+
+.readings {
+	position: absolute;
+	top: 120px;
+	left: 1660px;
+	width: 240px;
+}
+
+.readings > .pane + .pane,
+.readings > .pane + .actions{
+	margin-top: 12px;
+}
+
+.readings .unit {
+	color: #666;
+	font-weight: 200;
+}
+
+.readings .pane div + h3 {
+	margin-top: 2em;
+}
+
+.readings > .actions {
+	color: #154D6E;
+	text-align: center;
+	font-size: 18px;
+}
+
+/* Messages */
+
+.readings > .msg {
+	display: none;
+	color: #154D6E;
+	font-size: 10px;
+	font-style: italic;
+	margin-top: 12px;
+	text-align: center;
+}
+
+/* Source labels */
+
+#source-labels a:visited {
+	color: inherit;
+}
+
+#source-labels table {
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin-left: -4px;
+}
+
+#source-labels td.swatch {
+	margin: 2px;
+	width: 10px;
+	height: 10px;
+}
+
+#source-labels td.desc {
+	font-size: 10px;
+	line-height: 10px;
+	margin: 2px;
+}
+
+svg {
+	/*background-color: rgb(242,242,242);*/
+}
+
+.chart {
+	font-size: 10px;
+}
+
+.crisp {
+	shape-rendering: crispEdges;
+}
+
+.chart rect {
+	fill-opacity: 0.8;
+}
+
+.chart text {
+	fill: #333;
+}
+
+.chart g.ticks text {
+	text-anchor: middle;
+}
+
+.chart g.ticks text.agg {
+	fill: black;
+	font-weight: bold;
+}
+
+.chart g.ticks text.agg.neg {
+	fill: #DF3038;
+}
+
+.chart g.agg text,
+.chart g.ticks text.major {
+	font-weight: 600;
+}
+
+.chart g.agg-gen text {
+	text-anchor: middle;
+	font-weight: bold;
+	fill: #1B7D30;
+}
+
+.chart g.rule,
+.chart g.vertrule {
+	shape-rendering: crispEdges;
+}
+
+.chart g.rule line,
+.chart g.vertrule line {
+	stroke: black;
+	opacity: 0.1;
+}
+
+.chart g.vertrule line {
+	opacity: 0.05;
+	stroke-dasharray: 2 1;
+}
+
+.chart g.rule line.origin,
+.chart g.vertrule line.origin {
+	stroke: black !important;
+	opacity: 1 !important;
+}
+
+.chart g.rule text {
+	text-anchor: end;
+	alignment-baseline: middle;
+}
+
+.chart g.agg-band line {
+	stroke: black;
+	stroke-width: 15px;
+}
+
+.chart g.agg-band-ticks text {
+	fill: white;
+	text-anchor: middle;
+	font-weight: bold;
+}
+
+.chart g.agg-sum path {
+	stroke-width: 1px;
+	stroke: #C42F2F;
+	fill: none;
+}
+
+.chart .off {
+	display: none;
+}
+
+.chart path.area {
+	fill-opacity: 1;
+}
+
+.chart path.line {
+  fill: none;
+}
+
+.chart line.axis {
+	stroke: black;
+}
+
+/* Total Power Gauge */
+
+#total-power-gauge {
+	margin-left: -8px;
+	margin-right: -8px;
+}
+
+#total-power-gauge g.pointer {
+	fill: #e85116;
+	stroke: #b64011;
+	stroke-width: 1px;
+}
+
+#total-power-gauge g.label text {
+	text-anchor: middle;
+	font-size: 10px;
+	font-weight: bold;
+	fill: #666;
+}
+
+.readings .infobar {
+	font-size: 14px;
+	line-height: 16px;
+	text-align: center;
+}
+
+.readings .infobar .value {
+	font-weight: 600;
+}
+
+/* Flip counters */
+
+.flipCounter {
+	height: 32px;
+}
+
+.flipCounter .flipper {
+	width: 26px;
+	height: 30px;
+}
+
+.flipper .face {
+	border-radius: 4px;
+	width: 26px;
+	height: 30px;
+}
+
+.readings .flipCounter .flipper .value {
+	font-size: 26px;
+	line-height: 26px;
+	font-weight: normal;
+	text-align: center;
+	width: 26px;
+	height: 30px;
+}
+
+.flipper .face.b {
+	display: none;
+	-webkit-transform: rotateX(180deg);
+	-moz-transform: rotateX(180deg);
+	transform: rotateX(180deg);
+}
+
+.flipper.flipped {
+	-webkit-transform: rotateX(180deg);
+	-moz-transform: rotateX(180deg);
+	transform: rotateX(180deg);
+}
+
+/* Animation */
+
+@-webkit-keyframes chart-out {
+	0% {
+  		-webkit-transform: none; 
+	}
+	30% { 
+		-webkit-transform: scale(0.95) translateX(10px); 
+	}
+	100% { 
+		-webkit-transform: scale(0.95) translateX(-1600px);
+	}
+}
+
+@-moz-keyframes chart-out {
+	0% {
+  		-moz-transform: none; 
+	}
+	30% { 
+		-moz-transform: scale(0.95) translateX(10px); 
+	}
+	100% { 
+		-moz-transform: scale(0.95) translateX(-1600px);
+	}
+}
+
+@-o-keyframes chart-out {
+	0% {
+  		-o-transform: none; 
+	}
+	30% { 
+		-o-transform: scale(0.95) translateX(10px); 
+	}
+	100% { 
+		-o-transform: scale(0.95) translateX(-1600px);
+	}
+}
+
+@keyframes chart-out {
+	0% {
+  		transform: none; 
+	}
+	30% { 
+		transform: scale(0.95) translateX(10px); 
+	}
+	100% { 
+		transform: scale(0.95) translateX(-1600px);
+	}
+}
+
+@-webkit-keyframes chart-in {
+	0% {
+  		-webkit-transform: scale(1.05) translateX(-1600px);
+	}
+	90% {
+		-webkit-transform: scale(1.05); 
+	}
+	100% { 
+		-webkit-transform: scale(1);
+	}
+}
+
+@-moz-keyframes chart-in {
+	0% {
+  		-moz-transform: scale(1.05) translateX(-1600px);
+	}
+	90% {
+		-moz-transform: scale(1.05); 
+	}
+	100% { 
+		-moz-transform: scale(1);
+	}
+}
+
+@-o-keyframes chart-in {
+	0% {
+  		-o-transform: scale(1.05) translateX(-1600px);
+	}
+	90% {
+		-o-transform: scale(1.05); 
+	}
+	100% { 
+		-o-transform: scale(1);
+	}
+}
+
+@keyframes chart-in {
+	0% {
+  		transform: scale(1.05) translateX(-1600px);
+	}
+	90% {
+		transform: scale(1.05); 
+	}
+	100% { 
+		transform: scale(1);
+	}
+}
+
+.charts > .pane {
+	-webkit-animation-duration: 1.5s;
+	-webkit-animation-iteration-count: 1;
+	-webkit-animation-timing-function: ease-in-out;
+	-webkit-animation-fill-mode: forwards;
+	-moz-animation-duration: 1.5s;
+	-moz-animation-iteration-count: 1;
+	-moz-animation-timing-function: ease-in-out;
+	-moz-animation-fill-mode: forwards;
+	-o-animation-duration: 1.5s;
+	-o-animation-iteration-count: 1;
+	-o-animation-timing-function: ease-in-out;
+	-o-animation-fill-mode: forwards;
+	animation-duration: 1.5s;
+	animation-iteration-count: 1;
+	animation-timing-function: ease-in-out;
+	animation-fill-mode: forwards;
+}
+
+
+.chart-in {
+	-webkit-animation-name: chart-in;
+	-moz-animation-name: chart-in;
+	-o-animation-name: chart-in;
+	animation-name: chart-in;
+	z-index: 10;
+}
+
+.chart-out {
+	-webkit-animation-name: chart-out;
+	-moz-animation-name: chart-out;
+	-o-animation-name: chart-out;
+	animation-name: chart-out;
+	z-index: 0;
+}
+
+.chart-waiting {
+	-webkit-transform: translateX(-1600px);
+	-moz-transform: translateX(-1600px);
+	-o-transform: translateX(-1600px);
+	transform: translateX(-1600px);
+}
