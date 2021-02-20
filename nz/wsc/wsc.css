@@ -342,6 +342,12 @@ svg {
 	stroke: black;
 }
 
+/* Make generation in power IO chart have opacity to show consumption export above X axis */
+
+.watt-chart .data-root .dataType:nth-child(2) {
+	opacity: 0.9;
+}
+
 /* Total Power Gauge */
 
 #total-power-gauge {

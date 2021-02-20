@@ -406,7 +406,6 @@ function setupUI() {
 		maxValue: sn.env.maxPowerKW,
 		majorTicks: sn.env.powerGaugeTicks,
 		transitionMs: 4000,
-		flipCounterAnimate: 'true',
 		arcColorFn: d3.interpolateHsl(d3.rgb("#e8e2ca"), d3.rgb("#005231"))
 	});
 	sn.runtime.totalPowerGauge.render();
@@ -458,7 +457,7 @@ function setupCounters() {
 
 	// Wh counter utility (generation)
 	if ( sn.runtime.wattHourPowerCounter === undefined ) {
-		sn.runtime.wattHourPowerCounter = sn.api.datum.sumCounter(sn.runtime.urlHelper)
+		sn.runtime.wattHourPowerCounter = sn.api.datum.sumCounter(sn.runtime.readingUrlHelper)
 			.sourceIds(sn.env.sourceIds)
 			.callback(function(sum) {
 				var totalKWattHours = sum / 1000;
@@ -470,7 +469,7 @@ function setupCounters() {
 
 	// Wh counter utility (consumption)
 	if ( sn.runtime.wattHourConsumptionCounter === undefined ) {
-		sn.runtime.wattHourConsumptionCounter = sn.api.datum.sumCounter(sn.runtime.consumptionUrlHelper)
+		sn.runtime.wattHourConsumptionCounter = sn.api.datum.sumCounter(sn.runtime.consumptionReadingUrlHelper)
 			.sourceIds(sn.env.consumptionSourceIds)
 			.callback(function(sum) {
 				var totalKWattHours = sum / 1000;
@@ -510,7 +509,9 @@ function onDocumentReady() {
 		maxPowerKW : 50,
 		powerGaugeTicks : 4,
 		swapSeconds : 20,
-		northernHemisphere : 'false'
+		northernHemisphere : 'false',
+		flipCounterAnimate: 'false',
+		showSumLines: 'false'
 	});
 	sn.runtime.refreshMs = sn.env.minutePrecision * 60 * 1000;
 
@@ -535,6 +536,7 @@ function onDocumentReady() {
 	});
 	sn.runtime.energyBarContainer = d3.select(d3.select('#watthour-chart').node().parentNode);
 	sn.runtime.energyBarChart = sn.chart.energyIOBarChart('#watthour-chart', sn.runtime.energyBarParameters)
+		//.showSumLine(sn.env.showSumLines === 'true')
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback)
 		.layerPostProcessCallback(layerPostProcessCallback);
@@ -546,6 +548,7 @@ function onDocumentReady() {
 	});
 	sn.runtime.powerAreaContainer = d3.select(d3.select('#watt-chart').node().parentNode);
 	sn.runtime.powerAreaChart = sn.chart.powerIOAreaChart('#watt-chart', sn.runtime.powerAreaParameters)
+		.showSumLine(sn.env.showSumLines === 'true')
 		.colorCallback(colorForDataTypeSource)
 		.sourceExcludeCallback(sourceExcludeCallback)
 		.layerPostProcessCallback(layerPostProcessCallback);
@@ -573,6 +576,7 @@ function onDocumentReady() {
 	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId, sn.runtime.config);
 	sn.runtime.readingUrlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId, sn.runtime.configReading);
 	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId, sn.runtime.config);
+	sn.runtime.consumptionReadingUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId, sn.runtime.configReading);
 
 	sn.env.sourceIds = sn.env.sourceIds.split(/\s*,\s*/);
 	sn.env.consumptionSourceIds = sn.env.consumptionSourceIds.split(/\s*,\s*/);
