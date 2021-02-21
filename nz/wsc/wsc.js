@@ -125,7 +125,6 @@ function setupSeasonalEnergyChart(container, chart, parameters, endDate, sourceM
 	}).load();
 }
 
-
 function updateReadings() {
 	d3.json(sn.runtime.readingUrlHelper.mostRecentURL(sn.runtime.sourceGroupMap['Generation']), function(json) {
 		if ( !(json && json.data && Array.isArray(json.data.results)) ) {
@@ -391,9 +390,11 @@ function setup(repInterval) {
 	
 	energyBarChartSetup();
 
+	/** Disable seasonal charts because JS no longer functioning correctly.
 	seasonalHourOfDayChartSetup();
 	
 	seasonalDayOfWeekChartSetup();
+	*/
 }
 
 function setupUI() {
@@ -553,6 +554,7 @@ function onDocumentReady() {
 		.sourceExcludeCallback(sourceExcludeCallback)
 		.layerPostProcessCallback(layerPostProcessCallback);
 
+	/* Disabled seasonal charts
 	sn.runtime.seasonalHourOfDayParameters = new sn.Configuration({
 		height : mainChartHeight,
 		aggregate : 'SeasonalHourOfDay',
@@ -572,7 +574,8 @@ function onDocumentReady() {
 	sn.runtime.seasonalDayOfWeekContainer = d3.select(d3.select('#seasonal-dow-chart').node().parentNode);
 	sn.runtime.seasonalDayOfWeekChart = sn.chart.seasonalDayOfWeekLineChart('#seasonal-dow-chart', sn.runtime.seasonalDayOfWeekParameters)
 		.sourceExcludeCallback(sourceExcludeCallback);
-
+	*/
+	
 	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId, sn.runtime.config);
 	sn.runtime.readingUrlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId, sn.runtime.configReading);
 	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId, sn.runtime.config);

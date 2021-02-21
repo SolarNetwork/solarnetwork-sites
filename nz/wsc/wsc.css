@@ -404,17 +404,8 @@ svg {
 	height: 30px;
 }
 
-.flipper .face.b {
-	display: none;
-	-webkit-transform: rotateX(180deg);
-	-moz-transform: rotateX(180deg);
-	transform: rotateX(180deg);
-}
-
-.flipper.flipped {
-	-webkit-transform: rotateX(180deg);
-	-moz-transform: rotateX(180deg);
-	transform: rotateX(180deg);
+.flipper .face {
+	-webkit-box-reflect: none !important;
 }
 
 /* Animation */
