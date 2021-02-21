@@ -407,7 +407,7 @@ function setupUI() {
 		maxValue: sn.env.maxPowerKW,
 		majorTicks: sn.env.powerGaugeTicks,
 		transitionMs: 4000,
-		arcColorFn: d3.interpolateHsl(d3.rgb("#e8e2ca"), d3.rgb("#005231"))
+		arcColorFn: d3.interpolateHsl(d3.rgb("#E7F3EE"), d3.rgb("#005231"))
 	});
 	sn.runtime.totalPowerGauge.render();
 
@@ -508,7 +508,7 @@ function onDocumentReady() {
 		wiggle : 'true',
 		linkOld : 'false',
 		maxPowerKW : 50,
-		powerGaugeTicks : 4,
+		powerGaugeTicks : 5,
 		swapSeconds : 20,
 		northernHemisphere : 'false',
 		flipCounterAnimate: 'false',
@@ -575,7 +575,7 @@ function onDocumentReady() {
 	sn.runtime.seasonalDayOfWeekChart = sn.chart.seasonalDayOfWeekLineChart('#seasonal-dow-chart', sn.runtime.seasonalDayOfWeekParameters)
 		.sourceExcludeCallback(sourceExcludeCallback);
 	*/
-	
+
 	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId, sn.runtime.config);
 	sn.runtime.readingUrlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId, sn.runtime.configReading);
 	sn.runtime.consumptionUrlHelper = sn.api.node.nodeUrlHelper(sn.env.consumptionNodeId, sn.runtime.config);
