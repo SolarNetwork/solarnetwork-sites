@@ -493,7 +493,7 @@ function setupOutdatedMessage(endDate) {
 }
 
 function onDocumentReady() {
-	var mainChartHeight = 780;
+	var mainChartHeight = 460;
 	
 	sn.setDefaultEnv({
 		nodeId : 433,

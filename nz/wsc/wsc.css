@@ -8,10 +8,12 @@ html {
 
 body {
 	font-family:  "DejaVu Sans Condensed", "Helvetica Neue", Helvetica, Arial, sans-serif;
-	margin: 20px 10px;
 	background: none;
-	padding: none;
-	width: 1900px;
+	margin: 0;
+	padding: 0;
+	width: 1280px;
+	box-sizing: border-box;
+	
 }
 
 h1, h2, h3 {
@@ -25,10 +27,9 @@ h1 {
 	font-size: 36px;
 	line-height: 36px;
 	font-weight: 500;
-	margin: 0;
+	margin: 10px 8px;
 	margin-bottom: 12px;
 	color: #00A261;
-	margin-left: 10px;
 }
 
 h2 {
@@ -85,7 +86,7 @@ h3 sub {
 }
 
 img.header-logo {
-	margin-top: -16px;
+	margin-top: -8px;
 	margin-right: 10px;
 	height: 90px;
 	width: auto;
@@ -94,13 +95,6 @@ img.header-logo {
 
 .literal {
 	text-transform: none;
-}
-
-div.pane {
-	background-color: rgba(100%,100%,100%,1);
-	border-radius: 8px;
-	box-shadow: 2px 2px 2px rgba(0,0,0,0.25);
-	padding: 8px 12px;
 }
 
 a {
@@ -118,7 +112,7 @@ a {
 	right: 0px;
 	left: 0px;
 	bottom: 0px;
-	width: 1920px;
+	width: 1280px;
 	height: 100px;
 	padding: 8px 12px;
 	box-sizing: border-box;
@@ -131,47 +125,16 @@ a {
 
 .charts {
 	position: absolute;
-	top: 100px;
+	top: 80px;
 	left: 10px;
-	width: 1560px;
-}
-
-.pane {
-	box-shadow: none !important
+	width: 1000px;
 }
 
 .charts > .pane {
 	position: absolute;
 	top: 0px;
 	left: 0px;
-	width: 1536px; /* .charts.width - 24 */
-}
-
-.charts > .pane > .actions {
-	float: right;
-	margin-right: 4px;
-	text-align: center;
-	font-size: 18px;
-}
-
-.charts > .pane > .actions .fa + .fa {
-	margin-left: 12px;
-}
-
-.charts > .pane > .actions .fa {
-	color: black;
-}
-
-.charts > .pane > .actions .fa-compress,
-.charts > .pane > .actions .fa-expand {
-	-webkit-transform: rotate(45deg); 
-	-moz-transform: rotate(45deg); 
-	-o-transform: rotate(45deg); 
-	transform: rotate(45deg); 
-}
-
-.charts > .pane > .actions .fa.disabled {
-	color: #ccc;
+	width: 1000px; /* .charts.width - 24 */
 }
 
 /* Readings column */
@@ -179,13 +142,12 @@ a {
 .readings {
 	position: absolute;
 	top: 120px;
-	left: 1660px;
+	left: 1030px;
 	width: 240px;
 }
 
-.readings > .pane + .pane,
-.readings > .pane + .actions{
-	margin-top: 12px;
+.readings > .pane + .pane {
+	margin-top: 24px;
 }
 
 .readings .unit {
@@ -349,11 +311,6 @@ svg {
 }
 
 /* Total Power Gauge */
-
-#total-power-gauge {
-	margin-left: -8px;
-	margin-right: -8px;
-}
 
 #total-power-gauge g.pointer {
 	fill: #e85116;
