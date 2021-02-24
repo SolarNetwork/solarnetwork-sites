@@ -109,12 +109,12 @@ a {
 
 .overview-chart.pane {
 	position: absolute;
-	right: 0px;
-	left: 0px;
-	bottom: 0px;
+	right: 0;
+	left: 0;
+	bottom: 0;
 	width: 1280px;
 	height: 100px;
-	padding: 8px 12px;
+	padding: 8px 0;
 	box-sizing: border-box;
 	border-radius: 0;
 	background-color: #ededed;
