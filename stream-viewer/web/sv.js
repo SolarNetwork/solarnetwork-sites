@@ -38,6 +38,7 @@ var svApp = function(nodeUrlHelper, options) {
 		months = 4,
 		years = 24,
 		ignoreProps = { 'nodeId' : true },
+		ignoreRegex = /.*_(min|max)$/,
 		chartConfiguration = new sn.Configuration({
 			height : 180,
 			aggregate : 'Hour',
@@ -82,7 +83,7 @@ var svApp = function(nodeUrlHelper, options) {
 		sourceData.values.forEach(function(el) {
 			var key;
 			for ( key in el ) {
-				if ( !ignoreProps[key] && typeof el[key] === 'number' ) {
+				if ( !ignoreProps[key] && typeof el[key] === 'number' && !ignoreRegex.test(key) ) {
 					templateObj[key] = 1;
 				}
 			}
