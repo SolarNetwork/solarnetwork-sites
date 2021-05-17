@@ -78,12 +78,17 @@ var svApp = function(nodeUrlHelper, options) {
 
 	function setupLineDataForSource(sourceData) {
 		// sourceData like { key : 'foo', values : [ ... ] }
-		var templateObj = sourceData.values[0];
+		var templateObj = {};
+		sourceData.values.forEach(function(el) {
+			var key;
+			for ( key in el ) {
+				if ( !ignoreProps[key] && typeof el[key] === 'number' ) {
+					templateObj[key] = 1;
+				}
+			}
+		});
 
-		// get properties of first object only
-		var sourcePlotProperties = Object.keys(templateObj).filter(function(key) {
-			return (!ignoreProps[key] && typeof templateObj[key] === 'number');
-		}).sort();
+		var sourcePlotProperties = Object.keys(templateObj).sort();
 		sourcePlotProperties.forEach(function(plotProp) {
 			var lineId = sourceData.key + '-' + plotProp,
 				lineData = { key : lineId, source : sourceData.key, prop : plotProp, values : sourceData.values };
