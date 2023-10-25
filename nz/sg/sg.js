@@ -33,7 +33,7 @@ var app;
  * @class
  */
 var sgSchoolApp = function(nodeUrlHelper, options) {
-	var self = { version : '1.2.0' };
+	var self = { version : '1.2.1' };
 	var urlHelper = nodeUrlHelper;
 	var config = (options || {});
 
