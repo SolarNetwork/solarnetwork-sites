@@ -5,7 +5,6 @@
 
 sn.config.debug = true;
 sn.config.defaultTransitionMs = 600;
-sn.config.host = 'data.solarnetwork.net';
 sn.runtime.sourceColorMappingParams = {};
 sn.runtime.excludeSources = new sn.Configuration();
 
@@ -149,9 +148,9 @@ function sourceSets(regenerate) {
 }
 
 function updateReadings() {
-	d3.json(sn.runtime.urlHelper.mostRecentURL(sn.runtime.sourceGroupMap[sn.env.dataType]), function(json) {
+	d3.json(sn.runtime.readingUrlHelper.mostRecentURL(sn.runtime.sourceGroupMap[sn.env.dataType]), function(json) {
 		if ( !(json && json.data && Array.isArray(json.data.results)) ) {
-			sn.log('No data available for node {0}', sn.runtime.urlHelper.nodeId);
+			sn.log('No data available for node {0}', sn.runtime.readingUrlHelper.nodeId);
 			return;
 		}
 		// totalPower, in kW
@@ -261,7 +260,8 @@ function onDocumentReady() {
 		.xAxisTickCallback(xAxisTickAggregateCallback)
 		.sourceExcludeCallback(sourceExcludeCallback);
 
-	sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId);
+		sn.runtime.urlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId, {host:'query.solarnetwork.net'});
+		sn.runtime.readingUrlHelper = sn.api.node.nodeUrlHelper(sn.env.nodeId, {host:'query.solarnetwork.net/1m'});
 
 	setupUI();
 

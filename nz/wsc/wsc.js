@@ -210,9 +210,7 @@ function resetAutomaticSwapChart() {
 }
 
 function actionToggleAutomaticSwapChart() {
-	var me = d3.select(this);
 	var currEnabled = isAutomaticSwapChartEnabled();
-	me.classed({'fa-pause' : !currEnabled, 'fa-play' : currEnabled});
 	if ( currEnabled ) {
 		disableAutomaticSwapChart();
 	} else {
