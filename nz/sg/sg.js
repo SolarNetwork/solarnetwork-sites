@@ -33,7 +33,7 @@ var app;
  * @class
  */
 var sgSchoolApp = function(nodeUrlHelper, options) {
-	var self = { version : '1.2.0' };
+	var self = { version : '1.2.1' };
 	var urlHelper = nodeUrlHelper;
 	var config = (options || {});
 
@@ -1332,9 +1332,9 @@ function startApp(env) {
 	// make detailed items initially hidden
 	d3.selectAll('.detailed').style('display', 'none');
 
-	urlHelper = sn.api.node.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : sn.config.host });
+	urlHelper = sn.api.node.nodeUrlHelper(env.nodeId, { tls : sn.config.tls, host : 'query.solarnetwork.net' });
 
-	app = sgSchoolApp(urlHelper, env)
+	app = sgSchoolApp(urlHelper ,env)
 		.generationSourceIds(env.sourceIds)
 		.generationDataScaleFactor(env.scaleFactor)
 		.consumptionSourceIds(env.consumptionSourceIds)

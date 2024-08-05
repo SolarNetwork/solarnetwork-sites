@@ -128,10 +128,10 @@ function setupUI() {
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 30,
+		nodeId : 108,
 		sourceIds : 'Main',
 		consumptionNodeId : 108,
-		consumptionSourceIds : 'A,B,C',
+		consumptionSourceIds : 'DB',
 		northernHemisphere : 'false'
 	});
 	sn.runtime.chartRefreshMs = 10 * 60 * 1000;

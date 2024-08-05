@@ -318,11 +318,11 @@ function sourceSets(regenerate) {
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 30,
-		sourceIds : 'Power',
+		nodeId : 108,
+		sourceIds : 'Main',
 		scale : 1,
 		consumptionNodeId : 108,
-		consumptionSourceIds : 'A,B,C',
+		consumptionSourceIds : 'DB',
 		consumptionScale : 1,
 		controlNodeId : 0,
 		controlSourceIds : '',

@@ -369,11 +369,11 @@ function handleDoubleClick(svgContainer, point, data) {
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 30,
+		nodeId : 108,
 		sourceIds : 'Main',
 		scale : 1,
 		consumptionNodeId : 108,
-		consumptionSourceIds : 'A,B,C',
+		consumptionSourceIds : 'DB',
 		consumptionScale : 1,
 		numDays : 7,
 		numMonths : 4,

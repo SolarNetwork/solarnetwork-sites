@@ -561,7 +561,7 @@ function onDocumentReady() {
 		nodeId : 108,
 		sourceIds : 'Main',
 		consumptionNodeId : 108,
-		consumptionSourceIds : 'A,B,C',
+		consumptionSourceIds : 'DB',
 		minutePrecision : 10,
 		numHours : 24,
 		numDays : 7,

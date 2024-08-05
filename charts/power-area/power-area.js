@@ -217,11 +217,11 @@ function setupUI() {
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 30,
-		sourceIds : 'Power',
+		nodeId : 108,
+		sourceIds : 'Main',
 		scale : 1,
 		consumptionNodeId : 108,
-		consumptionSourceIds : 'A,B,C',
+		consumptionSourceIds : 'DB',
 		consumptionScale : 1,
 		minutePrecision : 10,
 		numHours : 24,
