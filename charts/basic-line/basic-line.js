@@ -179,7 +179,7 @@ function setupUI() {
 
 function onDocumentReady() {
 	sn.setDefaultEnv({
-		nodeId : 175,
+		nodeId : 108,
 		sourceIds : 'DB',
 		numDays : 1,
 		numMonths : 4,
